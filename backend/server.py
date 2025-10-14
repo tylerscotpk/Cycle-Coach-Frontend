@@ -672,7 +672,7 @@ async def get_next_resource(
     limit: int = 3,
     current_user: User = Depends(get_current_user)
 ):
-    """Get next unread resources, prioritizing current phase"""
+    """Get next unread resources, prioritizing current phase, then upcoming phase, then general"""
     # Get partner profile to determine current phase
     profile = await db.partner_profiles.find_one(
         {"id": partner_id, "user_id": current_user.id},
@@ -689,6 +689,9 @@ async def get_next_resource(
     phase_info = get_phase_info(cycle_day)
     current_phase = phase_info['phase']
     
+    # Calculate upcoming phase (next phase in cycle)
+    upcoming_phase = get_upcoming_phase(cycle_day)
+    
     # Get user's viewed/archived resource IDs
     user_resources = await db.user_resources.find(
         {"user_id": current_user.id, "status": {"$in": ["archived", "viewed"]}},
@@ -698,44 +701,75 @@ async def get_next_resource(
     
     result_resources = []
     
-    # First, get phase-specific unread resources
-    phase_resources = await db.resources.find(
+    # Priority 1: Current phase-specific resources
+    current_phase_resources = await db.resources.find(
         {"phase": current_phase, "id": {"$nin": viewed_ids}},
         {"_id": 0}
     ).to_list(limit)
     
-    for res in phase_resources:
+    for res in current_phase_resources:
         res['current_phase'] = current_phase
         res['is_phase_match'] = True
+        res['priority'] = 'current'
         result_resources.append(res)
     
-    # If we need more, get general resources
-    if len(result_resources) < limit:
+    # Priority 2: Upcoming phase resources (prepare for next phase)
+    if len(result_resources) < limit and upcoming_phase:
         remaining = limit - len(result_resources)
-        general_resources = await db.resources.find(
-            {"phase": None, "id": {"$nin": viewed_ids}},
+        upcoming_resources = await db.resources.find(
+            {"phase": upcoming_phase, "id": {"$nin": viewed_ids}},
             {"_id": 0}
         ).to_list(remaining)
         
-        for res in general_resources:
+        for res in upcoming_resources:
             res['current_phase'] = current_phase
             res['is_phase_match'] = False
+            res['is_upcoming'] = True
+            res['upcoming_phase'] = upcoming_phase
+            res['priority'] = 'upcoming'
             result_resources.append(res)
     
-    # If still need more, get other phase resources
+    # Priority 3: General resources and random other resources
     if len(result_resources) < limit:
         remaining = limit - len(result_resources)
-        other_resources = await db.resources.find(
-            {"phase": {"$ne": current_phase, "$ne": None}, "id": {"$nin": viewed_ids}},
-            {"_id": 0}
-        ).to_list(remaining)
         
-        for res in other_resources:
-            res['current_phase'] = current_phase
-            res['is_phase_match'] = False
-            result_resources.append(res)
+        # Get all unviewed general and other phase resources
+        all_other = await db.resources.find(
+            {
+                "$or": [
+                    {"phase": None},
+                    {"phase": {"$nin": [current_phase, upcoming_phase]}}
+                ],
+                "id": {"$nin": viewed_ids}
+            },
+            {"_id": 0}
+        ).to_list(remaining * 2)  # Get more for randomization
+        
+        # Randomize and take only what we need
+        import random
+        if all_other:
+            random.shuffle(all_other)
+            for res in all_other[:remaining]:
+                res['current_phase'] = current_phase
+                res['is_phase_match'] = False
+                res['is_upcoming'] = False
+                res['priority'] = 'general'
+                result_resources.append(res)
     
     return result_resources
+
+def get_upcoming_phase(cycle_day: int):
+    """Get the next phase in the cycle"""
+    if 1 <= cycle_day <= 5:
+        return "Follicular"
+    elif 6 <= cycle_day <= 13:
+        return "Ovulation"
+    elif 14 <= cycle_day <= 16:
+        return "Early Luteal"
+    elif 17 <= cycle_day <= 23:
+        return "Late Luteal/PMS"
+    else:  # 24-28
+        return "Menstrual"
 
 @api_router.post("/resources/{resource_id}/archive")
 async def archive_resource(
