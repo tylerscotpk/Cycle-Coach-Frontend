@@ -330,12 +330,13 @@ def get_phase_info(cycle_day: int):
             "emotional_state": "Low energy, might bite your head off",
             "physical_state": "Cramping, tired AF, not feeling sexy",
             "tips": [
-                "Do the dishes. Like, NOW. Don't wait to be asked.",
-                "Get her favorite snacks. Ben & Jerry's never hurt nobody.",
-                "Netflix marathon = your best move",
-                "No jokes about her being 'emotional' unless you want to die",
-                "Heating pad + backrub = you're a goddamn hero",
-                "She says she's fine? She's not fine. Bring chocolate."
+                "**Do the dishes.** Like, NOW. Don't wait to be asked.",
+                "Get her **favorite snacks**. Ben & Jerry's never hurt nobody.",
+                "**Netflix marathon** = your best move. Let her pick, even if it's that sad dog movie again.",
+                "No jokes about her being 'emotional' unless you want to **sleep on the couch**",
+                "**Heating pad + backrub** = you're a goddamn hero. She'll remember this.",
+                "She says she's fine? **She's not fine.** Bring chocolate.",
+                "Think of yourself as her **emotional support human**. Just be there."
             ]
         }
     elif 6 <= cycle_day <= 13:
