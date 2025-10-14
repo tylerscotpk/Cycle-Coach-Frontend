@@ -183,13 +183,13 @@ const Dashboard = ({ user, setUser }) => {
               <CardContent>
                 <form onSubmit={handleCreatePartner} className="space-y-6">
                   <div>
-                    <Label htmlFor="partner-name" className="text-white">Partner's Name</Label>
+                    <Label htmlFor="partner-name" className="text-white">Her Name</Label>
                     <Input
                       id="partner-name"
                       data-testid="partner-name-input"
                       value={partnerName}
                       onChange={(e) => setPartnerName(e.target.value)}
-                      placeholder="Enter her name"
+                      placeholder="What do you call her?"
                       required
                       className="bg-slate-700/50 border-slate-600 text-white mt-2"
                     />
