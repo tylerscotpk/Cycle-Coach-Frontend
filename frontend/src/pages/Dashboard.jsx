@@ -450,18 +450,31 @@ const Dashboard = ({ user, setUser }) => {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {chatHistory.map((conv, idx) => (
-                        <div key={idx} className="space-y-2">
-                          <div className="bg-cyan-500/20 p-3 rounded-lg ml-8" data-testid={`user-message-${idx}`}>
-                            <div className="text-xs text-cyan-400 mb-1">You</div>
-                            <div className="text-white">{conv.message}</div>
+                      {chatHistory.map((conv, idx) => {
+                        // Split response into main content and question
+                        const parts = conv.response.split(/Question:/i);
+                        const mainResponse = parts[0].trim();
+                        const question = parts[1]?.trim();
+                        
+                        return (
+                          <div key={idx} className="space-y-2">
+                            <div className="bg-cyan-500/20 p-3 rounded-lg ml-8" data-testid={`user-message-${idx}`}>
+                              <div className="text-xs text-cyan-400 mb-1">You</div>
+                              <div className="text-white">{conv.message}</div>
+                            </div>
+                            <div className="bg-slate-700/50 p-3 rounded-lg mr-8" data-testid={`ai-response-${idx}`}>
+                              <div className="text-xs text-cyan-400 mb-1">AI Wingman</div>
+                              <div className="text-slate-200 whitespace-pre-line">{mainResponse}</div>
+                            </div>
+                            {question && (
+                              <div className="bg-cyan-500/10 border border-cyan-500/30 p-3 rounded-lg mr-8" data-testid={`ai-question-${idx}`}>
+                                <div className="text-xs text-cyan-400 mb-1">💬 Follow-up Question</div>
+                                <div className="text-cyan-300 font-medium">{question}</div>
+                              </div>
+                            )}
                           </div>
-                          <div className="bg-slate-700/50 p-3 rounded-lg mr-8" data-testid={`ai-response-${idx}`}>
-                            <div className="text-xs text-cyan-400 mb-1">AI Wingman</div>
-                            <div className="text-slate-200">{conv.response}</div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </ScrollArea>
