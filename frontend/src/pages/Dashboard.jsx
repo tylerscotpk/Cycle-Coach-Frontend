@@ -309,7 +309,7 @@ const Dashboard = ({ user, setUser }) => {
                             <div className="text-white">{conv.message}</div>
                           </div>
                           <div className="bg-slate-700/50 p-3 rounded-lg mr-8" data-testid={`ai-response-${idx}`}>
-                            <div className="text-xs text-slate-400 mb-1">AI Coach</div>
+                            <div className="text-xs text-cyan-400 mb-1">AI Wingman</div>
                             <div className="text-slate-200">{conv.response}</div>
                           </div>
                         </div>
