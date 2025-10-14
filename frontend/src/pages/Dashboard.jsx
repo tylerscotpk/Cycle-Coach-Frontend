@@ -49,6 +49,7 @@ const Dashboard = ({ user, setUser }) => {
         setPartner(partnerRes.data);
         await loadCycleInfo(partnerRes.data.id);
         await loadChatHistory(partnerRes.data.id);
+        await loadFunFact(partnerRes.data.id);
       } catch (err) {
         console.log('No partner profile yet');
       }
@@ -60,6 +61,15 @@ const Dashboard = ({ user, setUser }) => {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFunFact = async (partnerId) => {
+    try {
+      const response = await axios.get(`${API}/fun-fact?partner_id=${partnerId}`, { withCredentials: true });
+      setFunFact(response.data);
+    } catch (error) {
+      console.error('Error loading fun fact:', error);
     }
   };
 
