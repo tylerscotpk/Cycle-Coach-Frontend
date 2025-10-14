@@ -341,15 +341,16 @@ def get_phase_info(cycle_day: int):
         return {
             "phase": "Follicular",
             "phase_day": cycle_day - 5,
-            "description": "Energy is building - she's feeling better!",
-            "emotional_state": "Optimistic, energetic, open to new things",
-            "physical_state": "Energy increasing, feeling good",
+            "description": "The storm has passed. She's back, baby!",
+            "emotional_state": "Happy, energetic, fun to be around",
+            "physical_state": "Feeling good, looking good, knows it",
             "tips": [
-                "Great time to plan dates and adventures",
-                "She's more open to trying new things",
-                "Energy levels are high - suggest active dates",
-                "Good time for important conversations",
-                "Compliment her - she's feeling confident"
+                "Book that fancy restaurant NOW while she's down",
+                "She'll actually want to leave the house - capitalize on this",
+                "Good time to bring up that thing you've been avoiding",
+                "Compliments land HARD right now - use them",
+                "Try that new thing in bed she mentioned 3 months ago",
+                "She's basically a yes-man right now. Seize the day."
             ]
         }
     elif 14 <= cycle_day <= 16:
