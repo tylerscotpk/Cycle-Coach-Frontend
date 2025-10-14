@@ -198,20 +198,19 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
             </div>
 
             {/* Legend */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-xl">
+            <div className="w-full max-w-md space-y-2">
               {phases.map((phase) => (
                 <button
                   key={phase.name}
                   onClick={() => setSelectedPhase(phase)}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors w-full"
                 >
                   <div 
                     className="w-4 h-4 rounded-full flex-shrink-0" 
                     style={{ backgroundColor: phase.color }}
                   />
-                  <div className="text-left">
-                    <div className="text-white text-xs font-medium">{phase.name}</div>
-                    <div className="text-slate-400 text-xs">Days {phase.days}</div>
+                  <div className="text-white text-sm font-medium">
+                    {phase.name}: Days {phase.days}
                   </div>
                 </button>
               ))}
@@ -219,7 +218,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
 
             {/* Quick info */}
             <div className="text-center text-slate-400 text-sm mt-4">
-              Tap any segment or legend item to see detailed tips
+              Tap any segment or phase to see detailed tips
             </div>
           </div>
         </CardContent>
