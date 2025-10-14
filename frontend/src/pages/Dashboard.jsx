@@ -197,40 +197,53 @@ const Dashboard = ({ user, setUser }) => {
     }
   };
 
-  const handleArchiveResource = async () => {
-    if (!currentResource || !partner) return;
+  const handleArchiveResource = async (resourceId) => {
+    if (!partner) return;
     
     try {
-      await axios.post(`${API}/resources/${currentResource.id}/archive`, {}, { withCredentials: true });
+      await axios.post(`${API}/resources/${resourceId}/archive`, {}, { withCredentials: true });
       toast.success('Resource archived!');
-      await loadNextResource();
+      // Remove from current resources
+      setCurrentResources(prev => prev.filter(r => r.id !== resourceId));
+      // Load more if needed
+      if (currentResources.length <= 1) {
+        await loadNextResources();
+      }
     } catch (error) {
       console.error('Error archiving resource:', error);
       toast.error('Failed to archive');
     }
   };
 
-  const handleBookmarkResource = async () => {
-    if (!currentResource || !partner) return;
+  const handleBookmarkResource = async (resourceId) => {
+    if (!partner) return;
     
     try {
-      await axios.post(`${API}/resources/${currentResource.id}/bookmark`, {}, { withCredentials: true });
+      await axios.post(`${API}/resources/${resourceId}/bookmark`, {}, { withCredentials: true });
       toast.success('Resource bookmarked!');
-      setBookmarkedResources(prev => [...prev, currentResource]);
-      await loadNextResource();
+      const bookmarkedResource = currentResources.find(r => r.id === resourceId);
+      if (bookmarkedResource) {
+        setBookmarkedResources(prev => [...prev, bookmarkedResource]);
+      }
+      // Remove from current resources
+      setCurrentResources(prev => prev.filter(r => r.id !== resourceId));
+      // Load more if needed
+      if (currentResources.length <= 1) {
+        await loadNextResources();
+      }
     } catch (error) {
       console.error('Error bookmarking resource:', error);
       toast.error('Failed to bookmark');
     }
   };
 
-  const loadNextResource = async () => {
+  const loadNextResources = async () => {
     try {
-      const response = await axios.get(`${API}/resources/next?partner_id=${partner.id}`, { withCredentials: true });
-      setCurrentResource(response.data);
+      const response = await axios.get(`${API}/resources/next?partner_id=${partner.id}&limit=3`, { withCredentials: true });
+      setCurrentResources(response.data || []);
     } catch (error) {
-      console.error('Error loading next resource:', error);
-      setCurrentResource(null);
+      console.error('Error loading next resources:', error);
+      setCurrentResources([]);
     }
   };
 
