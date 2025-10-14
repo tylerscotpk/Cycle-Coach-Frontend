@@ -14,8 +14,38 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
+    handleAuthFlow();
   }, []);
+
+  const handleAuthFlow = async () => {
+    // Check for session_id in URL hash first
+    const hash = window.location.hash;
+    if (hash.includes('session_id=')) {
+      const sessionId = hash.split('session_id=')[1].split('&')[0];
+      await processSession(sessionId);
+    } else {
+      await checkAuth();
+    }
+  };
+
+  const processSession = async (sessionId) => {
+    try {
+      const response = await axios.post(
+        `${API}/auth/process-session`,
+        null,
+        {
+          params: { session_id: sessionId },
+          withCredentials: true
+        }
+      );
+      setUser(response.data.user);
+      window.location.hash = ''; // Clear hash
+      setLoading(false);
+    } catch (error) {
+      console.error('Auth error:', error);
+      setLoading(false);
+    }
+  };
 
   const checkAuth = async () => {
     try {
