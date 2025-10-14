@@ -96,7 +96,7 @@ const LandingPage = ({ setUser }) => {
               </svg>
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Cycle Tracking</h3>
-            <p className="text-slate-400">Know exactly where she is in her cycle and what to expect. No more guessing games.</p>
+            <p className="text-slate-400">Know exactly where she is in her cycle. Basically like having ESPN for her emotions.</p>
           </div>
 
           <div className="bg-slate-800/50 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 hover:border-cyan-500/50 transition-all" data-testid="feature-ai-insights">
