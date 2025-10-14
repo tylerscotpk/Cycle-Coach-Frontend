@@ -152,8 +152,8 @@ const LandingPage = ({ setUser }) => {
 
         {/* CTA Section */}
         <div className="max-w-3xl mx-auto mt-32 text-center bg-gradient-to-r from-cyan-500/20 to-blue-500/20 backdrop-blur-sm p-12 rounded-3xl border border-cyan-500/30">
-          <h2 className="text-3xl font-bold text-white mb-4">Ready to Level Up?</h2>
-          <p className="text-slate-300 mb-8 text-lg">Join thousands of guys who are already winning at relationships.</p>
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to Stop Stepping on Landmines?</h2>
+          <p className="text-slate-300 mb-8 text-lg">Join guys who went from clueless to clutch. Your relationship will thank you.</p>
           <Button
             data-testid="cta-get-started-button"
             onClick={handleLogin}
