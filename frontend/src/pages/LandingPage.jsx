@@ -143,8 +143,8 @@ const LandingPage = ({ setUser }) => {
             <div className="flex gap-6 items-start" data-testid="step-3">
               <div className="flex-shrink-0 w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-xl">3</div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">Get Daily Insights & Tips</h3>
-                <p className="text-slate-400">Know when to plan date night, when to give space, and when to bring chocolate.</p>
+                <h3 className="text-xl font-bold text-white mb-2">Get Your Daily Game Plan</h3>
+                <p className="text-slate-400">Know when she's gonna be horny, hangry, or homicidal. Plan accordingly.</p>
               </div>
             </div>
           </div>
