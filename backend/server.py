@@ -413,7 +413,9 @@ def get_phase_info(cycle_day: int):
                 "Don't ask **'is it that time of the month?'** - that's a **death wish**, bro",
                 "She wants to fight? Brother, **you've already lost**. Apologize and move on.",
                 "Stock up on her **favorite junk food** like the apocalypse is coming",
-                "Think **Incredible Hulk** - don't poke the bear. Just don't."
+                "Think **Incredible Hulk** - don't poke the bear. Just don't.",
+                "**🏋️ YOUR MOVE: Hit the gym HARD.** She needs space. Channel that energy into gains. Come back stronger.",
+                "**🚫 YOUR MOVE: Do NOT brag.** Keep wins to yourself this week. Save the victory lap for next week."
             ]
         }
 
