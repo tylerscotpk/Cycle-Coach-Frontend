@@ -4,12 +4,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const [selectedPhase, setSelectedPhase] = useState(null);
+  const [hoveredPhase, setHoveredPhase] = useState(null);
 
   const phases = [
     {
       name: "Menstrual",
       days: "1-5",
-      color: "bg-red-500/30 border-red-500 hover:bg-red-500/40",
+      dayRange: [1, 5],
+      color: "#ef4444",
       description: "Red alert - literally. She's on her period.",
       emoji: "🩸",
       tips: [
@@ -24,7 +26,8 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     {
       name: "Follicular",
       days: "6-13",
-      color: "bg-green-500/30 border-green-500 hover:bg-green-500/40",
+      dayRange: [6, 13],
+      color: "#22c55e",
       description: "The storm has passed. She's back, baby!",
       emoji: "🌸",
       tips: [
@@ -39,7 +42,8 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     {
       name: "Ovulation",
       days: "14-16",
-      color: "bg-pink-500/30 border-pink-500 hover:bg-pink-500/40",
+      dayRange: [14, 16],
+      color: "#ec4899",
       description: "🔥 PRIME TIME 🔥 This is it chief",
       emoji: "🔥",
       tips: [
@@ -55,7 +59,8 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     {
       name: "Early Luteal",
       days: "17-23",
-      color: "bg-blue-500/30 border-blue-500 hover:bg-blue-500/40",
+      dayRange: [17, 23],
+      color: "#3b82f6",
       description: "Chill vibes. Enjoy it while it lasts.",
       emoji: "🏠",
       tips: [
@@ -70,7 +75,8 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     {
       name: "PMS",
       days: "24-28",
-      color: "bg-orange-500/30 border-orange-500 hover:bg-orange-500/40",
+      dayRange: [24, 28],
+      color: "#f97316",
       description: "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
       emoji: "⚠️",
       tips: [
@@ -88,14 +94,50 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
 
   const getCurrentPhase = () => {
     if (!currentCycleDay) return null;
-    if (currentCycleDay >= 1 && currentCycleDay <= 5) return phases[0];
-    if (currentCycleDay >= 6 && currentCycleDay <= 13) return phases[1];
-    if (currentCycleDay >= 14 && currentCycleDay <= 16) return phases[2];
-    if (currentCycleDay >= 17 && currentCycleDay <= 23) return phases[3];
-    return phases[4];
+    return phases.find(phase => 
+      currentCycleDay >= phase.dayRange[0] && currentCycleDay <= phase.dayRange[1]
+    );
   };
 
   const currentPhase = getCurrentPhase();
+
+  // Calculate the angle for each phase segment
+  const getPhaseSegment = (index) => {
+    const totalDays = 28;
+    const phase = phases[index];
+    const phaseDays = phase.dayRange[1] - phase.dayRange[0] + 1;
+    const startDay = phase.dayRange[0] - 1; // 0-indexed
+    
+    const startAngle = (startDay / totalDays) * 360 - 90; // Start from top
+    const endAngle = ((startDay + phaseDays) / totalDays) * 360 - 90;
+    
+    return { startAngle, endAngle, phaseDays };
+  };
+
+  // Create SVG path for donut segment
+  const createArcPath = (startAngle, endAngle, outerRadius, innerRadius) => {
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+    
+    const x1 = 150 + outerRadius * Math.cos(startRad);
+    const y1 = 150 + outerRadius * Math.sin(startRad);
+    const x2 = 150 + outerRadius * Math.cos(endRad);
+    const y2 = 150 + outerRadius * Math.sin(endRad);
+    const x3 = 150 + innerRadius * Math.cos(endRad);
+    const y3 = 150 + innerRadius * Math.sin(endRad);
+    const x4 = 150 + innerRadius * Math.cos(startRad);
+    const y4 = 150 + innerRadius * Math.sin(startRad);
+    
+    const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+    
+    return `
+      M ${x1} ${y1}
+      A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
+      L ${x3} ${y3}
+      A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}
+      Z
+    `;
+  };
 
   return (
     <>
@@ -106,57 +148,78 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center">
-            {/* Circular Layout */}
-            <div className="relative w-full max-w-2xl aspect-square flex items-center justify-center mb-8">
-              {/* Center indicator */}
-              {currentPhase && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-6xl mb-2">{currentPhase.emoji}</div>
-                    <div className="text-white font-bold text-xl">{currentPhase.name}</div>
-                    <div className="text-slate-400 text-sm">Day {currentCycleDay}</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Phase segments in a circle */}
-              <div className="absolute inset-0">
+            {/* Circular Donut Chart */}
+            <div className="relative w-full max-w-md mx-auto mb-6">
+              <svg viewBox="0 0 300 300" className="w-full h-auto">
+                {/* Phase segments */}
                 {phases.map((phase, index) => {
-                  const angle = (index * 72) - 90; // 360/5 = 72 degrees per segment, start at top
-                  const radian = (angle * Math.PI) / 180;
-                  const radius = 45; // percentage
-                  const x = 50 + radius * Math.cos(radian);
-                  const y = 50 + radius * Math.sin(radian);
-                  
+                  const { startAngle, endAngle } = getPhaseSegment(index);
                   const isActive = currentPhase?.name === phase.name;
-
+                  const isHovered = hoveredPhase === phase.name;
+                  const outerRadius = isHovered ? 145 : isActive ? 140 : 135;
+                  const innerRadius = 70;
+                  
                   return (
-                    <button
-                      key={phase.name}
-                      data-testid={`phase-${phase.name.toLowerCase().replace(' ', '-')}`}
-                      onClick={() => setSelectedPhase(phase)}
-                      className={`absolute transform -translate-x-1/2 -translate-y-1/2 
-                        ${phase.color} border-2 rounded-2xl p-4 
-                        transition-all cursor-pointer
-                        ${isActive ? 'scale-110 shadow-lg ring-2 ring-white' : 'scale-100'}
-                        w-32 h-32 flex flex-col items-center justify-center`}
-                      style={{
-                        left: `${x}%`,
-                        top: `${y}%`,
-                      }}
-                    >
-                      <div className="text-3xl mb-1">{phase.emoji}</div>
-                      <div className="text-white font-bold text-sm text-center">{phase.name}</div>
-                      <div className="text-xs text-slate-300">Days {phase.days}</div>
-                    </button>
+                    <g key={phase.name}>
+                      <path
+                        d={createArcPath(startAngle, endAngle, outerRadius, innerRadius)}
+                        fill={phase.color}
+                        fillOpacity={isActive ? 0.9 : isHovered ? 0.7 : 0.5}
+                        stroke={isActive ? "#ffffff" : phase.color}
+                        strokeWidth={isActive ? 3 : 1}
+                        className="cursor-pointer transition-all duration-200"
+                        onClick={() => setSelectedPhase(phase)}
+                        onMouseEnter={() => setHoveredPhase(phase.name)}
+                        onMouseLeave={() => setHoveredPhase(null)}
+                        data-testid={`phase-${phase.name.toLowerCase().replace(' ', '-')}`}
+                      />
+                    </g>
                   );
                 })}
-              </div>
+                
+                {/* Center content */}
+                <g>
+                  <circle cx="150" cy="150" r="65" fill="#1e293b" />
+                  {currentPhase && (
+                    <>
+                      <text x="150" y="135" textAnchor="middle" fontSize="40">
+                        {currentPhase.emoji}
+                      </text>
+                      <text x="150" y="165" textAnchor="middle" fontSize="16" fill="#ffffff" fontWeight="bold">
+                        {currentPhase.name}
+                      </text>
+                      <text x="150" y="180" textAnchor="middle" fontSize="12" fill="#94a3b8">
+                        Day {currentCycleDay}
+                      </text>
+                    </>
+                  )}
+                </g>
+              </svg>
             </div>
 
-            {/* Quick legend */}
-            <div className="text-center text-slate-400 text-sm">
-              Click any phase to learn more about what to expect
+            {/* Legend */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-xl">
+              {phases.map((phase) => (
+                <button
+                  key={phase.name}
+                  onClick={() => setSelectedPhase(phase)}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors"
+                >
+                  <div 
+                    className="w-4 h-4 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: phase.color }}
+                  />
+                  <div className="text-left">
+                    <div className="text-white text-xs font-medium">{phase.name}</div>
+                    <div className="text-slate-400 text-xs">Days {phase.days}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Quick info */}
+            <div className="text-center text-slate-400 text-sm mt-4">
+              Tap any segment or legend item to see detailed tips
             </div>
           </div>
         </CardContent>
