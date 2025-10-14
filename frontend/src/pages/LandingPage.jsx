@@ -128,7 +128,7 @@ const LandingPage = ({ setUser }) => {
               <div className="flex-shrink-0 w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-xl">1</div>
               <div>
                 <h3 className="text-xl font-bold text-white mb-2">Enter Her Cycle Start Date</h3>
-                <p className="text-slate-400">Just the first day of her last period. That's it.</p>
+                <p className="text-slate-400">First day of her last period. Yeah, you gotta ask. It's worth it, trust me.</p>
               </div>
             </div>
 
