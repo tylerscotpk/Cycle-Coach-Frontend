@@ -695,9 +695,19 @@ const Dashboard = ({ user, setUser }) => {
                         <div className="text-xs text-cyan-400 uppercase px-3 py-1 bg-cyan-500/20 rounded-full">
                           {resource.type}
                         </div>
-                        {resource.phase && (
-                          <div className={`text-xs px-3 py-1 rounded-full ${resource.is_phase_match ? 'text-white bg-cyan-500' : 'text-slate-400 bg-slate-700/50'}`}>
-                            {resource.is_phase_match ? '🎯 For Today' : resource.phase}
+                        {resource.is_phase_match && (
+                          <div className="text-xs text-white px-3 py-1 bg-cyan-500 rounded-full">
+                            🎯 For Today
+                          </div>
+                        )}
+                        {resource.is_upcoming && (
+                          <div className="text-xs text-orange-400 px-3 py-1 bg-orange-500/20 rounded-full">
+                            ⏭️ Coming Up: {resource.upcoming_phase}
+                          </div>
+                        )}
+                        {!resource.is_phase_match && !resource.is_upcoming && resource.phase && (
+                          <div className="text-xs text-slate-400 px-3 py-1 bg-slate-700/50 rounded-full">
+                            {resource.phase}
                           </div>
                         )}
                       </div>
