@@ -115,8 +115,8 @@ const LandingPage = ({ setUser }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Daily Tips</h3>
-            <p className="text-slate-400">Actionable advice delivered daily. From what to say to what to do.</p>
+            <h3 className="text-xl font-bold text-white mb-3">Daily Intel</h3>
+            <p className="text-slate-400">Wake up to the game plan. What to say, what NOT to say, and when to strategically be "busy."</p>
           </div>
         </div>
 
