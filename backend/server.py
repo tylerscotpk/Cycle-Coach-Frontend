@@ -664,6 +664,139 @@ def get_fun_facts(phase: Optional[str] = None):
 
 # ============ RESOURCES ROUTES ============
 
+# ============ RESOURCES ROUTES ============
+
+@api_router.get("/resources/next")
+async def get_next_resource(
+    partner_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get next unread resource, prioritizing current phase"""
+    # Get partner profile to determine current phase
+    profile = await db.partner_profiles.find_one(
+        {"id": partner_id, "user_id": current_user.id},
+        {"_id": 0}
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Partner profile not found")
+    
+    # Calculate current phase
+    cycle_start = datetime.strptime(profile['cycle_start_date'], "%Y-%m-%d").date()
+    today = datetime.now(timezone.utc).date()
+    days_since_start = (today - cycle_start).days
+    cycle_day = (days_since_start % profile['cycle_length']) + 1
+    phase_info = get_phase_info(cycle_day)
+    current_phase = phase_info['phase']
+    
+    # Get user's viewed/archived resource IDs
+    user_resources = await db.user_resources.find(
+        {"user_id": current_user.id, "status": {"$in": ["archived", "viewed"]}},
+        {"_id": 0, "resource_id": 1}
+    ).to_list(1000)
+    viewed_ids = [ur['resource_id'] for ur in user_resources]
+    
+    # Try to find phase-specific unread resource
+    phase_resource = await db.resources.find_one(
+        {"phase": current_phase, "id": {"$nin": viewed_ids}},
+        {"_id": 0}
+    )
+    
+    if phase_resource:
+        return {**phase_resource, "current_phase": current_phase}
+    
+    # Fall back to general resources
+    general_resource = await db.resources.find_one(
+        {"phase": None, "id": {"$nin": viewed_ids}},
+        {"_id": 0}
+    )
+    
+    if general_resource:
+        return {**general_resource, "current_phase": current_phase}
+    
+    # If all resources viewed, return a random one
+    any_resource = await db.resources.find_one({"_id": 0})
+    return {**any_resource, "current_phase": current_phase} if any_resource else None
+
+@api_router.post("/resources/{resource_id}/archive")
+async def archive_resource(
+    resource_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Archive a resource"""
+    # Check if user resource record exists
+    existing = await db.user_resources.find_one(
+        {"user_id": current_user.id, "resource_id": resource_id}
+    )
+    
+    if existing:
+        # Update status
+        await db.user_resources.update_one(
+            {"user_id": current_user.id, "resource_id": resource_id},
+            {"$set": {"status": "archived", "viewed_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    else:
+        # Create new record
+        user_resource = UserResource(
+            user_id=current_user.id,
+            resource_id=resource_id,
+            status="archived",
+            viewed_at=datetime.now(timezone.utc)
+        )
+        ur_dict = user_resource.model_dump()
+        ur_dict['viewed_at'] = ur_dict['viewed_at'].isoformat()
+        ur_dict['created_at'] = ur_dict['created_at'].isoformat()
+        await db.user_resources.insert_one(ur_dict)
+    
+    return {"message": "Resource archived"}
+
+@api_router.post("/resources/{resource_id}/bookmark")
+async def bookmark_resource(
+    resource_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Bookmark a resource"""
+    # Check if user resource record exists
+    existing = await db.user_resources.find_one(
+        {"user_id": current_user.id, "resource_id": resource_id}
+    )
+    
+    if existing:
+        # Update status
+        await db.user_resources.update_one(
+            {"user_id": current_user.id, "resource_id": resource_id},
+            {"$set": {"status": "bookmarked", "viewed_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    else:
+        # Create new record
+        user_resource = UserResource(
+            user_id=current_user.id,
+            resource_id=resource_id,
+            status="bookmarked",
+            viewed_at=datetime.now(timezone.utc)
+        )
+        ur_dict = user_resource.model_dump()
+        ur_dict['viewed_at'] = ur_dict['viewed_at'].isoformat()
+        ur_dict['created_at'] = ur_dict['created_at'].isoformat()
+        await db.user_resources.insert_one(ur_dict)
+    
+    return {"message": "Resource bookmarked"}
+
+@api_router.get("/resources/bookmarked")
+async def get_bookmarked_resources(current_user: User = Depends(get_current_user)):
+    """Get user's bookmarked resources"""
+    user_resources = await db.user_resources.find(
+        {"user_id": current_user.id, "status": "bookmarked"},
+        {"_id": 0}
+    ).to_list(100)
+    
+    resource_ids = [ur['resource_id'] for ur in user_resources]
+    resources = await db.resources.find(
+        {"id": {"$in": resource_ids}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    return resources
+
 @api_router.get("/resources", response_model=List[Resource])
 async def get_resources(current_user: User = Depends(get_current_user)):
     """Get all resources"""
