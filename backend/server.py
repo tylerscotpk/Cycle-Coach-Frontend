@@ -108,9 +108,10 @@ class PreferenceUpdate(BaseModel):
 async def get_session_data_from_emergent(session_id: str):
     """Get user data from Emergent Auth API"""
     try:
+        auth_api_url = os.environ.get('EMERGENT_AUTH_API_URL', 'https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data')
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                auth_api_url,
                 headers={"X-Session-ID": session_id}
             )
             if response.status_code == 200:
