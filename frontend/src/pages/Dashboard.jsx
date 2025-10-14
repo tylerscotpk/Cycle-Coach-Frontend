@@ -312,7 +312,7 @@ const Dashboard = ({ user, setUser }) => {
                   {cycleInfo.tips.slice(0, 4).map((tip, idx) => (
                     <li key={idx} className="flex gap-2 text-slate-200" data-testid={`tip-${idx}`}>
                       <span className="text-cyan-400">•</span>
-                      <span>{tip}</span>
+                      <span>{renderTipWithBold(tip)}</span>
                     </li>
                   ))}
                 </ul>
