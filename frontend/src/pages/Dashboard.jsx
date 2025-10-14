@@ -323,7 +323,7 @@ const Dashboard = ({ user, setUser }) => {
                     data-testid="chat-input"
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder="Ask anything... (e.g., 'How does she like her coffee?')"
+                    placeholder="e.g., 'She's been quiet all day, what do I do?'"
                     className="bg-slate-700/50 border-slate-600 text-white"
                   />
                   <Button type="submit" data-testid="send-message-button" className="bg-cyan-500 hover:bg-cyan-600">
