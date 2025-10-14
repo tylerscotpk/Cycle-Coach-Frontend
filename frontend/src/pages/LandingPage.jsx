@@ -5,40 +5,10 @@ import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-const AUTH_URL = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(`${window.location.origin}/dashboard`)}`;
+const AUTH_URL = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(window.location.origin)}`;
 
 const LandingPage = ({ setUser }) => {
   const [processing, setProcessing] = useState(false);
-
-  useEffect(() => {
-    // Check for session_id in URL fragment
-    const hash = window.location.hash;
-    if (hash.includes('session_id=')) {
-      const sessionId = hash.split('session_id=')[1].split('&')[0];
-      processSession(sessionId);
-    }
-  }, []);
-
-  const processSession = async (sessionId) => {
-    setProcessing(true);
-    try {
-      const response = await axios.post(
-        `${API}/auth/process-session`,
-        null,
-        {
-          params: { session_id: sessionId },
-          withCredentials: true
-        }
-      );
-      setUser(response.data.user);
-      window.location.hash = ''; // Clear hash
-      window.location.href = '/dashboard';
-    } catch (error) {
-      console.error('Auth error:', error);
-      toast.error('Authentication failed. Please try again.');
-      setProcessing(false);
-    }
-  };
 
   const handleLogin = () => {
     window.location.href = AUTH_URL;
