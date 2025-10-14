@@ -394,8 +394,9 @@ const Dashboard = ({ user, setUser }) => {
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-6">
-                  {/* Preferences Grid */}
+                  {/* Left Column - Preferences */}
                   <div className="space-y-4">
+                    <h3 className="text-white font-semibold text-lg mb-3">Preferences</h3>
                     <div>
                       <Label htmlFor="coffee-order" className="text-white">Coffee Order</Label>
                       <Input
@@ -421,18 +422,6 @@ const Dashboard = ({ user, setUser }) => {
                     </div>
 
                     <div>
-                      <Label htmlFor="movie-genre" className="text-white">Movie Genre</Label>
-                      <Input
-                        id="movie-genre"
-                        data-testid="movie-genre-input"
-                        placeholder="e.g., Rom-coms, Horror, Drama"
-                        defaultValue={partner.preferences?.movie_genre || ''}
-                        onBlur={(e) => updatePreference('movie_genre', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
                       <Label htmlFor="comfort-food" className="text-white">Comfort Food</Label>
                       <Input
                         id="comfort-food"
@@ -443,9 +432,7 @@ const Dashboard = ({ user, setUser }) => {
                         className="bg-slate-700/50 border-slate-600 text-white mt-2"
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-4">
                     <div>
                       <Label htmlFor="love-language" className="text-white">Love Language</Label>
                       <Input
@@ -494,12 +481,88 @@ const Dashboard = ({ user, setUser }) => {
                       />
                     </div>
                   </div>
+
+                  {/* Right Column - Entertainment */}
+                  <div className="space-y-4">
+                    <h3 className="text-white font-semibold text-lg mb-3">Entertainment</h3>
+                    <div>
+                      <Label htmlFor="movie-genre" className="text-white">Movie Genres</Label>
+                      <Input
+                        id="movie-genre"
+                        data-testid="movie-genre-input"
+                        placeholder="e.g., Rom-coms, Horror, Drama"
+                        defaultValue={partner.preferences?.movie_genre || ''}
+                        onBlur={(e) => updatePreference('movie_genre', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="favorite-movies" className="text-white">Favorite Movies</Label>
+                      <Input
+                        id="favorite-movies"
+                        data-testid="favorite-movies-input"
+                        placeholder="e.g., The Notebook, Inception, The Shawshank Redemption"
+                        defaultValue={partner.preferences?.favorite_movies || ''}
+                        onBlur={(e) => updatePreference('favorite_movies', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="tv-series" className="text-white">Favorite TV Series</Label>
+                      <Input
+                        id="tv-series"
+                        data-testid="tv-series-input"
+                        placeholder="e.g., Friends, Stranger Things, The Office"
+                        defaultValue={partner.preferences?.tv_series || ''}
+                        onBlur={(e) => updatePreference('tv_series', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="music-artists" className="text-white">Favorite Music Artists</Label>
+                      <Input
+                        id="music-artists"
+                        data-testid="music-artists-input"
+                        placeholder="e.g., Taylor Swift, The Weeknd, Billie Eilish"
+                        defaultValue={partner.preferences?.music_artists || ''}
+                        onBlur={(e) => updatePreference('music_artists', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="music-genres" className="text-white">Music Genres</Label>
+                      <Input
+                        id="music-genres"
+                        data-testid="music-genres-input"
+                        placeholder="e.g., Pop, R&B, Indie, Country"
+                        defaultValue={partner.preferences?.music_genres || ''}
+                        onBlur={(e) => updatePreference('music_genres', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="podcast-shows" className="text-white">Podcasts She Listens To</Label>
+                      <Input
+                        id="podcast-shows"
+                        data-testid="podcast-shows-input"
+                        placeholder="e.g., Crime Junkie, The Daily, Call Her Daddy"
+                        defaultValue={partner.preferences?.podcast_shows || ''}
+                        onBlur={(e) => updatePreference('podcast_shows', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-6 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
                   <p className="text-cyan-400 text-sm">
-                    💡 <strong>Pro Tip:</strong> The AI Wingman uses this info to give you personalized advice. 
-                    The more you fill out, the better the suggestions!
+                    💡 <strong>Pro Tip:</strong> The AI Wingman uses this info to give you personalized recommendations. 
+                    Ask things like "What movie should we watch tonight?" or "Any new albums she'd like?"
                   </p>
                 </div>
               </CardContent>
