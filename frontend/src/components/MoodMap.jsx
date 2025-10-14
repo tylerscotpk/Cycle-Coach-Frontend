@@ -15,12 +15,13 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       description: "Red alert - literally. She's on her period.",
       emoji: "🩸",
       tips: [
-        "Do the dishes. Like, NOW. Don't wait to be asked.",
-        "Get her favorite snacks. Ben & Jerry's never hurt nobody.",
-        "Netflix marathon = your best move",
-        "No jokes about her being 'emotional' unless you want to die",
-        "Heating pad + backrub = you're a goddamn hero",
-        "She says she's fine? She's not fine. Bring chocolate."
+        "**Do the dishes.** Like, NOW. Don't wait to be asked.",
+        "Get her **favorite snacks**. Ben & Jerry's never hurt nobody.",
+        "**Netflix marathon** = your best move. Let her pick, even if it's that sad dog movie again.",
+        "No jokes about her being 'emotional' unless you want to **sleep on the couch**",
+        "**Heating pad + backrub** = you're a goddamn hero. She'll remember this.",
+        "She says she's fine? **She's not fine.** Bring chocolate.",
+        "Think of yourself as her **emotional support human**. Just be there."
       ]
     },
     {
@@ -31,12 +32,13 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       description: "The storm has passed. She's back, baby!",
       emoji: "🌸",
       tips: [
-        "Book that fancy restaurant NOW while she's down",
-        "She'll actually want to leave the house - capitalize on this",
-        "Good time to bring up that thing you've been avoiding",
-        "Compliments land HARD right now - use them",
-        "Try that new thing in bed she mentioned 3 months ago",
-        "She's basically a yes-man right now. Seize the day."
+        "**Book that fancy restaurant** NOW while she's saying yes to everything",
+        "She'll actually want to **leave the house** - capitalize on this window",
+        "Good time to bring up **that thing you've been avoiding** (yes, that thing)",
+        "**Compliments land HARD** right now - tell her she looks amazing",
+        "Try that **new thing in bed** she mentioned 3 months ago. Trust me.",
+        "She's basically a **yes-man** right now. Propose that guys' trip. Do it.",
+        "Think 'Happy Wife Life' - **she's in her power phase**, ride the wave"
       ]
     },
     {
@@ -47,13 +49,14 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       description: "🔥 PRIME TIME 🔥 This is it chief",
       emoji: "🔥",
       tips: [
-        "BRO. This is the sexy time window. Clear your schedule.",
-        "She's ovulating = nature's horny button is pressed",
-        "Tell her she looks hot. Then tell her again.",
-        "Plan something romantic tonight (you know why)",
-        "This is when she's most likely to say yes to anything 😏",
-        "Whatever you do, DO NOT mess this up with lazy boyfriend energy",
-        "Put the phone down. Give her your full attention."
+        "**BRO. This is THE window.** Clear your schedule. Cancel your plans. This is go time.",
+        "She's ovulating = **nature's horny button is pressed**. Biology is on your side.",
+        "Tell her she looks **hot**. Then tell her again. Then one more time.",
+        "**Plan something romantic tonight** (you know exactly why)",
+        "This is when she's most likely to say **yes to anything** 😏 - make your move",
+        "Do NOT, I repeat, **DO NOT** mess this up with **lazy boyfriend energy**",
+        "Put the **phone down**. Give her your **FULL attention**. Be present.",
+        "Think of it like **playoff mode** - this is your time to shine, champion"
       ]
     },
     {
@@ -64,12 +67,13 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       description: "Chill vibes. Enjoy it while it lasts.",
       emoji: "🏠",
       tips: [
-        "She wants to organize stuff - let her, don't fight it",
-        "Great time for couch time and binge watching",
-        "Notice when she cleans/cooks - say thank you like you mean it",
-        "Low-key date nights > wild adventures right now",
-        "She might get clingy - that's normal, roll with it",
-        "Don't plan anything crazy - she wants routine"
+        "She's in **nesting mode** - help with home projects without complaining",
+        "**Notice when she cleans/cooks** - say thank you like you actually mean it",
+        "Low-key **date nights > wild adventures** right now. Keep it cozy.",
+        "She might get **Stage 5 Clinger** status - that's normal, lean into it",
+        "**Don't plan anything crazy** - she wants routine and predictability",
+        "Think **Jim & Pam energy** - comfortable, domestic, wholesome vibes",
+        "**Quality time on the couch** > going out. She wants YOU, not a scene."
       ]
     },
     {
@@ -80,14 +84,15 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       description: "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
       emoji: "⚠️",
       tips: [
-        "Whatever she says, she's right. I don't care if she's wrong - she's RIGHT.",
-        "Is she crying at a dog food commercial? Normal. Just hug her.",
-        "Buy tampons BEFORE she asks. You're basically a prophet.",
-        "Cancel plans if she's not feeling it. Don't be a hero.",
-        "Food delivery apps are your best friend this week",
-        "Don't ask 'is it that time of the month?' - that's a death wish",
-        "She wants to fight? Brother, you've already lost. Apologize and move on.",
-        "Stock up on her favorite junk food like the apocalypse is coming"
+        "Whatever she says, **she's right**. I don't care if she's wrong - **SHE'S RIGHT.**",
+        "Is she crying at a **dog food commercial**? Normal. Just hug her. Don't ask questions.",
+        "Buy **tampons BEFORE she asks**. You're basically Nostradamus at this point.",
+        "**Cancel plans** if she's not feeling it. Don't be a hero. Just. Don't.",
+        "**Food delivery apps** are your best friend this week. Use them liberally.",
+        "Don't ask **'is it that time of the month?'** - that's a **death wish**, bro",
+        "She wants to fight? Brother, **you've already lost**. Apologize and move on.",
+        "Stock up on her **favorite junk food** like the apocalypse is coming",
+        "Think **Incredible Hulk** - don't poke the bear. Just don't."
       ]
     }
   ];
