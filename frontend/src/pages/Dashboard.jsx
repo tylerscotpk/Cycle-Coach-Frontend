@@ -681,61 +681,63 @@ const Dashboard = ({ user, setUser }) => {
               </Button>
             </div>
 
-            {!showBookmarks && currentResource ? (
-              <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700" data-testid="current-resource-card">
-                <CardContent className="p-0">
-                  {currentResource.thumbnail && (
-                    <div className="h-64 overflow-hidden rounded-t-lg">
-                      <img src={currentResource.thumbnail} alt={currentResource.title} className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  <div className="p-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="text-xs text-cyan-400 uppercase px-3 py-1 bg-cyan-500/20 rounded-full">
-                        {currentResource.type}
+            {!showBookmarks && currentResources.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {currentResources.map((resource, idx) => (
+                  <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-cyan-500/50 transition-all flex flex-col" data-testid={`current-resource-${idx}`}>
+                    {resource.thumbnail && (
+                      <div className="h-48 overflow-hidden rounded-t-lg">
+                        <img src={resource.thumbnail} alt={resource.title} className="w-full h-full object-cover" />
                       </div>
-                      {currentResource.phase && (
-                        <div className="text-xs text-slate-400 px-3 py-1 bg-slate-700/50 rounded-full">
-                          {currentResource.phase === currentResource.current_phase ? '🎯 For Today' : `For ${currentResource.phase}`}
+                    )}
+                    <CardHeader className="flex-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="text-xs text-cyan-400 uppercase px-3 py-1 bg-cyan-500/20 rounded-full">
+                          {resource.type}
                         </div>
-                      )}
-                    </div>
-                    <h3 className="text-2xl font-bold text-white mb-3">{currentResource.title}</h3>
-                    <p className="text-slate-300 mb-6">{currentResource.description}</p>
-                    
-                    <div className="flex gap-3">
+                        {resource.phase && (
+                          <div className={`text-xs px-3 py-1 rounded-full ${resource.is_phase_match ? 'text-white bg-cyan-500' : 'text-slate-400 bg-slate-700/50'}`}>
+                            {resource.is_phase_match ? '🎯 For Today' : resource.phase}
+                          </div>
+                        )}
+                      </div>
+                      <CardTitle className="text-white text-lg">{resource.title}</CardTitle>
+                      <CardDescription className="text-slate-400">{resource.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
                       <Button
                         asChild
-                        className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white"
-                        data-testid="view-resource-button"
+                        className="w-full bg-cyan-500 hover:bg-cyan-600 text-white"
+                        data-testid={`view-resource-${idx}`}
                       >
-                        <a href={currentResource.url} target="_blank" rel="noopener noreferrer">
-                          Read/Watch Now
+                        <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                          Read/Watch
                         </a>
                       </Button>
-                    </div>
-
-                    <div className="flex gap-3 mt-4">
-                      <Button
-                        onClick={handleBookmarkResource}
-                        variant="outline"
-                        className="flex-1 border-slate-600 text-slate-300 hover:bg-cyan-500/20 hover:border-cyan-500"
-                        data-testid="bookmark-resource-button"
-                      >
-                        📌 Bookmark
-                      </Button>
-                      <Button
-                        onClick={handleArchiveResource}
-                        variant="outline"
-                        className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                        data-testid="archive-resource-button"
-                      >
-                        ✓ Archive & Next
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleBookmarkResource(resource.id)}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 border-slate-600 text-slate-300 hover:bg-cyan-500/20 hover:border-cyan-500"
+                          data-testid={`bookmark-${idx}`}
+                        >
+                          📌
+                        </Button>
+                        <Button
+                          onClick={() => handleArchiveResource(resource.id)}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                          data-testid={`archive-${idx}`}
+                        >
+                          ✓ Done
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             ) : !showBookmarks ? (
               <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
                 <CardContent className="p-12 text-center">
