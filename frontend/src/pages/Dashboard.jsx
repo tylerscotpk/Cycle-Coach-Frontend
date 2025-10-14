@@ -343,6 +343,129 @@ const Dashboard = ({ user, setUser }) => {
             </Card>
           </TabsContent>
 
+          {/* Partner Profile Tab */}
+          <TabsContent value="profile" data-testid="partner-profile-content">
+            <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white">Partner Profile</CardTitle>
+                <CardDescription className="text-slate-400">
+                  Track her preferences so you never forget what she likes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Preferences Grid */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="coffee-order" className="text-white">Coffee Order</Label>
+                      <Input
+                        id="coffee-order"
+                        data-testid="coffee-order-input"
+                        placeholder="e.g., Iced oat milk latte, extra shot"
+                        defaultValue={partner.preferences?.coffee_order || ''}
+                        onBlur={(e) => updatePreference('coffee_order', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="ice-cream" className="text-white">Favorite Ice Cream</Label>
+                      <Input
+                        id="ice-cream"
+                        data-testid="ice-cream-input"
+                        placeholder="e.g., Mint chocolate chip"
+                        defaultValue={partner.preferences?.ice_cream || ''}
+                        onBlur={(e) => updatePreference('ice_cream', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="movie-genre" className="text-white">Movie Genre</Label>
+                      <Input
+                        id="movie-genre"
+                        data-testid="movie-genre-input"
+                        placeholder="e.g., Rom-coms, Horror, Drama"
+                        defaultValue={partner.preferences?.movie_genre || ''}
+                        onBlur={(e) => updatePreference('movie_genre', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="comfort-food" className="text-white">Comfort Food</Label>
+                      <Input
+                        id="comfort-food"
+                        data-testid="comfort-food-input"
+                        placeholder="e.g., Pizza, Mac & cheese, Sushi"
+                        defaultValue={partner.preferences?.comfort_food || ''}
+                        onBlur={(e) => updatePreference('comfort_food', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="love-language" className="text-white">Love Language</Label>
+                      <Input
+                        id="love-language"
+                        data-testid="love-language-input"
+                        placeholder="e.g., Quality time, Acts of service"
+                        defaultValue={partner.preferences?.love_language || ''}
+                        onBlur={(e) => updatePreference('love_language', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="stressed-preference" className="text-white">When Stressed, She Wants</Label>
+                      <Input
+                        id="stressed-preference"
+                        data-testid="stressed-preference-input"
+                        placeholder="e.g., Space to decompress, Cuddles and talk"
+                        defaultValue={partner.preferences?.stressed_preference || ''}
+                        onBlur={(e) => updatePreference('stressed_preference', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="gift-ideas" className="text-white">Gift Ideas</Label>
+                      <Input
+                        id="gift-ideas"
+                        data-testid="gift-ideas-input"
+                        placeholder="e.g., Books, Candles, Jewelry"
+                        defaultValue={partner.preferences?.gift_ideas || ''}
+                        onBlur={(e) => updatePreference('gift_ideas', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="date-ideas" className="text-white">Favorite Date Ideas</Label>
+                      <Input
+                        id="date-ideas"
+                        data-testid="date-ideas-input"
+                        placeholder="e.g., Hiking, Cooking together, Wine tasting"
+                        defaultValue={partner.preferences?.date_ideas || ''}
+                        onBlur={(e) => updatePreference('date_ideas', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                  <p className="text-cyan-400 text-sm">
+                    💡 <strong>Pro Tip:</strong> The AI Wingman uses this info to give you personalized advice. 
+                    The more you fill out, the better the suggestions!
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Resources Tab */}
           <TabsContent value="resources" data-testid="resources-content">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
