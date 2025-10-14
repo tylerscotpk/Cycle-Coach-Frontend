@@ -399,14 +399,15 @@ def get_phase_info(cycle_day: int):
             "emotional_state": "Irritable, emotional, zero chill",
             "physical_state": "Bloated, tired, breaking out, generally over it",
             "tips": [
-                "Whatever she says, she's right. I don't care if she's wrong - she's RIGHT.",
-                "Is she crying at a dog food commercial? Normal. Just hug her.",
-                "Buy tampons BEFORE she asks. You're basically a prophet.",
-                "Cancel plans if she's not feeling it. Don't be a hero.",
-                "Food delivery apps are your best friend this week",
-                "Don't ask 'is it that time of the month?' - that's a death wish",
-                "She wants to fight? Brother, you've already lost. Apologize and move on.",
-                "Stock up on her favorite junk food like the apocalypse is coming"
+                "Whatever she says, **she's right**. I don't care if she's wrong - **SHE'S RIGHT.**",
+                "Is she crying at a **dog food commercial**? Normal. Just hug her. Don't ask questions.",
+                "Buy **tampons BEFORE she asks**. You're basically Nostradamus at this point.",
+                "**Cancel plans** if she's not feeling it. Don't be a hero. Just. Don't.",
+                "**Food delivery apps** are your best friend this week. Use them liberally.",
+                "Don't ask **'is it that time of the month?'** - that's a **death wish**, bro",
+                "She wants to fight? Brother, **you've already lost**. Apologize and move on.",
+                "Stock up on her **favorite junk food** like the apocalypse is coming",
+                "Think **Incredible Hulk** - don't poke the bear. Just don't."
             ]
         }
 
