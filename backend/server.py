@@ -669,9 +669,10 @@ def get_fun_facts(phase: Optional[str] = None):
 @api_router.get("/resources/next")
 async def get_next_resource(
     partner_id: str,
+    limit: int = 3,
     current_user: User = Depends(get_current_user)
 ):
-    """Get next unread resource, prioritizing current phase"""
+    """Get next unread resources, prioritizing current phase"""
     # Get partner profile to determine current phase
     profile = await db.partner_profiles.find_one(
         {"id": partner_id, "user_id": current_user.id},
@@ -695,27 +696,46 @@ async def get_next_resource(
     ).to_list(1000)
     viewed_ids = [ur['resource_id'] for ur in user_resources]
     
-    # Try to find phase-specific unread resource
-    phase_resource = await db.resources.find_one(
+    result_resources = []
+    
+    # First, get phase-specific unread resources
+    phase_resources = await db.resources.find(
         {"phase": current_phase, "id": {"$nin": viewed_ids}},
         {"_id": 0}
-    )
+    ).to_list(limit)
     
-    if phase_resource:
-        return {**phase_resource, "current_phase": current_phase}
+    for res in phase_resources:
+        res['current_phase'] = current_phase
+        res['is_phase_match'] = True
+        result_resources.append(res)
     
-    # Fall back to general resources
-    general_resource = await db.resources.find_one(
-        {"phase": None, "id": {"$nin": viewed_ids}},
-        {"_id": 0}
-    )
+    # If we need more, get general resources
+    if len(result_resources) < limit:
+        remaining = limit - len(result_resources)
+        general_resources = await db.resources.find(
+            {"phase": None, "id": {"$nin": viewed_ids}},
+            {"_id": 0}
+        ).to_list(remaining)
+        
+        for res in general_resources:
+            res['current_phase'] = current_phase
+            res['is_phase_match'] = False
+            result_resources.append(res)
     
-    if general_resource:
-        return {**general_resource, "current_phase": current_phase}
+    # If still need more, get other phase resources
+    if len(result_resources) < limit:
+        remaining = limit - len(result_resources)
+        other_resources = await db.resources.find(
+            {"phase": {"$ne": current_phase, "$ne": None}, "id": {"$nin": viewed_ids}},
+            {"_id": 0}
+        ).to_list(remaining)
+        
+        for res in other_resources:
+            res['current_phase'] = current_phase
+            res['is_phase_match'] = False
+            result_resources.append(res)
     
-    # If all resources viewed, return a random one
-    any_resource = await db.resources.find_one({"_id": 0})
-    return {**any_resource, "current_phase": current_phase} if any_resource else None
+    return result_resources
 
 @api_router.post("/resources/{resource_id}/archive")
 async def archive_resource(
