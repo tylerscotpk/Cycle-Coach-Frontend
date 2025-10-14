@@ -196,7 +196,7 @@ const Dashboard = ({ user, setUser }) => {
                   </div>
 
                   <div>
-                    <Label htmlFor="cycle-date" className="text-white">Cycle Start Date (First day of last period)</Label>
+                    <Label htmlFor="cycle-date" className="text-white">First Day of Her Last Period</Label>
                     <Input
                       id="cycle-date"
                       data-testid="cycle-start-date-input"
