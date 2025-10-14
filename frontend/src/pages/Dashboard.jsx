@@ -269,7 +269,7 @@ const Dashboard = ({ user, setUser }) => {
               <div>
                 <div className="text-sm text-slate-400 mb-3">Today's Tips</div>
                 <ul className="space-y-2">
-                  {cycleInfo.tips.map((tip, idx) => (
+                  {cycleInfo.tips.slice(0, 4).map((tip, idx) => (
                     <li key={idx} className="flex gap-2 text-slate-200" data-testid={`tip-${idx}`}>
                       <span className="text-cyan-400">•</span>
                       <span>{tip}</span>
@@ -278,6 +278,13 @@ const Dashboard = ({ user, setUser }) => {
                 </ul>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* MoodMap Section */}
+        {cycleInfo && (
+          <div className="mb-8">
+            <MoodMap currentCycleDay={cycleInfo.cycle_day} cycleInfo={cycleInfo} />
           </div>
         )}
 
