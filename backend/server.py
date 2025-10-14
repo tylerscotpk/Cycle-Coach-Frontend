@@ -574,6 +574,94 @@ async def update_preferences(
     
     return {"message": "Preference updated", "preferences": preferences}
 
+# ============ FUN FACTS ROUTES ============
+
+@api_router.get("/fun-fact")
+async def get_fun_fact(
+    partner_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get a fun fact, optionally phase-specific"""
+    current_phase = None
+    
+    if partner_id:
+        profile = await db.partner_profiles.find_one(
+            {"id": partner_id, "user_id": current_user.id},
+            {"_id": 0}
+        )
+        if profile:
+            cycle_start = datetime.strptime(profile['cycle_start_date'], "%Y-%m-%d").date()
+            today = datetime.now(timezone.utc).date()
+            days_since_start = (today - cycle_start).days
+            cycle_day = (days_since_start % profile['cycle_length']) + 1
+            phase_info = get_phase_info(cycle_day)
+            current_phase = phase_info['phase']
+    
+    facts = get_fun_facts(current_phase)
+    
+    # Return a random fact
+    import random
+    return {"fact": random.choice(facts), "phase": current_phase}
+
+def get_fun_facts(phase: Optional[str] = None):
+    """Get fun facts, optionally filtered by phase"""
+    
+    general_facts = [
+        "Women can smell testosterone. During ovulation, she's biologically wired to notice masculine traits more.",
+        "Her pain tolerance is 9% higher during ovulation. She's literally tougher when she's most fertile.",
+        "Studies show couples who understand the cycle have 43% fewer arguments. Knowledge is power, bro.",
+        "During PMS, her brain processes emotions differently - it's actual neuroscience, not 'being dramatic'.",
+        "The average woman spends 6.25 years of her life on her period. Yeah, bring the chocolate.",
+        "Her sense of smell is 100x more sensitive during certain phases. That cologne choice matters.",
+        "Couples who track cycles together report 31% higher relationship satisfaction. You're doing it right.",
+        "During follicular phase, women are statistically more likely to take risks. Ask for that raise together.",
+        "The menstrual cycle affects everything from food cravings to music taste. She's not being 'random'.",
+        "Men who understand their partner's cycle are rated 28% more attractive. Science says you're getting hotter."
+    ]
+    
+    phase_facts = {
+        "Menstrual": [
+            "Her cramps can be as painful as a heart attack. Yes, seriously. Bring the heating pad.",
+            "During menstruation, her body is shedding and rebuilding tissue - it's literally working overtime.",
+            "Orgasms can help relieve menstrual cramps. Just saying. Natural pain relief.",
+            "She burns an extra 100-300 calories per day during her period. Feed her accordingly.",
+            "Her iron levels drop during menstruation. Red meat, spinach, dark chocolate = your shopping list."
+        ],
+        "Follicular": [
+            "Estrogen peaks during follicular phase, boosting her mood, energy, and confidence. She's basically superhuman right now.",
+            "Her verbal fluency increases during follicular phase. She's literally wittier this week.",
+            "Women are more likely to wear red during follicular phase. Subconscious confidence boost.",
+            "Her memory is sharper during this phase. Remember: she WILL remember what you say.",
+            "Studies show women make better financial decisions during follicular phase. Ask for budget advice now."
+        ],
+        "Ovulation": [
+            "During ovulation, her voice pitch actually gets higher. Biology's way of signaling fertility.",
+            "She's most attracted to 'masculine' features during ovulation. Hit the gym, champ.",
+            "Ovulation only lasts 12-24 hours, but the 'fertile window' is 5-6 days. Plan accordingly.",
+            "Women are subconsciously attracted to symmetrical faces during ovulation. Straighten that tie.",
+            "Her pupils dilate more during ovulation. She's literally seeing you differently."
+        ],
+        "Early Luteal": [
+            "Progesterone rises during luteal phase, creating 'nesting' instincts. Help with the house, win points.",
+            "She's most likely to want to cuddle during this phase. Body temp rises, she wants warmth.",
+            "Women report feeling more nurturing during luteal phase. Good time to talk about the future.",
+            "Her appetite increases during this phase - it's hormonal, not lack of willpower.",
+            "Studies show women prefer 'comfort food' during luteal phase. Mac & cheese time."
+        ],
+        "Late Luteal/PMS": [
+            "PMS affects 75% of women. If she says she's not affected, she's lying or lucky AF.",
+            "Serotonin drops during PMS, affecting mood regulation. It's brain chemistry, not attitude.",
+            "Women are more sensitive to pain during PMS. Everything literally hurts more.",
+            "Cravings during PMS are your body's way of asking for magnesium. Hence: chocolate.",
+            "PMS symptoms can start up to 2 weeks before her period. Early warning system, use it."
+        ]
+    }
+    
+    if phase and phase in phase_facts:
+        return general_facts + phase_facts[phase]
+    
+    return general_facts
+
 # ============ RESOURCES ROUTES ============
 
 @api_router.get("/resources", response_model=List[Resource])
