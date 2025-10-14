@@ -136,6 +136,35 @@ const Dashboard = ({ user, setUser }) => {
     }
   };
 
+  const updatePreference = async (key, value) => {
+    if (!value.trim() || !partner) return;
+    
+    try {
+      await axios.post(
+        `${API}/preferences`,
+        { key, value },
+        { 
+          params: { partner_id: partner.id },
+          withCredentials: true 
+        }
+      );
+      
+      // Update local partner state
+      setPartner(prev => ({
+        ...prev,
+        preferences: {
+          ...prev.preferences,
+          [key]: value
+        }
+      }));
+      
+      toast.success('Preference saved!');
+    } catch (error) {
+      console.error('Error saving preference:', error);
+      toast.error('Failed to save preference');
+    }
+  };
+
   const getPhaseColor = (phase) => {
     switch (phase) {
       case 'Menstrual':
