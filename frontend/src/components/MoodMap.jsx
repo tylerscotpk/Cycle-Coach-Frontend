@@ -250,7 +250,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
 
       {/* Phase Details Dialog */}
       <Dialog open={selectedPhase !== null} onOpenChange={() => setSelectedPhase(null)}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl" data-testid="phase-dialog">
+        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="phase-dialog">
           {selectedPhase && (
             <>
               <DialogHeader>
@@ -266,12 +266,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-6">
+              <div className="mt-6 pb-6">
                 <h4 className="text-white font-semibold mb-4 text-lg">Your Game Plan:</h4>
                 <ul className="space-y-3">
                   {selectedPhase.tips.map((tip, idx) => (
                     <li key={idx} className="flex gap-3 text-slate-300" data-testid={`dialog-tip-${idx}`}>
-                      <span className="text-cyan-400 font-bold">•</span>
+                      <span className="text-cyan-400 font-bold flex-shrink-0">•</span>
                       <span>{renderTipWithBold(tip)}</span>
                     </li>
                   ))}
