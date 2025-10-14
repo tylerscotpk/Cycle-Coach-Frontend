@@ -6,6 +6,17 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [hoveredPhase, setHoveredPhase] = useState(null);
 
+  // Helper to render text with bold markdown
+  const renderTipWithBold = (tip) => {
+    const parts = tip.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   const phases = [
     {
       name: "Menstrual",
