@@ -82,6 +82,16 @@ class Resource(BaseModel):
     type: str  # video, article, expert
     url: str
     thumbnail: Optional[str] = None
+    phase: Optional[str] = None  # Which phase this resource is for (or None for general)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class UserResource(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    resource_id: str
+    status: str  # unread, archived, bookmarked
+    viewed_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Request/Response Models
