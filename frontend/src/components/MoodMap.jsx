@@ -50,7 +50,9 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
         "**Compliments land HARD** right now - tell her she looks amazing",
         "Try that **new thing in bed** she mentioned 3 months ago. Trust me.",
         "She's basically a **yes-man** right now. Propose that guys' trip. Do it.",
-        "Think 'Happy Wife Life' - **she's in her power phase**, ride the wave"
+        "Think 'Happy Wife Life' - **she's in her power phase**, ride the wave",
+        "**💬 YOUR MOVE: Seek her counsel.** She's sharp, optimistic, and ready to problem-solve. Ask about that work thing.",
+        "**🏋️ YOUR MOVE: Show off those gains.** She'll notice you looking good. New haircut? She's paying attention."
       ]
     },
     {
