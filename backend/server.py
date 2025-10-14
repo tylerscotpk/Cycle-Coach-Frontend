@@ -422,6 +422,16 @@ async def chat_with_ai(
     if not profile:
         raise HTTPException(status_code=404, detail="Partner profile not found")
     
+    # Calculate current cycle day
+    cycle_start = datetime.strptime(profile['cycle_start_date'], "%Y-%m-%d").date()
+    today = datetime.now(timezone.utc).date()
+    days_since_start = (today - cycle_start).days
+    current_cycle_day = (days_since_start % profile['cycle_length']) + 1
+    profile['current_cycle_day'] = current_cycle_day
+    
+    # Get current phase info for context
+    phase_info = get_phase_info(current_cycle_day)
+    
     # Create chat session
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
@@ -429,7 +439,7 @@ async def chat_with_ai(
         system_message=f"""You're the ultimate relationship wingman - like texting your wise older bro at 2am.
 
 Your girl's name: {profile['partner_name']}
-Current cycle day: {profile.get('current_cycle_day', 'Unknown')}
+Current cycle: Day {current_cycle_day} - {phase_info['phase']} phase
 
 RESPONSE STYLE:
 - Keep it SHORT. 2-3 bullet points MAX.
@@ -459,7 +469,8 @@ YOUR JOBS:
    Example: "Got it - she loves mint chocolate chip. Want me to save that to her profile?"
 
 WHAT YOU KNOW:
-{profile.get('preferences', {})}
+Preferences: {profile.get('preferences', {})}
+Current Phase Tips: {phase_info['tips'][:2]}
 
 REMEMBER: Short responses. Bullet points. Like texting your boy. Go."""
     ).with_model("openai", "gpt-5")
