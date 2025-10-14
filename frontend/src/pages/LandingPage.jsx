@@ -135,8 +135,8 @@ const LandingPage = ({ setUser }) => {
             <div className="flex gap-6 items-start" data-testid="step-2">
               <div className="flex-shrink-0 w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-xl">2</div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">Let AI Learn Her Preferences</h3>
-                <p className="text-slate-400">Answer simple questions about what she likes. Coffee order, favorite treats, mood patterns.</p>
+                <h3 className="text-xl font-bold text-white mb-2">Let AI Learn Her Vibe</h3>
+                <p className="text-slate-400">Tell it what she likes. Does she want space or cuddles? Sushi or pizza? The AI remembers so you don't have to.</p>
               </div>
             </div>
 
