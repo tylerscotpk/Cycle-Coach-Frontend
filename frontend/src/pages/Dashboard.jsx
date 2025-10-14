@@ -339,6 +339,34 @@ const Dashboard = ({ user, setUser }) => {
           </div>
         )}
 
+        {/* Fun Fact Card */}
+        {funFact && (
+          <Card className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 backdrop-blur-sm border-cyan-500/30 mb-8" data-testid="fun-fact-card">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="text-4xl">💡</div>
+                <div className="flex-1">
+                  <div className="text-cyan-400 font-semibold text-sm mb-2">
+                    {funFact.phase ? `${funFact.phase} Phase Fun Fact` : 'Did You Know?'}
+                  </div>
+                  <p className="text-white text-lg leading-relaxed">{funFact.fact}</p>
+                </div>
+                <Button
+                  onClick={() => loadFunFact(partner.id)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                  data-testid="refresh-fun-fact-button"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tabs Section */}
         <Tabs defaultValue="chat" className="space-y-6">
           <TabsList className="bg-slate-800 border border-slate-700">
