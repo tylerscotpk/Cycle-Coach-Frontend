@@ -364,13 +364,14 @@ def get_phase_info(cycle_day: int):
             "emotional_state": "Feeling herself, confident AF, wants attention",
             "physical_state": "Peak everything. Energy, looks, sex drive.",
             "tips": [
-                "BRO. This is the sexy time window. Clear your schedule.",
-                "She's ovulating = nature's horny button is pressed",
-                "Tell her she looks hot. Then tell her again.",
-                "Plan something romantic tonight (you know why)",
-                "This is when she's most likely to say yes to anything 😏",
-                "Whatever you do, DO NOT mess this up with lazy boyfriend energy",
-                "Put the phone down. Give her your full attention."
+                "**BRO. This is THE window.** Clear your schedule. Cancel your plans. This is go time.",
+                "She's ovulating = **nature's horny button is pressed**. Biology is on your side.",
+                "Tell her she looks **hot**. Then tell her again. Then one more time.",
+                "**Plan something romantic tonight** (you know exactly why)",
+                "This is when she's most likely to say **yes to anything** 😏 - make your move",
+                "Do NOT, I repeat, **DO NOT** mess this up with **lazy boyfriend energy**",
+                "Put the **phone down**. Give her your **FULL attention**. Be present.",
+                "Think of it like **playoff mode** - this is your time to shine, champion"
             ]
         }
     elif 17 <= cycle_day <= 23:
