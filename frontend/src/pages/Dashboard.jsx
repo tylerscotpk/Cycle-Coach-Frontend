@@ -291,8 +291,8 @@ const Dashboard = ({ user, setUser }) => {
           <TabsContent value="chat" data-testid="ai-coach-content">
             <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
               <CardHeader>
-                <CardTitle className="text-white">AI Relationship Coach</CardTitle>
-                <CardDescription className="text-slate-400">Ask questions, get personalized advice</CardDescription>
+                <CardTitle className="text-white">Your AI Wingman</CardTitle>
+                <CardDescription className="text-slate-400">Ask questions, get real advice, learn what actually works</CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-96 mb-4 p-4 bg-slate-900/50 rounded-lg" data-testid="chat-history">
