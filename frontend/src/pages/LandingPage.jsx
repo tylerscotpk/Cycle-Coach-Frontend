@@ -72,7 +72,7 @@ const LandingPage = ({ setUser }) => {
           </h1>
 
           <p className="text-xl sm:text-2xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-            Your AI-powered wingman for understanding your partner's cycle. Get daily tips, mood insights, and relationship hacks that actually work.
+            Bros, we need to talk. Your girl's cycle is NOT a mystery. This is your cheat code to knowing EXACTLY when to bring flowers, when to shut up, and when she's DTF.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
