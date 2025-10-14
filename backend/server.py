@@ -347,12 +347,13 @@ def get_phase_info(cycle_day: int):
             "emotional_state": "Happy, energetic, fun to be around",
             "physical_state": "Feeling good, looking good, knows it",
             "tips": [
-                "Book that fancy restaurant NOW while she's down",
-                "She'll actually want to leave the house - capitalize on this",
-                "Good time to bring up that thing you've been avoiding",
-                "Compliments land HARD right now - use them",
-                "Try that new thing in bed she mentioned 3 months ago",
-                "She's basically a yes-man right now. Seize the day."
+                "**Book that fancy restaurant** NOW while she's saying yes to everything",
+                "She'll actually want to **leave the house** - capitalize on this window",
+                "Good time to bring up **that thing you've been avoiding** (yes, that thing)",
+                "**Compliments land HARD** right now - tell her she looks amazing",
+                "Try that **new thing in bed** she mentioned 3 months ago. Trust me.",
+                "She's basically a **yes-man** right now. Propose that guys' trip. Do it.",
+                "Think 'Happy Wife Life' - **she's in her power phase**, ride the wave"
             ]
         }
     elif 14 <= cycle_day <= 16:
