@@ -374,15 +374,16 @@ def get_phase_info(cycle_day: int):
         return {
             "phase": "Early Luteal",
             "phase_day": cycle_day - 16,
-            "description": "Still good vibes - productive phase",
-            "emotional_state": "Calm, focused, nurturing",
-            "physical_state": "Energy still good, may start to slow down",
+            "description": "Chill vibes. Enjoy it while it lasts.",
+            "emotional_state": "Relaxed, nurturing, nesting mode activated",
+            "physical_state": "Still good, starting to wind down",
             "tips": [
-                "She's in nesting mode - help with home projects",
-                "Appreciate her efforts around the house",
-                "Good time for quality time at home",
-                "She may be more nurturing - lean into it",
-                "Keep things steady and predictable"
+                "She wants to organize stuff - let her, don't fight it",
+                "Great time for couch time and binge watching",
+                "Notice when she cleans/cooks - say thank you like you mean it",
+                "Low-key date nights > wild adventures right now",
+                "She might get clingy - that's normal, roll with it",
+                "Don't plan anything crazy - she wants routine"
             ]
         }
     else:  # 24-28
