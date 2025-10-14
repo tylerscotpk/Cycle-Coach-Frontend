@@ -21,7 +21,7 @@ const Dashboard = ({ user, setUser }) => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [funFact, setFunFact] = useState(null);
-  const [currentResource, setCurrentResource] = useState(null);
+  const [currentResources, setCurrentResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
 
