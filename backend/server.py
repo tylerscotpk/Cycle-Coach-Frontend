@@ -325,15 +325,16 @@ def get_phase_info(cycle_day: int):
         return {
             "phase": "Menstrual",
             "phase_day": cycle_day,
-            "description": "Period time - she needs comfort and understanding",
-            "emotional_state": "Low energy, may feel emotional or irritable",
-            "physical_state": "Cramping, fatigue, possible headaches",
+            "description": "Red alert - literally. She's on her period.",
+            "emotional_state": "Low energy, might bite your head off",
+            "physical_state": "Cramping, tired AF, not feeling sexy",
             "tips": [
-                "Offer to handle chores without being asked",
-                "Keep heating pad and pain relief handy",
-                "Suggest low-key activities like movie nights",
-                "Don't take mood swings personally",
-                "Chocolate and comfort food are your friends"
+                "Do the dishes. Like, NOW. Don't wait to be asked.",
+                "Get her favorite snacks. Ben & Jerry's never hurt nobody.",
+                "Netflix marathon = your best move",
+                "No jokes about her being 'emotional' unless you want to die",
+                "Heating pad + backrub = you're a goddamn hero",
+                "She says she's fine? She's not fine. Bring chocolate."
             ]
         }
     elif 6 <= cycle_day <= 13:
