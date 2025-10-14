@@ -20,6 +20,7 @@ const Dashboard = ({ user, setUser }) => {
   const [chatHistory, setChatHistory] = useState([]);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [funFact, setFunFact] = useState(null);
 
   // Setup form
   const [partnerName, setPartnerName] = useState('');
