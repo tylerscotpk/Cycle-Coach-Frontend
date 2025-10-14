@@ -58,8 +58,15 @@ const Dashboard = ({ user, setUser }) => {
       }
 
       // Load resources
-      const resourcesRes = await axios.get(`${API}/resources`, { withCredentials: true });
-      setResources(resourcesRes.data);
+      try {
+        const nextResource = await axios.get(`${API}/resources/next?partner_id=${partnerRes.data.id}`, { withCredentials: true });
+        setCurrentResource(nextResource.data);
+      } catch (err) {
+        console.log('No more unread resources');
+      }
+      
+      const bookmarked = await axios.get(`${API}/resources/bookmarked`, { withCredentials: true });
+      setBookmarkedResources(bookmarked.data);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
