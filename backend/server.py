@@ -812,26 +812,115 @@ async def seed_resources():
         return {"message": "Resources already seeded"}
     
     resources = [
+        # General resources
         Resource(
             title="Understanding the Menstrual Cycle",
             description="A comprehensive guide to the four phases of the menstrual cycle",
             type="article",
             url="https://www.healthline.com/health/womens-health/stages-of-menstrual-cycle",
-            thumbnail="https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=400"
+            thumbnail="https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=400",
+            phase=None
         ),
         Resource(
             title="How to Support Your Partner During PMS",
             description="Expert advice on being there when she needs you most",
             type="article",
             url="https://www.verywellmind.com/pms-support-partner-5207965",
-            thumbnail="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=400"
+            thumbnail="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=400",
+            phase="Late Luteal/PMS"
         ),
         Resource(
             title="The Science of Attraction",
             description="Understanding hormones and attraction throughout the cycle",
             type="video",
             url="https://www.youtube.com/watch?v=example",
-            thumbnail="https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=400"
+            thumbnail="https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=400",
+            phase="Ovulation"
+        ),
+        # Menstrual Phase Resources
+        Resource(
+            title="Natural Pain Relief for Period Cramps",
+            description="Drug-free ways to help ease her discomfort during menstruation",
+            type="article",
+            url="https://www.healthline.com/health/home-remedies-for-menstrual-cramps",
+            thumbnail="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400",
+            phase="Menstrual"
+        ),
+        Resource(
+            title="Comfort Food Recipes She'll Love",
+            description="Easy, cozy meals perfect for period week",
+            type="article",
+            url="https://www.delish.com/cooking/recipe-ideas/g3733/comfort-food-recipes/",
+            thumbnail="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
+            phase="Menstrual"
+        ),
+        # Follicular Phase Resources
+        Resource(
+            title="Adventure Date Ideas for Active Couples",
+            description="Plan exciting dates during her high-energy phase",
+            type="article",
+            url="https://www.timeout.com/usa/things-to-do/adventure-date-ideas",
+            thumbnail="https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=400",
+            phase="Follicular"
+        ),
+        Resource(
+            title="Affordable Weekend Getaway Ideas",
+            description="Budget-friendly trips perfect for her follicular phase energy",
+            type="article",
+            url="https://www.travelchannel.com/interests/budget-travel/articles/cheap-weekend-getaways",
+            thumbnail="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400",
+            phase="Follicular"
+        ),
+        # Ovulation Phase Resources
+        Resource(
+            title="Planning the Perfect Romantic Evening",
+            description="Make the most of ovulation with these date night ideas",
+            type="article",
+            url="https://www.cosmopolitan.com/sex-love/a36099732/romantic-date-night-ideas/",
+            thumbnail="https://images.unsplash.com/photo-1474552226712-ac0f0961a954?w=400",
+            phase="Ovulation"
+        ),
+        Resource(
+            title="The Art of Attraction: What Women Notice",
+            description="Understanding what catches her eye during peak fertility",
+            type="video",
+            url="https://www.youtube.com/watch?v=example",
+            thumbnail="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+            phase="Ovulation"
+        ),
+        # Early Luteal Phase Resources
+        Resource(
+            title="Cozy Date Night Ideas at Home",
+            description="Perfect for her nesting phase - quality time without going out",
+            type="article",
+            url="https://www.oprahdaily.com/life/relationships-love/g28272259/at-home-date-night-ideas/",
+            thumbnail="https://images.unsplash.com/photo-1509027572446-af8401acfdc3?w=400",
+            phase="Early Luteal"
+        ),
+        Resource(
+            title="DIY Home Projects for Couples",
+            description="Channel her nesting energy into fun projects together",
+            type="article",
+            url="https://www.hgtv.com/design/decorating/design-101/easy-diy-projects-for-couples",
+            thumbnail="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=400",
+            phase="Early Luteal"
+        ),
+        # PMS Phase Resources
+        Resource(
+            title="Understanding PMS: A Guy's Guide",
+            description="What's actually happening and how to help (without getting killed)",
+            type="article",
+            url="https://www.menshealth.com/health/a27084442/what-is-pms/",
+            thumbnail="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=400",
+            phase="Late Luteal/PMS"
+        ),
+        Resource(
+            title="Foods That Help with PMS Symptoms",
+            description="What to order or cook when she's PMSing",
+            type="article",
+            url="https://www.health.com/nutrition/pms-foods",
+            thumbnail="https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400",
+            phase="Late Luteal/PMS"
         )
     ]
     
