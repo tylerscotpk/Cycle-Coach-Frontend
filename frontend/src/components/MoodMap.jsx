@@ -70,7 +70,9 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
         "This is when she's most likely to say **yes to anything** 😏 - make your move",
         "Do NOT, I repeat, **DO NOT** mess this up with **lazy boyfriend energy**",
         "Put the **phone down**. Give her your **FULL attention**. Be present.",
-        "Think of it like **playoff mode** - this is your time to shine, champion"
+        "Think of it like **playoff mode** - this is your time to shine, champion",
+        "**💪 YOUR MOVE: Brag a little.** Landed that deal? Nailed the presentation? She finds your confidence SEXY right now.",
+        "**🏋️ YOUR MOVE: Look sharp, smell good.** Fresh haircut, nice cologne. She's biologically wired to notice masculine energy."
       ]
     },
     {
