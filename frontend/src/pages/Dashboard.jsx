@@ -177,8 +177,8 @@ const Dashboard = ({ user, setUser }) => {
           <div className="max-w-2xl mx-auto">
             <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700" data-testid="setup-partner-card">
               <CardHeader>
-                <CardTitle className="text-2xl text-white">Let's Get Started</CardTitle>
-                <CardDescription className="text-slate-400">Tell us about your partner to unlock personalized insights</CardDescription>
+                <CardTitle className="text-2xl text-white">Alright, Let's Set This Up</CardTitle>
+                <CardDescription className="text-slate-400">Tell us about your girl so we can help you not screw this up</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreatePartner} className="space-y-6">
