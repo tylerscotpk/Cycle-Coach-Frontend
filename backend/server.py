@@ -336,7 +336,8 @@ def get_phase_info(cycle_day: int):
                 "No jokes about her being 'emotional' unless you want to **sleep on the couch**",
                 "**Heating pad + backrub** = you're a goddamn hero. She'll remember this.",
                 "She says she's fine? **She's not fine.** Bring chocolate.",
-                "Think of yourself as her **emotional support human**. Just be there."
+                "Think of yourself as her **emotional support human**. Just be there.",
+                "**🏋️ YOUR MOVE: Hit the gym hard.** She needs space anyway - use it to work on yourself."
             ]
         }
     elif 6 <= cycle_day <= 13:
