@@ -390,16 +390,18 @@ def get_phase_info(cycle_day: int):
         return {
             "phase": "Late Luteal/PMS",
             "phase_day": cycle_day - 23,
-            "description": "Storm's coming - tread carefully soldier",
-            "emotional_state": "Irritable, emotional, may snap easily",
-            "physical_state": "Bloating, fatigue, possible acne",
+            "description": "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
+            "emotional_state": "Irritable, emotional, zero chill",
+            "physical_state": "Bloated, tired, breaking out, generally over it",
             "tips": [
-                "This ain't about you - don't take things personally",
-                "Give space but stay available",
-                "Don't start arguments - you won't win",
-                "Comfort food delivery = hero status",
-                "'You're right honey' is your new mantra",
-                "Keep plans flexible - she may need to cancel"
+                "Whatever she says, she's right. I don't care if she's wrong - she's RIGHT.",
+                "Is she crying at a dog food commercial? Normal. Just hug her.",
+                "Buy tampons BEFORE she asks. You're basically a prophet.",
+                "Cancel plans if she's not feeling it. Don't be a hero.",
+                "Food delivery apps are your best friend this week",
+                "Don't ask 'is it that time of the month?' - that's a death wish",
+                "She wants to fight? Brother, you've already lost. Apologize and move on.",
+                "Stock up on her favorite junk food like the apocalypse is coming"
             ]
         }
 
