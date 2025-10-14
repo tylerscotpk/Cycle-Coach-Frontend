@@ -393,7 +393,8 @@ def get_phase_info(cycle_day: int):
                 "She might get **Stage 5 Clinger** status - that's normal, lean into it",
                 "**Don't plan anything crazy** - she wants routine and predictability",
                 "Think **Jim & Pam energy** - comfortable, domestic, wholesome vibes",
-                "**Quality time on the couch** > going out. She wants YOU, not a scene."
+                "**Quality time on the couch** > going out. She wants YOU, not a scene.",
+                "**💬 YOUR MOVE: Seek her advice.** She's in nurturing mode - ask about life decisions, career moves, friend drama."
             ]
         }
     else:  # 24-28
