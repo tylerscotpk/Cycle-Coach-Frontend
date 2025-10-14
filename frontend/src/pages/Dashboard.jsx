@@ -197,6 +197,43 @@ const Dashboard = ({ user, setUser }) => {
     }
   };
 
+  const handleArchiveResource = async () => {
+    if (!currentResource || !partner) return;
+    
+    try {
+      await axios.post(`${API}/resources/${currentResource.id}/archive`, {}, { withCredentials: true });
+      toast.success('Resource archived!');
+      await loadNextResource();
+    } catch (error) {
+      console.error('Error archiving resource:', error);
+      toast.error('Failed to archive');
+    }
+  };
+
+  const handleBookmarkResource = async () => {
+    if (!currentResource || !partner) return;
+    
+    try {
+      await axios.post(`${API}/resources/${currentResource.id}/bookmark`, {}, { withCredentials: true });
+      toast.success('Resource bookmarked!');
+      setBookmarkedResources(prev => [...prev, currentResource]);
+      await loadNextResource();
+    } catch (error) {
+      console.error('Error bookmarking resource:', error);
+      toast.error('Failed to bookmark');
+    }
+  };
+
+  const loadNextResource = async () => {
+    try {
+      const response = await axios.get(`${API}/resources/next?partner_id=${partner.id}`, { withCredentials: true });
+      setCurrentResource(response.data);
+    } catch (error) {
+      console.error('Error loading next resource:', error);
+      setCurrentResource(null);
+    }
+  };
+
   const getPhaseColor = (phase) => {
     switch (phase) {
       case 'Menstrual':
