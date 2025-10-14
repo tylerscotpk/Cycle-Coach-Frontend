@@ -59,8 +59,8 @@ const Dashboard = ({ user, setUser }) => {
 
       // Load resources
       try {
-        const nextResource = await axios.get(`${API}/resources/next?partner_id=${partnerRes.data.id}`, { withCredentials: true });
-        setCurrentResource(nextResource.data);
+        const nextResources = await axios.get(`${API}/resources/next?partner_id=${partnerRes.data.id}&limit=3`, { withCredentials: true });
+        setCurrentResources(nextResources.data || []);
       } catch (err) {
         console.log('No more unread resources');
       }
