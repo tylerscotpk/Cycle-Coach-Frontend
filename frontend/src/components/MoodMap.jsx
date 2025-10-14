@@ -264,7 +264,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                   {selectedPhase.tips.map((tip, idx) => (
                     <li key={idx} className="flex gap-3 text-slate-300" data-testid={`dialog-tip-${idx}`}>
                       <span className="text-cyan-400 font-bold">•</span>
-                      <span>{tip}</span>
+                      <span>{renderTipWithBold(tip)}</span>
                     </li>
                   ))}
                 </ul>
