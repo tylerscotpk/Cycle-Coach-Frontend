@@ -250,6 +250,45 @@ const Dashboard = ({ user, setUser }) => {
     }
   };
 
+  const handleLogPeriod = async (e) => {
+    e.preventDefault();
+    if (!logPeriodDate || !partner) return;
+    
+    try {
+      const response = await axios.post(
+        `${API}/cycle/log-period`,
+        null,
+        {
+          params: {
+            partner_id: partner.id,
+            start_date: logPeriodDate
+          },
+          withCredentials: true
+        }
+      );
+      
+      toast.success(`Period logged! Previous cycle: ${response.data.previous_cycle_length} days`);
+      setLogPeriodDate('');
+      setShowCycleHistory(false);
+      
+      // Reload cycle info
+      await loadCycleInfo(partner.id);
+      await loadCycleHistory();
+    } catch (error) {
+      console.error('Error logging period:', error);
+      toast.error('Failed to log period');
+    }
+  };
+
+  const loadCycleHistory = async () => {
+    try {
+      const response = await axios.get(`${API}/cycle/history?partner_id=${partner.id}`, { withCredentials: true });
+      setCycleHistory(response.data);
+    } catch (error) {
+      console.error('Error loading cycle history:', error);
+    }
+  };
+
   const getPhaseColor = (phase) => {
     switch (phase) {
       case 'Menstrual':
