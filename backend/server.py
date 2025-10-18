@@ -59,11 +59,19 @@ class PartnerProfile(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     partner_name: str
-    cycle_start_date: str  # Format: YYYY-MM-DD
-    cycle_length: int = 28  # Average cycle length
+    cycle_start_date: str  # Format: YYYY-MM-DD (most recent period)
+    cycle_length: int = 28  # Average cycle length (calculated from history)
     preferences: dict = {}  # AI learned preferences
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CycleHistory(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    partner_id: str
+    cycle_start_date: str  # Format: YYYY-MM-DD
+    cycle_length: Optional[int] = None  # Length of this specific cycle (calculated when next cycle starts)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AIConversation(BaseModel):
     model_config = ConfigDict(extra="ignore")
