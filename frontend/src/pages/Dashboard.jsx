@@ -417,6 +417,21 @@ const Dashboard = ({ user, setUser }) => {
                     <div className="text-2xl font-bold text-white" data-testid="phase-day">{cycleInfo.phase_day}</div>
                   </div>
                 </div>
+                
+                <div className="mt-6 space-y-2">
+                  <Button
+                    onClick={() => {
+                      setShowCycleHistory(!showCycleHistory);
+                      if (!cycleHistory) loadCycleHistory();
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="border-white/30 text-white hover:bg-white/10"
+                    data-testid="toggle-cycle-history-button"
+                  >
+                    📊 Cycle History & Stats
+                  </Button>
+                </div>
               </div>
 
               <div>
@@ -431,6 +446,72 @@ const Dashboard = ({ user, setUser }) => {
                 </ul>
               </div>
             </div>
+
+            {/* Cycle History Modal */}
+            {showCycleHistory && cycleHistory && (
+              <div className="mt-6 pt-6 border-t border-white/20">
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                  <Card className="bg-white/10 border-white/20">
+                    <CardContent className="p-4">
+                      <div className="text-xs text-slate-300 mb-1">Average Cycle</div>
+                      <div className="text-2xl font-bold text-white">{cycleHistory.statistics.average_length} days</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/10 border-white/20">
+                    <CardContent className="p-4">
+                      <div className="text-xs text-slate-300 mb-1">Range</div>
+                      <div className="text-2xl font-bold text-white">{cycleHistory.statistics.min_length}-{cycleHistory.statistics.max_length} days</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-white/10 border-white/20">
+                    <CardContent className="p-4">
+                      <div className="text-xs text-slate-300 mb-1">Next Period</div>
+                      <div className="text-2xl font-bold text-white">{cycleHistory.prediction.days_until_next} days</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {cycleHistory.statistics.is_irregular && (
+                  <div className="bg-orange-500/20 border border-orange-500/30 p-3 rounded-lg mb-4">
+                    <p className="text-orange-200 text-sm">
+                      ⚠️ <strong>Irregular Cycle Detected:</strong> {cycleHistory.statistics.variability} day variation. Keep logging periods for better predictions!
+                    </p>
+                  </div>
+                )}
+
+                <div className="bg-white/10 p-4 rounded-lg mb-4">
+                  <h4 className="text-white font-semibold mb-3">Log New Period</h4>
+                  <form onSubmit={handleLogPeriod} className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={logPeriodDate}
+                      onChange={(e) => setLogPeriodDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      required
+                      className="bg-white/20 border-white/30 text-white"
+                      data-testid="log-period-date-input"
+                    />
+                    <Button
+                      type="submit"
+                      className="bg-white text-slate-900 hover:bg-white/90"
+                      data-testid="log-period-button"
+                    >
+                      Log Period
+                    </Button>
+                  </form>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-white font-semibold mb-2">Recent Cycles</h4>
+                  {cycleHistory.history.slice(0, 6).map((cycle, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white/10 p-2 rounded" data-testid={`cycle-history-${idx}`}>
+                      <span className="text-slate-200">{new Date(cycle.cycle_start_date).toLocaleDateString()}</span>
+                      <span className="text-slate-300">{cycle.cycle_length ? `${cycle.cycle_length} days` : 'Current'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
