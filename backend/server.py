@@ -306,6 +306,125 @@ async def update_partner_profile(
 
 # ============ CYCLE TRACKING ROUTES ============
 
+@api_router.post("/cycle/log-period")
+async def log_period_start(
+    partner_id: str,
+    start_date: str,  # Format: YYYY-MM-DD
+    current_user: User = Depends(get_current_user)
+):
+    """Log a new period start date"""
+    profile = await db.partner_profiles.find_one(
+        {"id": partner_id, "user_id": current_user.id},
+        {"_id": 0}
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Partner profile not found")
+    
+    # Parse dates
+    new_start = datetime.strptime(start_date, "%Y-%m-%d").date()
+    old_start = datetime.strptime(profile['cycle_start_date'], "%Y-%m-%d").date()
+    
+    # Calculate length of previous cycle
+    cycle_length = (new_start - old_start).days
+    
+    # Update the last cycle history entry with its length
+    await db.cycle_history.update_one(
+        {"partner_id": partner_id, "cycle_start_date": profile['cycle_start_date']},
+        {"$set": {"cycle_length": cycle_length}}
+    )
+    
+    # Create new cycle history entry
+    new_cycle = CycleHistory(
+        partner_id=partner_id,
+        cycle_start_date=start_date,
+        cycle_length=None  # Will be calculated when next period starts
+    )
+    cycle_dict = new_cycle.model_dump()
+    cycle_dict['created_at'] = cycle_dict['created_at'].isoformat()
+    await db.cycle_history.insert_one(cycle_dict)
+    
+    # Calculate average cycle length from history (last 6 cycles)
+    history = await db.cycle_history.find(
+        {"partner_id": partner_id, "cycle_length": {"$ne": None}},
+        {"_id": 0}
+    ).sort("cycle_start_date", -1).limit(6).to_list(6)
+    
+    if history:
+        avg_length = sum(h['cycle_length'] for h in history) // len(history)
+    else:
+        avg_length = 28  # Default if no history yet
+    
+    # Update partner profile with new start date and calculated average
+    await db.partner_profiles.update_one(
+        {"id": partner_id},
+        {"$set": {
+            "cycle_start_date": start_date,
+            "cycle_length": avg_length,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "message": "Period logged successfully",
+        "new_cycle_start": start_date,
+        "previous_cycle_length": cycle_length,
+        "average_cycle_length": avg_length
+    }
+
+@api_router.get("/cycle/history")
+async def get_cycle_history(
+    partner_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get cycle history and statistics"""
+    profile = await db.partner_profiles.find_one(
+        {"id": partner_id, "user_id": current_user.id},
+        {"_id": 0}
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Partner profile not found")
+    
+    # Get cycle history (last 12 cycles)
+    history = await db.cycle_history.find(
+        {"partner_id": partner_id},
+        {"_id": 0}
+    ).sort("cycle_start_date", -1).limit(12).to_list(12)
+    
+    # Calculate statistics
+    completed_cycles = [h for h in history if h.get('cycle_length')]
+    
+    if completed_cycles:
+        lengths = [c['cycle_length'] for c in completed_cycles]
+        avg_length = sum(lengths) // len(lengths)
+        min_length = min(lengths)
+        max_length = max(lengths)
+        variability = max_length - min_length
+    else:
+        avg_length = profile['cycle_length']
+        min_length = avg_length
+        max_length = avg_length
+        variability = 0
+    
+    # Predict next period
+    current_start = datetime.strptime(profile['cycle_start_date'], "%Y-%m-%d").date()
+    predicted_next = current_start + timedelta(days=avg_length)
+    
+    return {
+        "history": history,
+        "statistics": {
+            "average_length": avg_length,
+            "min_length": min_length,
+            "max_length": max_length,
+            "variability": variability,
+            "is_irregular": variability > 7,  # More than 7 days variation = irregular
+            "total_cycles_tracked": len(completed_cycles)
+        },
+        "prediction": {
+            "next_period_date": predicted_next.isoformat(),
+            "days_until_next": (predicted_next - datetime.now(timezone.utc).date()).days
+        }
+    }
+
 @api_router.get("/cycle/current")
 async def get_current_cycle(
     partner_id: str,
