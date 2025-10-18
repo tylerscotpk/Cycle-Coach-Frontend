@@ -268,6 +268,16 @@ async def create_partner_profile(
     profile_dict['updated_at'] = profile_dict['updated_at'].isoformat()
     await db.partner_profiles.insert_one(profile_dict)
     
+    # Create initial cycle history entry
+    initial_cycle = CycleHistory(
+        partner_id=profile.id,
+        cycle_start_date=profile_data.cycle_start_date,
+        cycle_length=None
+    )
+    cycle_dict = initial_cycle.model_dump()
+    cycle_dict['created_at'] = cycle_dict['created_at'].isoformat()
+    await db.cycle_history.insert_one(cycle_dict)
+    
     return profile
 
 @api_router.get("/partner", response_model=PartnerProfile)
