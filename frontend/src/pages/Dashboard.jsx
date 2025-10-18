@@ -24,6 +24,9 @@ const Dashboard = ({ user, setUser }) => {
   const [currentResources, setCurrentResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [showCycleHistory, setShowCycleHistory] = useState(false);
+  const [cycleHistory, setCycleHistory] = useState(null);
+  const [logPeriodDate, setLogPeriodDate] = useState('');
 
   // Setup form
   const [partnerName, setPartnerName] = useState('');
