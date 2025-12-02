@@ -580,7 +580,7 @@ async def get_cycle_history(
     
     # Sort by parsed date (most recent first)
     def parse_date(date_str):
-        for fmt in ["%Y-%m-%d", "%m/%d/%Y"]:
+        for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"]:
             try:
                 return datetime.strptime(date_str, fmt).date()
             except ValueError:
