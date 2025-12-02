@@ -657,7 +657,7 @@ const Dashboard = ({ user, setUser }) => {
                     
                     return (
                       <div key={idx} className="flex justify-between items-center bg-white/10 p-3 rounded" data-testid={`cycle-history-${idx}`}>
-                        <span className="text-slate-200">{new Date(cycle.cycle_start_date).toLocaleDateString()}</span>
+                        <span className="text-slate-200">{cycle.cycle_start_date}</span>
                         <div className="flex items-center gap-3">
                           {isCurrent ? (
                             <span className="text-cyan-400 font-medium">Current</span>
