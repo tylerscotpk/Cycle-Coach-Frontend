@@ -803,13 +803,17 @@ async def chat_with_ai(
     # Get current phase info for context
     phase_info = get_phase_info(current_cycle_day)
     
-    # Create chat session
+    # PRIVACY: Generate anonymous session ID (hash user+partner IDs)
+    import hashlib
+    anonymous_session = hashlib.sha256(f"{current_user.id}_{chat_data.partner_id}".encode()).hexdigest()[:16]
+    
+    # PRIVACY: Do NOT send partner name to AI - use generic term
+    # PRIVACY: Do NOT send any identifying information
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
-        session_id=f"{current_user.id}_{chat_data.partner_id}",
+        session_id=f"anon_{anonymous_session}",
         system_message=f"""You're the ultimate relationship wingman - like texting your wise older bro at 2am.
 
-Your girl's name: {profile['partner_name']}
 Current cycle: Day {current_cycle_day} - {phase_info['phase']} phase
 
 RESPONSE FORMAT (CRITICAL):
