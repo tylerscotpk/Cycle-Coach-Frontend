@@ -332,16 +332,18 @@ const Dashboard = ({ user, setUser }) => {
     if (!confirm('Delete this cycle entry? This will recalculate your cycle statistics.')) return;
     
     try {
-      await axios.delete(`${API}/cycle/history/${cycleId}`, {
+      console.log('Deleting cycle:', cycleId, 'for partner:', partner.id);
+      const response = await axios.delete(`${API}/cycle/history/${cycleId}`, {
         params: { partner_id: partner.id },
         withCredentials: true
       });
+      console.log('Delete response:', response.data);
       toast.success('Cycle entry deleted and data recalculated');
       await loadCycleHistory();
       await loadCycleInfo(partner.id);
     } catch (error) {
       console.error('Error deleting cycle:', error);
-      toast.error('Failed to delete cycle entry');
+      toast.error(`Failed to delete: ${error.response?.data?.detail || error.message}`);
     }
   };
 
