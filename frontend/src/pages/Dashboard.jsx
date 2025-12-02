@@ -644,19 +644,21 @@ const Dashboard = ({ user, setUser }) => {
                       <div className="flex items-center gap-3">
                         {cycle.status === 'current' ? (
                           <span className="text-cyan-400 font-medium">Current</span>
+                        ) : cycle.cycle_length && cycle.cycle_length > 0 ? (
+                          <>
+                            <span className="text-slate-300">{cycle.cycle_length} days</span>
+                            <Button
+                              onClick={() => handleDeleteCycle(cycle.id)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/20 h-8 w-8 p-0 flex-shrink-0"
+                              data-testid={`delete-cycle-${idx}`}
+                            >
+                              ×
+                            </Button>
+                          </>
                         ) : (
-                          <span className="text-slate-300">{cycle.cycle_length} days - Completed</span>
-                        )}
-                        {cycle.status === 'completed' && (
-                          <Button
-                            onClick={() => handleDeleteCycle(cycle.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/20 h-8 w-8 p-0 flex-shrink-0"
-                            data-testid={`delete-cycle-${idx}`}
-                          >
-                            ×
-                          </Button>
+                          <span className="text-slate-400">Calculating...</span>
                         )}
                       </div>
                     </div>
