@@ -241,21 +241,31 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
 
             {/* Legend */}
             <div className="w-full max-w-md space-y-2">
-              {phases.map((phase) => (
-                <button
-                  key={phase.name}
-                  onClick={() => setSelectedPhase(phase)}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors w-full"
-                >
-                  <div 
-                    className="w-4 h-4 rounded-full flex-shrink-0" 
-                    style={{ backgroundColor: phase.color }}
-                  />
-                  <div className="text-white text-sm font-medium">
-                    {phase.name}: Days {phase.days}
-                  </div>
-                </button>
-              ))}
+              {phases.map((phase) => {
+                const isCurrentPhase = currentPhase?.name === phase.name;
+                return (
+                  <button
+                    key={phase.name}
+                    onClick={() => setSelectedPhase(phase)}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors w-full ${
+                      isCurrentPhase 
+                        ? 'bg-slate-600/70 ring-2 ring-white/30 hover:bg-slate-600' 
+                        : 'bg-slate-700/50 hover:bg-slate-700'
+                    }`}
+                  >
+                    <div 
+                      className="w-4 h-4 rounded-full flex-shrink-0" 
+                      style={{ backgroundColor: phase.color }}
+                    />
+                    <div className={`text-sm font-medium ${isCurrentPhase ? 'text-white' : 'text-slate-300'}`}>
+                      {phase.name}: Days {phase.days}
+                    </div>
+                    {isCurrentPhase && (
+                      <span className="ml-auto text-xs text-cyan-400 font-semibold">Active</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Quick info */}
