@@ -50,18 +50,30 @@ const Dashboard = ({ user, setUser }) => {
     loadData();
   }, []);
 
-  // Scroll to top after render to prevent Radix Tabs from auto-scrolling
+  // Force scroll to top - run multiple times to override Radix Tabs auto-scroll
   useEffect(() => {
-    const scrollToTop = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    const forceScrollToTop = () => {
+      window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     };
     
-    scrollToTop();
-    // Also scroll after a brief delay to override any delayed scroll from Radix
-    const timer = setTimeout(scrollToTop, 100);
-    return () => clearTimeout(timer);
+    // Immediate scroll
+    forceScrollToTop();
+    
+    // Multiple delayed scrolls to catch any async scroll behavior
+    const timers = [50, 100, 200, 300].map(delay => 
+      setTimeout(forceScrollToTop, delay)
+    );
+    
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  // Also force scroll when data loads
+  useEffect(() => {
+    if (partner && cycleInfo) {
+      window.scrollTo(0, 0);
+    }
   }, [partner, cycleInfo]);
 
   const loadData = async () => {
