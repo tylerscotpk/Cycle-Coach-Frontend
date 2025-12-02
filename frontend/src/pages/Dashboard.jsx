@@ -578,7 +578,7 @@ const Dashboard = ({ user, setUser }) => {
                   <Card className="bg-white/10 border-white/20">
                     <CardContent className="p-4">
                       <div className="text-xs text-slate-300 mb-1">Next Period</div>
-                      <div className="text-2xl font-bold text-white">{cycleHistory.prediction.days_until_next} days</div>
+                      <div className="text-2xl font-bold text-white">~{cycleHistory.prediction.days_until_next} days</div>
                     </CardContent>
                   </Card>
                 </div>
