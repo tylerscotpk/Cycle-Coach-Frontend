@@ -56,6 +56,34 @@ const LandingPage = ({ setUser }) => {
               Get Started - It's Free
             </Button>
           </div>
+
+          {/* CRITICAL Privacy Warning */}
+          <div className="mt-16 max-w-4xl mx-auto bg-orange-500/10 backdrop-blur-sm border-2 border-orange-500/50 rounded-2xl p-8">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-orange-300 mb-3">⚠️ IMPORTANT: Privacy & Consent</h3>
+                <div className="space-y-3 text-slate-300 text-sm leading-relaxed">
+                  <p className="font-semibold text-orange-200">
+                    This app tracks sensitive reproductive health data. In many regions, this data can be legally subpoenaed and used against individuals.
+                  </p>
+                  <ul className="list-disc list-inside space-y-2 ml-2">
+                    <li><strong className="text-white">Get Partner Consent:</strong> Your partner MUST consent to you tracking their cycle data. Tracking without consent is a violation of privacy and trust.</li>
+                    <li><strong className="text-white">Legal Risks:</strong> In states with restrictive reproductive laws, cycle data can be used as evidence. We cannot protect data from government subpoenas.</li>
+                    <li><strong className="text-white">Data Collection:</strong> We collect your Google account info (email, name) and all cycle/preference data you enter. This data is linked to your identity.</li>
+                    <li><strong className="text-white">AI Processing:</strong> Chat messages are sent to OpenAI for processing. While we anonymize requests, be cautious about sharing identifying details.</li>
+                  </ul>
+                  <p className="text-orange-200 font-semibold pt-2">
+                    By using this app, you acknowledge these risks and confirm you have your partner's explicit consent.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Features Grid */}
