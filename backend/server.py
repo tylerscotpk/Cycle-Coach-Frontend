@@ -462,7 +462,7 @@ async def recalculate_cycle_lengths(partner_id: str):
     """Recalculate cycle lengths for all entries"""
     def parse_date(date_str):
         """Parse date from multiple formats"""
-        for fmt in ["%Y-%m-%d", "%m/%d/%Y"]:
+        for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"]:
             try:
                 return datetime.strptime(date_str, fmt).date()
             except ValueError:
