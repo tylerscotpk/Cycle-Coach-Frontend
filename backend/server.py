@@ -609,6 +609,7 @@ def get_phase_info(cycle_day: int):
     if 1 <= cycle_day <= 5:
         return {
             "phase": "Menstrual",
+            "phase_number": 1,
             "phase_day": cycle_day,
             "description": "Red alert - literally. She's on her period.",
             "emotional_state": "Low energy, might bite your head off",
