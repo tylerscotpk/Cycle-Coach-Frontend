@@ -28,8 +28,6 @@ const Dashboard = ({ user, setUser }) => {
   const [showCycleHistory, setShowCycleHistory] = useState(false);
   const [cycleHistory, setCycleHistory] = useState(null);
   const [logPeriodDate, setLogPeriodDate] = useState('');
-  const [showBackfill, setShowBackfill] = useState(false);
-  const [backfillDates, setBackfillDates] = useState('');
 
   // Setup form
   const [partnerName, setPartnerName] = useState('');
