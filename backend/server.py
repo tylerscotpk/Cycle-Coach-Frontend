@@ -506,20 +506,29 @@ async def recalculate_cycle_lengths(partner_id: str):
 
 async def update_partner_cycle_info(partner_id: str):
     """Update partner profile with most recent cycle and calculated average"""
-    # Get most recent cycle
-    recent_cycle = await db.cycle_history.find_one(
+    # Get all cycles to find the most recent
+    all_cycles = await db.cycle_history.find(
         {"partner_id": partner_id},
         {"_id": 0}
-    ).sort("cycle_start_date", -1)
+    ).to_list(100)
     
-    if not recent_cycle:
+    if not all_cycles:
         return
     
-    # Calculate average from last 6 completed cycles
-    completed = await db.cycle_history.find(
-        {"partner_id": partner_id, "cycle_length": {"$ne": None}},
-        {"_id": 0}
-    ).sort("cycle_start_date", -1).limit(6).to_list(6)
+    # Parse dates and sort to find most recent
+    def parse_date(date_str):
+        for fmt in ["%Y-%m-%d", "%m/%d/%Y"]:
+            try:
+                return datetime.strptime(date_str, fmt).date()
+            except ValueError:
+                continue
+        return datetime.now().date()
+    
+    all_cycles.sort(key=lambda x: parse_date(x['cycle_start_date']), reverse=True)
+    recent_cycle = all_cycles[0]
+    
+    # Calculate average from completed cycles (those with cycle_length)
+    completed = [c for c in all_cycles if c.get('cycle_length') and c['cycle_length'] > 0][:6]
     
     if completed:
         avg_length = sum(c['cycle_length'] for c in completed) // len(completed)
@@ -530,7 +539,7 @@ async def update_partner_cycle_info(partner_id: str):
         {"id": partner_id},
         {"$set": {
             "cycle_start_date": recent_cycle['cycle_start_date'],
-            "cycle_length": avg_length,
+            "average_cycle_length": avg_length,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
     )
