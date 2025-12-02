@@ -597,6 +597,7 @@ async def get_current_cycle(
     return {
         "cycle_day": cycle_day,
         "phase": phase_info['phase'],
+        "phase_number": phase_info['phase_number'],
         "phase_day": phase_info['phase_day'],
         "description": phase_info['description'],
         "emotional_state": phase_info['emotional_state'],
