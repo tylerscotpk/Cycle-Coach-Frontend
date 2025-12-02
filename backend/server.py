@@ -475,15 +475,27 @@ async def recalculate_cycle_lengths(partner_id: str):
         {"_id": 0}
     ).to_list(100)
     
-    # Sort cycles by parsed date (not string comparison)
+    # Sort cycles by parsed date and remove duplicates (same date)
     cycles_with_dates = [(parse_date(c['cycle_start_date']), c) for c in cycles]
     cycles_with_dates.sort(key=lambda x: x[0])
-    sorted_cycles = [c for _, c in cycles_with_dates]
+    
+    # Remove duplicates - keep the first occurrence of each date
+    seen_dates = set()
+    unique_cycles = []
+    for date, cycle in cycles_with_dates:
+        if date not in seen_dates:
+            seen_dates.add(date)
+            unique_cycles.append((date, cycle))
+        else:
+            # Delete duplicate entry
+            await db.cycle_history.delete_one({"id": cycle['id']})
+    
+    sorted_cycles = [c for _, c in unique_cycles]
     
     # Calculate length for each cycle (except the last/current one)
     for i in range(len(sorted_cycles) - 1):
-        current_date = parse_date(sorted_cycles[i]['cycle_start_date'])
-        next_date = parse_date(sorted_cycles[i + 1]['cycle_start_date'])
+        current_date, _ = unique_cycles[i]
+        next_date, _ = unique_cycles[i + 1]
         cycle_length = (next_date - current_date).days
         
         await db.cycle_history.update_one(
