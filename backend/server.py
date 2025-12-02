@@ -529,7 +529,7 @@ async def update_partner_cycle_info(partner_id: str):
     
     # Parse dates and sort to find most recent
     def parse_date(date_str):
-        for fmt in ["%Y-%m-%d", "%m/%d/%Y"]:
+        for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"]:
             try:
                 return datetime.strptime(date_str, fmt).date()
             except ValueError:
