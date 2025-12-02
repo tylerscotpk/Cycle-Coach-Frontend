@@ -586,7 +586,10 @@ async def get_current_cycle(
     cycle_start = datetime.strptime(profile['cycle_start_date'], "%Y-%m-%d").date()
     today = datetime.now(timezone.utc).date()
     days_since_start = (today - cycle_start).days
-    cycle_day = (days_since_start % profile['cycle_length']) + 1
+    cycle_length = profile.get('average_cycle_length') or profile.get('cycle_length', 28)
+    if cycle_length == 0:
+        cycle_length = 28
+    cycle_day = (days_since_start % cycle_length) + 1
     
     # Determine phase
     phase_info = get_phase_info(cycle_day)
