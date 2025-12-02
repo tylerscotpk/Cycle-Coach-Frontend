@@ -605,9 +605,26 @@ async def get_cycle_history(
         max_length = avg_length
         variability = 0
     
-    # Predict next period
-    current_start = datetime.strptime(profile['cycle_start_date'], "%Y-%m-%d").date()
-    predicted_next = current_start + timedelta(days=avg_length)
+    # Predict next period based on MOST RECENT cycle start
+    if history:
+        # Get the most recent cycle start date
+        most_recent_date_str = history[0]['cycle_start_date']  # Already sorted by date descending
+        def parse_date_simple(date_str):
+            for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y"]:
+                try:
+                    return datetime.strptime(date_str, fmt).date()
+                except ValueError:
+                    continue
+            return datetime.now().date()
+        
+        current_start = parse_date_simple(most_recent_date_str)
+        predicted_next = current_start + timedelta(days=avg_length)
+        days_until = (predicted_next - datetime.now(timezone.utc).date()).days
+    else:
+        # Fallback if no history
+        current_start = datetime.now(timezone.utc).date()
+        predicted_next = current_start + timedelta(days=avg_length)
+        days_until = avg_length
     
     return {
         "history": history,
@@ -621,7 +638,7 @@ async def get_cycle_history(
         },
         "prediction": {
             "next_period_date": predicted_next.isoformat(),
-            "days_until_next": (predicted_next - datetime.now(timezone.utc).date()).days
+            "days_until_next": days_until
         }
     }
 
