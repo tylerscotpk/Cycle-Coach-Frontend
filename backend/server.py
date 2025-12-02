@@ -381,6 +381,140 @@ async def log_period_start(
         "average_cycle_length": avg_length
     }
 
+@api_router.delete("/cycle/history/{cycle_id}")
+async def delete_cycle_entry(
+    cycle_id: str,
+    partner_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a cycle history entry and recalculate"""
+    # Verify ownership
+    profile = await db.partner_profiles.find_one(
+        {"id": partner_id, "user_id": current_user.id},
+        {"_id": 0}
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Partner profile not found")
+    
+    # Delete the entry
+    result = await db.cycle_history.delete_one({"id": cycle_id, "partner_id": partner_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Cycle entry not found")
+    
+    # Recalculate all cycle lengths
+    await recalculate_cycle_lengths(partner_id)
+    
+    # Update partner profile with most recent cycle start and new average
+    await update_partner_cycle_info(partner_id)
+    
+    return {"message": "Cycle entry deleted and data recalculated"}
+
+@api_router.post("/cycle/backfill")
+async def backfill_periods(
+    partner_id: str,
+    period_dates: List[str],  # List of dates in YYYY-MM-DD format
+    current_user: User = Depends(get_current_user)
+):
+    """Add multiple historical period dates at once"""
+    profile = await db.partner_profiles.find_one(
+        {"id": partner_id, "user_id": current_user.id},
+        {"_id": 0}
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Partner profile not found")
+    
+    # Sort dates chronologically
+    sorted_dates = sorted(period_dates)
+    
+    # Check for duplicates in existing history
+    existing = await db.cycle_history.find(
+        {"partner_id": partner_id},
+        {"_id": 0, "cycle_start_date": 1}
+    ).to_list(100)
+    existing_dates = {e['cycle_start_date'] for e in existing}
+    
+    # Add new entries
+    added = 0
+    for date_str in sorted_dates:
+        if date_str not in existing_dates:
+            new_cycle = CycleHistory(
+                partner_id=partner_id,
+                cycle_start_date=date_str,
+                cycle_length=None
+            )
+            cycle_dict = new_cycle.model_dump()
+            cycle_dict['created_at'] = cycle_dict['created_at'].isoformat()
+            await db.cycle_history.insert_one(cycle_dict)
+            added += 1
+    
+    # Recalculate all cycle lengths
+    await recalculate_cycle_lengths(partner_id)
+    
+    # Update partner profile
+    await update_partner_cycle_info(partner_id)
+    
+    return {
+        "message": f"Added {added} historical periods",
+        "total_cycles": added + len(existing)
+    }
+
+async def recalculate_cycle_lengths(partner_id: str):
+    """Recalculate cycle lengths for all entries"""
+    # Get all cycles sorted by date
+    cycles = await db.cycle_history.find(
+        {"partner_id": partner_id},
+        {"_id": 0}
+    ).sort("cycle_start_date", 1).to_list(100)
+    
+    # Calculate length for each cycle (except the last/current one)
+    for i in range(len(cycles) - 1):
+        current_date = datetime.strptime(cycles[i]['cycle_start_date'], "%Y-%m-%d").date()
+        next_date = datetime.strptime(cycles[i + 1]['cycle_start_date'], "%Y-%m-%d").date()
+        cycle_length = (next_date - current_date).days
+        
+        await db.cycle_history.update_one(
+            {"id": cycles[i]['id']},
+            {"$set": {"cycle_length": cycle_length}}
+        )
+    
+    # Last cycle has no length (it's current)
+    if cycles:
+        await db.cycle_history.update_one(
+            {"id": cycles[-1]['id']},
+            {"$set": {"cycle_length": None}}
+        )
+
+async def update_partner_cycle_info(partner_id: str):
+    """Update partner profile with most recent cycle and calculated average"""
+    # Get most recent cycle
+    recent_cycle = await db.cycle_history.find_one(
+        {"partner_id": partner_id},
+        {"_id": 0}
+    ).sort("cycle_start_date", -1)
+    
+    if not recent_cycle:
+        return
+    
+    # Calculate average from last 6 completed cycles
+    completed = await db.cycle_history.find(
+        {"partner_id": partner_id, "cycle_length": {"$ne": None}},
+        {"_id": 0}
+    ).sort("cycle_start_date", -1).limit(6).to_list(6)
+    
+    if completed:
+        avg_length = sum(c['cycle_length'] for c in completed) // len(completed)
+    else:
+        avg_length = 28
+    
+    await db.partner_profiles.update_one(
+        {"id": partner_id},
+        {"$set": {
+            "cycle_start_date": recent_cycle['cycle_start_date'],
+            "cycle_length": avg_length,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+
 @api_router.get("/cycle/history")
 async def get_cycle_history(
     partner_id: str,
