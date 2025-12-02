@@ -48,6 +48,8 @@ const Dashboard = ({ user, setUser }) => {
 
   useEffect(() => {
     loadData();
+    // Scroll to top on mount to prevent Radix Tabs from auto-scrolling to tabs
+    window.scrollTo(0, 0);
   }, []);
 
   const loadData = async () => {
