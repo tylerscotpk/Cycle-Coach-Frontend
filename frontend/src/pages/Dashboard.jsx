@@ -686,7 +686,7 @@ const Dashboard = ({ user, setUser }) => {
 
         {/* Tabs Section */}
         <Tabs defaultValue="chat" className="space-y-6">
-          <TabsList className="bg-slate-800 border border-slate-700">
+          <TabsList className="bg-slate-800 border border-slate-700" tabIndex={-1}>
             <TabsTrigger value="chat" data-testid="tab-ai-coach">AI Wingman</TabsTrigger>
             <TabsTrigger value="profile" data-testid="tab-partner-profile">Partner Profile</TabsTrigger>
             <TabsTrigger value="resources" data-testid="tab-resources">Resources</TabsTrigger>
