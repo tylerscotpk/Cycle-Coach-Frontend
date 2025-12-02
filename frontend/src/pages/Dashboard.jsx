@@ -637,7 +637,7 @@ const Dashboard = ({ user, setUser }) => {
                 <div className="space-y-2">
                   <h4 className="text-white font-semibold mb-2">Recent Cycles</h4>
                   {cycleHistory.history.slice(0, 8).map((cycle, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white/10 p-2 rounded group" data-testid={`cycle-history-${idx}`}>
+                    <div key={idx} className="flex justify-between items-center bg-white/10 p-2 rounded" data-testid={`cycle-history-${idx}`}>
                       <span className="text-slate-200">{new Date(cycle.cycle_start_date).toLocaleDateString()}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-300">{cycle.cycle_length ? `${cycle.cycle_length} days` : 'Current'}</span>
@@ -646,7 +646,7 @@ const Dashboard = ({ user, setUser }) => {
                             onClick={() => handleDeleteCycle(cycle.id)}
                             variant="ghost"
                             size="sm"
-                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-500/20 h-6 w-6 p-0"
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/20 h-8 w-8 p-0"
                             data-testid={`delete-cycle-${idx}`}
                           >
                             ×
