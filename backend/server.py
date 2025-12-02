@@ -628,6 +628,7 @@ def get_phase_info(cycle_day: int):
     elif 6 <= cycle_day <= 13:
         return {
             "phase": "Follicular",
+            "phase_number": 2,
             "phase_day": cycle_day - 5,
             "description": "The storm has passed. She's back, baby!",
             "emotional_state": "Happy, energetic, fun to be around",
