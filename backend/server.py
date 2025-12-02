@@ -669,6 +669,7 @@ def get_phase_info(cycle_day: int):
     elif 17 <= cycle_day <= 23:
         return {
             "phase": "Early Luteal",
+            "phase_number": 4,
             "phase_day": cycle_day - 16,
             "description": "Chill vibes. Enjoy it while it lasts.",
             "emotional_state": "Relaxed, nurturing, nesting mode activated",
