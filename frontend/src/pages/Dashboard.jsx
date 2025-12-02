@@ -497,10 +497,19 @@ const Dashboard = ({ user, setUser }) => {
               </div>
             </div>
 
-            {/* Cycle History Modal */}
-            {showCycleHistory && cycleHistory && (
-              <div className="mt-6 pt-6 border-t border-white/20">
-                <div className="grid md:grid-cols-3 gap-4 mb-6">
+          </div>
+        )}
+
+        {/* Cycle History Dialog */}
+        <Dialog open={showCycleHistory} onOpenChange={setShowCycleHistory}>
+          <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Cycle History & Statistics</DialogTitle>
+            </DialogHeader>
+            
+            {cycleHistory && (
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-3 gap-4">
                   <Card className="bg-white/10 border-white/20">
                     <CardContent className="p-4">
                       <div className="text-xs text-slate-300 mb-1">Average Cycle</div>
@@ -522,14 +531,14 @@ const Dashboard = ({ user, setUser }) => {
                 </div>
 
                 {cycleHistory.statistics.is_irregular && (
-                  <div className="bg-orange-500/20 border border-orange-500/30 p-3 rounded-lg mb-4">
+                  <div className="bg-orange-500/20 border border-orange-500/30 p-3 rounded-lg">
                     <p className="text-orange-200 text-sm">
                       ⚠️ <strong>Irregular Cycle Detected:</strong> {cycleHistory.statistics.variability} day variation. Keep logging periods for better predictions!
                     </p>
                   </div>
                 )}
 
-                <div className="bg-white/10 p-4 rounded-lg mb-4">
+                <div className="bg-white/10 p-4 rounded-lg">
                   <div className="flex justify-between items-center mb-3">
                     <h4 className="text-white font-semibold">Log New Period</h4>
                     <Button
@@ -611,8 +620,8 @@ const Dashboard = ({ user, setUser }) => {
                 </div>
               </div>
             )}
-          </div>
-        )}
+          </DialogContent>
+        </Dialog>
 
         {/* MoodMap Section */}
         {cycleInfo && (
