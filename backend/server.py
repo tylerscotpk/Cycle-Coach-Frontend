@@ -648,6 +648,7 @@ def get_phase_info(cycle_day: int):
     elif 14 <= cycle_day <= 16:
         return {
             "phase": "Ovulation",
+            "phase_number": 3,
             "phase_day": cycle_day - 13,
             "description": "🔥 PRIME TIME 🔥 This is it chief",
             "emotional_state": "Feeling herself, confident AF, wants attention",
