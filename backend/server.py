@@ -688,6 +688,7 @@ def get_phase_info(cycle_day: int):
     else:  # 24-28
         return {
             "phase": "Late Luteal/PMS",
+            "phase_number": 5,
             "phase_day": cycle_day - 23,
             "description": "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
             "emotional_state": "Irritable, emotional, zero chill",
