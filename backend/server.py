@@ -548,11 +548,26 @@ async def get_cycle_history(
     if not profile:
         raise HTTPException(status_code=404, detail="Partner profile not found")
     
-    # Get cycle history (last 12 cycles)
+    # Recalculate cycle lengths to ensure data is current
+    await recalculate_cycle_lengths(partner_id)
+    
+    # Get cycle history (last 12 cycles) - sorted in descending order
     history = await db.cycle_history.find(
         {"partner_id": partner_id},
         {"_id": 0}
-    ).sort("cycle_start_date", -1).limit(12).to_list(12)
+    ).to_list(100)
+    
+    # Sort by parsed date (most recent first)
+    def parse_date(date_str):
+        for fmt in ["%Y-%m-%d", "%m/%d/%Y"]:
+            try:
+                return datetime.strptime(date_str, fmt).date()
+            except ValueError:
+                continue
+        return datetime.now().date()
+    
+    history.sort(key=lambda x: parse_date(x['cycle_start_date']), reverse=True)
+    history = history[:12]  # Limit to 12 most recent
     
     # Calculate statistics
     completed_cycles = [h for h in history if h.get('cycle_length')]
