@@ -495,12 +495,14 @@ const Dashboard = ({ user, setUser }) => {
                 <div className="text-slate-300 mb-4">{cycleInfo.description}</div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-xs text-slate-400">Cycle Day</div>
-                    <div className="text-2xl font-bold text-white" data-testid="cycle-day">{cycleInfo.cycle_day}</div>
+                    <div className="text-xs text-slate-400">Overall Cycle</div>
+                    <div className="text-2xl font-bold text-white" data-testid="cycle-day">Day {cycleInfo.cycle_day}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-400">Phase Day</div>
-                    <div className="text-2xl font-bold text-white" data-testid="phase-day">{cycleInfo.phase_day}</div>
+                    <div className="text-xs text-slate-400">Phase Progress</div>
+                    <div className="text-2xl font-bold text-white" data-testid="phase-day">
+                      Phase {cycleInfo.phase_number}: Day {cycleInfo.phase_day}
+                    </div>
                   </div>
                 </div>
                 
