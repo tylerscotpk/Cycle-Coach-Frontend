@@ -48,9 +48,21 @@ const Dashboard = ({ user, setUser }) => {
 
   useEffect(() => {
     loadData();
-    // Scroll to top on mount to prevent Radix Tabs from auto-scrolling to tabs
-    window.scrollTo(0, 0);
   }, []);
+
+  // Scroll to top after render to prevent Radix Tabs from auto-scrolling
+  useEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    
+    scrollToTop();
+    // Also scroll after a brief delay to override any delayed scroll from Radix
+    const timer = setTimeout(scrollToTop, 100);
+    return () => clearTimeout(timer);
+  }, [partner, cycleInfo]);
 
   const loadData = async () => {
     try {
