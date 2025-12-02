@@ -655,9 +655,30 @@ const Dashboard = ({ user, setUser }) => {
                     const isCurrent = cycle.status === 'current' && idx === 0; // Only first entry can be current
                     const showDelete = !isCurrent; // Allow delete for all except true current
                     
+                    // Format date without timezone conversion
+                    const formatDate = (dateStr) => {
+                      try {
+                        const parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})|(\d{2})\/(\d{2})\/(\d{4})|(\d{2})-(\d{2})-(\d{4})/);
+                        if (!parts) return dateStr;
+                        
+                        let year, month, day;
+                        if (parts[1]) { // YYYY-MM-DD
+                          [, year, month, day] = parts;
+                        } else if (parts[4]) { // MM/DD/YYYY
+                          [, , , , month, day, year] = parts;
+                        } else { // MM-DD-YYYY
+                          [, , , , , , , month, day, year] = parts;
+                        }
+                        
+                        return new Date(year, month - 1, day).toLocaleDateString();
+                      } catch {
+                        return dateStr;
+                      }
+                    };
+                    
                     return (
                       <div key={idx} className="flex justify-between items-center bg-white/10 p-3 rounded" data-testid={`cycle-history-${idx}`}>
-                        <span className="text-slate-200">{cycle.cycle_start_date}</span>
+                        <span className="text-slate-200">{formatDate(cycle.cycle_start_date)}</span>
                         <div className="flex items-center gap-3">
                           {isCurrent ? (
                             <span className="text-cyan-400 font-medium">Current</span>
