@@ -649,15 +649,22 @@ const Dashboard = ({ user, setUser }) => {
 
                 <div className="space-y-2">
                   <h4 className="text-white font-semibold mb-2">Recent Cycles</h4>
-                  {cycleHistory.history.slice(0, 8).map((cycle, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white/10 p-3 rounded" data-testid={`cycle-history-${idx}`}>
-                      <span className="text-slate-200">{new Date(cycle.cycle_start_date).toLocaleDateString()}</span>
-                      <div className="flex items-center gap-3">
-                        {cycle.status === 'current' ? (
-                          <span className="text-cyan-400 font-medium">Current</span>
-                        ) : cycle.cycle_length && cycle.cycle_length > 0 ? (
-                          <>
+                  {cycleHistory.history.slice(0, 8).map((cycle, idx) => {
+                    const isCurrent = cycle.status === 'current' && idx === 0; // Only first entry can be current
+                    const showDelete = !isCurrent; // Allow delete for all except true current
+                    
+                    return (
+                      <div key={idx} className="flex justify-between items-center bg-white/10 p-3 rounded" data-testid={`cycle-history-${idx}`}>
+                        <span className="text-slate-200">{new Date(cycle.cycle_start_date).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-3">
+                          {isCurrent ? (
+                            <span className="text-cyan-400 font-medium">Current</span>
+                          ) : cycle.cycle_length && cycle.cycle_length > 0 ? (
                             <span className="text-slate-300">{cycle.cycle_length} days</span>
+                          ) : (
+                            <span className="text-slate-400 italic">Calculating...</span>
+                          )}
+                          {showDelete && (
                             <Button
                               onClick={() => handleDeleteCycle(cycle.id)}
                               variant="ghost"
@@ -667,13 +674,11 @@ const Dashboard = ({ user, setUser }) => {
                             >
                               ×
                             </Button>
-                          </>
-                        ) : (
-                          <span className="text-slate-400">Calculating...</span>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
