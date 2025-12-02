@@ -50,8 +50,13 @@ const Dashboard = ({ user, setUser }) => {
     loadData();
   }, []);
 
-  // Force scroll to top - run multiple times to override Radix Tabs auto-scroll
+  // Aggressive scroll to top to prevent Radix Tabs auto-scroll
   useEffect(() => {
+    // Prevent any scroll restoration
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
     const forceScrollToTop = () => {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -61,18 +66,23 @@ const Dashboard = ({ user, setUser }) => {
     // Immediate scroll
     forceScrollToTop();
     
-    // Multiple delayed scrolls to catch any async scroll behavior
-    const timers = [50, 100, 200, 300].map(delay => 
+    // Multiple delayed scrolls to override any async behavior from Radix
+    const timers = [0, 10, 50, 100, 150, 200, 300, 500].map(delay => 
       setTimeout(forceScrollToTop, delay)
     );
     
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'auto';
+      }
+    };
   }, []);
 
-  // Also force scroll when data loads
+  // Force scroll when data loads
   useEffect(() => {
     if (partner && cycleInfo) {
-      window.scrollTo(0, 0);
+      setTimeout(() => window.scrollTo(0, 0), 0);
     }
   }, [partner, cycleInfo]);
 
