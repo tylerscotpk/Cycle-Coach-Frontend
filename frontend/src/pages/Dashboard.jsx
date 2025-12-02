@@ -294,6 +294,7 @@ const Dashboard = ({ user, setUser }) => {
     if (!logPeriodDate || !partner) return;
     
     try {
+      console.log('Logging period with date:', logPeriodDate);
       const response = await axios.post(
         `${API}/cycle/log-period`,
         null,
@@ -306,6 +307,7 @@ const Dashboard = ({ user, setUser }) => {
         }
       );
       
+      console.log('Period logged, response:', response.data);
       toast.success(`Period logged! Previous cycle: ${response.data.previous_cycle_length} days`);
       setLogPeriodDate('');
       setShowCycleHistory(false);
