@@ -353,26 +353,18 @@ async def log_period_start(
     cycle_dict['created_at'] = cycle_dict['created_at'].isoformat()
     await db.cycle_history.insert_one(cycle_dict)
     
-    # Calculate average cycle length from history (last 6 cycles)
-    history = await db.cycle_history.find(
-        {"partner_id": partner_id, "cycle_length": {"$ne": None}},
-        {"_id": 0}
-    ).sort("cycle_start_date", -1).limit(6).to_list(6)
+    # Recalculate all cycle lengths and statuses
+    await recalculate_cycle_lengths(partner_id)
     
-    if history:
-        avg_length = sum(h['cycle_length'] for h in history) // len(history)
-    else:
-        avg_length = 28  # Default if no history yet
+    # Update partner profile with most recent cycle info
+    await update_partner_cycle_info(partner_id)
     
-    # Update partner profile with new start date and calculated average
-    await db.partner_profiles.update_one(
+    # Get updated average
+    updated_profile = await db.partner_profiles.find_one(
         {"id": partner_id},
-        {"$set": {
-            "cycle_start_date": start_date,
-            "cycle_length": avg_length,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
+        {"_id": 0}
     )
+    avg_length = updated_profile.get('average_cycle_length', 28)
     
     return {
         "message": "Period logged successfully",
