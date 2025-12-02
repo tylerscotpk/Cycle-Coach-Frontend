@@ -183,6 +183,13 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                   const outerRadius = isHovered ? 145 : isActive ? 140 : 135;
                   const innerRadius = 70;
                   
+                  // Calculate emoji position at the middle of the arc
+                  const midAngle = (startAngle + endAngle) / 2;
+                  const emojiRadius = (outerRadius + innerRadius) / 2; // Middle of the donut
+                  const midRad = (midAngle * Math.PI) / 180;
+                  const emojiX = 150 + emojiRadius * Math.cos(midRad);
+                  const emojiY = 150 + emojiRadius * Math.sin(midRad);
+                  
                   return (
                     <g key={phase.name}>
                       <path
@@ -197,6 +204,17 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                         onMouseLeave={() => setHoveredPhase(null)}
                         data-testid={`phase-${phase.name.toLowerCase().replace(' ', '-')}`}
                       />
+                      {/* Emoji on the arc */}
+                      <text
+                        x={emojiX}
+                        y={emojiY}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize="24"
+                        className="pointer-events-none"
+                      >
+                        {phase.emoji}
+                      </text>
                     </g>
                   );
                 })}
