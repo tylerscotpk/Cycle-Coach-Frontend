@@ -469,28 +469,39 @@ async def recalculate_cycle_lengths(partner_id: str):
                 continue
         raise ValueError(f"Cannot parse date: {date_str}")
     
-    # Get all cycles sorted by date
+    # Get all cycles
     cycles = await db.cycle_history.find(
         {"partner_id": partner_id},
         {"_id": 0}
-    ).sort("cycle_start_date", 1).to_list(100)
+    ).to_list(100)
+    
+    # Sort cycles by parsed date (not string comparison)
+    cycles_with_dates = [(parse_date(c['cycle_start_date']), c) for c in cycles]
+    cycles_with_dates.sort(key=lambda x: x[0])
+    sorted_cycles = [c for _, c in cycles_with_dates]
     
     # Calculate length for each cycle (except the last/current one)
-    for i in range(len(cycles) - 1):
-        current_date = parse_date(cycles[i]['cycle_start_date'])
-        next_date = parse_date(cycles[i + 1]['cycle_start_date'])
+    for i in range(len(sorted_cycles) - 1):
+        current_date = parse_date(sorted_cycles[i]['cycle_start_date'])
+        next_date = parse_date(sorted_cycles[i + 1]['cycle_start_date'])
         cycle_length = (next_date - current_date).days
         
         await db.cycle_history.update_one(
-            {"id": cycles[i]['id']},
-            {"$set": {"cycle_length": cycle_length}}
+            {"id": sorted_cycles[i]['id']},
+            {"$set": {
+                "cycle_length": cycle_length,
+                "status": "completed"
+            }}
         )
     
-    # Last cycle has no length (it's current)
-    if cycles:
+    # Last cycle is current (no length)
+    if sorted_cycles:
         await db.cycle_history.update_one(
-            {"id": cycles[-1]['id']},
-            {"$set": {"cycle_length": None}}
+            {"id": sorted_cycles[-1]['id']},
+            {"$set": {
+                "cycle_length": None,
+                "status": "current"
+            }}
         )
 
 async def update_partner_cycle_info(partner_id: str):
