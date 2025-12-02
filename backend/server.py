@@ -460,6 +460,15 @@ async def backfill_periods(
 
 async def recalculate_cycle_lengths(partner_id: str):
     """Recalculate cycle lengths for all entries"""
+    def parse_date(date_str):
+        """Parse date from multiple formats"""
+        for fmt in ["%Y-%m-%d", "%m/%d/%Y"]:
+            try:
+                return datetime.strptime(date_str, fmt).date()
+            except ValueError:
+                continue
+        raise ValueError(f"Cannot parse date: {date_str}")
+    
     # Get all cycles sorted by date
     cycles = await db.cycle_history.find(
         {"partner_id": partner_id},
@@ -468,8 +477,8 @@ async def recalculate_cycle_lengths(partner_id: str):
     
     # Calculate length for each cycle (except the last/current one)
     for i in range(len(cycles) - 1):
-        current_date = datetime.strptime(cycles[i]['cycle_start_date'], "%Y-%m-%d").date()
-        next_date = datetime.strptime(cycles[i + 1]['cycle_start_date'], "%Y-%m-%d").date()
+        current_date = parse_date(cycles[i]['cycle_start_date'])
+        next_date = parse_date(cycles[i + 1]['cycle_start_date'])
         cycle_length = (next_date - current_date).days
         
         await db.cycle_history.update_one(
