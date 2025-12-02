@@ -592,61 +592,25 @@ const Dashboard = ({ user, setUser }) => {
                 )}
 
                 <div className="bg-white/10 p-4 rounded-lg">
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="text-white font-semibold">Log New Period</h4>
+                  <h4 className="text-white font-semibold mb-3">Log New Period</h4>
+                  <form onSubmit={handleLogPeriod} className="flex gap-2">
+                    <Input
+                      type="date"
+                      value={logPeriodDate}
+                      onChange={(e) => setLogPeriodDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      required
+                      className="bg-white/20 border-white/30 text-white"
+                      data-testid="log-period-date-input"
+                    />
                     <Button
-                      onClick={() => setShowBackfill(!showBackfill)}
-                      variant="ghost"
-                      size="sm"
-                      className="text-white hover:bg-white/10"
+                      type="submit"
+                      className="bg-white text-slate-900 hover:bg-white/90"
+                      data-testid="log-period-button"
                     >
-                      {showBackfill ? 'Single Date' : '📅 Add Multiple'}
+                      Log Period
                     </Button>
-                  </div>
-                  
-                  {!showBackfill ? (
-                    <form onSubmit={handleLogPeriod} className="flex gap-2">
-                      <Input
-                        type="date"
-                        value={logPeriodDate}
-                        onChange={(e) => setLogPeriodDate(e.target.value)}
-                        max={new Date().toISOString().split('T')[0]}
-                        required
-                        className="bg-white/20 border-white/30 text-white"
-                        data-testid="log-period-date-input"
-                      />
-                      <Button
-                        type="submit"
-                        className="bg-white text-slate-900 hover:bg-white/90"
-                        data-testid="log-period-button"
-                      >
-                        Log Period
-                      </Button>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleBackfillPeriods} className="space-y-3">
-                      <div>
-                        <Label className="text-white text-xs mb-1">Enter multiple dates (one per line or comma-separated)</Label>
-                        <textarea
-                          value={backfillDates}
-                          onChange={(e) => setBackfillDates(e.target.value)}
-                          placeholder="2024-09-15&#10;2024-10-12&#10;2024-11-08"
-                          rows={4}
-                          required
-                          className="w-full bg-white/20 border border-white/30 text-white rounded p-2 text-sm"
-                          data-testid="backfill-dates-input"
-                        />
-                        <p className="text-xs text-slate-300 mt-1">Format: YYYY-MM-DD (e.g., 2024-10-15)</p>
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full bg-white text-slate-900 hover:bg-white/90"
-                        data-testid="backfill-button"
-                      >
-                        Add Historical Periods
-                      </Button>
-                    </form>
-                  )}
+                  </form>
                 </div>
 
                 <div className="space-y-2">
