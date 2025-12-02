@@ -6,6 +6,12 @@
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
