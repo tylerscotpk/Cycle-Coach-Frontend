@@ -429,7 +429,7 @@ const Dashboard = ({ user, setUser }) => {
 
   // Main Dashboard
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
