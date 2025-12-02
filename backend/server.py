@@ -720,7 +720,10 @@ async def chat_with_ai(
     cycle_start = datetime.strptime(profile['cycle_start_date'], "%Y-%m-%d").date()
     today = datetime.now(timezone.utc).date()
     days_since_start = (today - cycle_start).days
-    current_cycle_day = (days_since_start % profile['cycle_length']) + 1
+    cycle_length = profile.get('average_cycle_length') or profile.get('cycle_length', 28)
+    if cycle_length == 0:
+        cycle_length = 28
+    current_cycle_day = (days_since_start % cycle_length) + 1
     profile['current_cycle_day'] = current_cycle_day
     
     # Get current phase info for context
