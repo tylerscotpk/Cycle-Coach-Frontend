@@ -358,36 +358,6 @@ const Dashboard = ({ user, setUser }) => {
     }
   };
 
-  const handleBackfillPeriods = async (e) => {
-    e.preventDefault();
-    if (!backfillDates) return;
-    
-    // Parse dates (comma or newline separated)
-    const dates = backfillDates
-      .split(/[,\n]/)
-      .map(d => d.trim())
-      .filter(d => d);
-    
-    try {
-      const response = await axios.post(
-        `${API}/cycle/backfill`,
-        dates,
-        {
-          params: { partner_id: partner.id },
-          withCredentials: true
-        }
-      );
-      toast.success(response.data.message);
-      setBackfillDates('');
-      setShowBackfill(false);
-      await loadCycleHistory();
-      await loadCycleInfo(partner.id);
-    } catch (error) {
-      console.error('Error backfilling periods:', error);
-      toast.error('Failed to add historical periods');
-    }
-  };
-
   const getPhaseColor = (phase) => {
     switch (phase) {
       case 'Menstrual':
