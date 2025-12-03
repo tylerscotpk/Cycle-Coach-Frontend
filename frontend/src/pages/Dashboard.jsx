@@ -14,7 +14,11 @@ import { toast } from 'sonner';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const Dashboard = ({ user, setUser }) => {
+import { LocalStorage } from '../utils/localStorageManager';
+import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod } from '../utils/cycleCalculations';
+
+const Dashboard = () => {
+  // LOCAL-ONLY MODE: No user prop needed
   const [partner, setPartner] = useState(null);
   const [cycleInfo, setCycleInfo] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
