@@ -263,74 +263,68 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogPeriod = async (e) => {
+  const handleLogPeriod = (e) => {
     e.preventDefault();
     if (!logPeriodDate || !partner) return;
     
     try {
-      console.log('Logging period with date:', logPeriodDate);
-      const response = await axios.post(
-        `${API}/cycle/log-period`,
-        null,
-        {
-          params: {
-            partner_id: partner.id,
-            start_date: logPeriodDate
-          },
-          withCredentials: true
-        }
-      );
+      // LOCAL-ONLY: Add cycle entry to localStorage
+      LocalStorage.addCycleEntry({
+        cycle_start_date: logPeriodDate,
+        cycle_length: null,
+        status: 'current'
+      });
       
-      console.log('Period logged, response:', response.data);
-      toast.success(`Period logged! Previous cycle: ${response.data.previous_cycle_length} days`);
+      toast.success('Period logged!');
       setLogPeriodDate('');
-      setShowCycleHistory(false);
       
       // Reload cycle info
-      await loadCycleInfo(partner.id);
-      await loadCycleHistory();
+      loadCycleHistory();
+      loadCycleInfoLocal(partner);
     } catch (error) {
       console.error('Error logging period:', error);
       toast.error('Failed to log period');
     }
   };
 
-  const loadCycleHistory = async () => {
+  const loadCycleHistory = () => {
     try {
-      const response = await axios.get(`${API}/cycle/history?partner_id=${partner.id}`, { withCredentials: true });
-      setCycleHistory(response.data);
+      const history = LocalStorage.getCycleHistory();
+      const recalculated = recalculateCycleLengths(history);
+      const stats = calculateStatistics(recalculated);
+      
+      let prediction = { next_period_date: null, days_until_next: 0 };
+      if (recalculated.length > 0) {
+        prediction = predictNextPeriod(
+          recalculated[recalculated.length - 1].cycle_start_date,
+          stats.average_length
+        );
+      }
+      
+      setCycleHistory({
+        history: recalculated.reverse(), // Most recent first
+        statistics: stats,
+        prediction: prediction
+      });
     } catch (error) {
       console.error('Error loading cycle history:', error);
     }
   };
 
-  const handleDeleteCycle = async (cycleId) => {
+  const handleDeleteCycle = (cycleId) => {
     if (!confirm('Delete this cycle entry? This will recalculate your cycle statistics.')) return;
     
     try {
-      console.log('Deleting cycle:', cycleId, 'for partner:', partner.id);
-      
-      // Optimistically remove from UI
-      setCycleHistory(prev => ({
-        ...prev,
-        history: prev.history.filter(c => c.id !== cycleId)
-      }));
-      
-      const response = await axios.delete(`${API}/cycle/history/${cycleId}`, {
-        params: { partner_id: partner.id },
-        withCredentials: true
-      });
-      console.log('Delete response:', response.data);
+      // LOCAL-ONLY: Remove from localStorage
+      LocalStorage.deleteCycleEntry(cycleId);
       toast.success('Cycle entry deleted');
       
-      // Reload fresh data
-      await loadCycleHistory();
-      await loadCycleInfo(partner.id);
+      // Reload
+      loadCycleHistory();
+      loadCycleInfoLocal(partner);
     } catch (error) {
       console.error('Error deleting cycle:', error);
-      toast.error(`Failed to delete: ${error.response?.data?.detail || error.message}`);
-      // Reload to restore correct state
-      await loadCycleHistory();
+      toast.error('Failed to delete');
     }
   };
 
