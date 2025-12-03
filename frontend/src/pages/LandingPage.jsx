@@ -37,14 +37,24 @@ const LandingPage = () => {
             Bros, we need to talk. Your girl's cycle is NOT a mystery. This is your cheat code to knowing EXACTLY when to bring flowers, when to shut up, and when she's DTF.
           </p>
 
+          {/* Privacy-First Badge */}
+          <div className="flex justify-center gap-4 mb-8">
+            <div className="bg-green-500/20 px-4 py-2 rounded-full border border-green-500/30">
+              <span className="text-green-300 text-sm font-medium">🔒 100% Private - Data Stays on YOUR Device</span>
+            </div>
+            <div className="bg-cyan-500/20 px-4 py-2 rounded-full border border-cyan-500/30">
+              <span className="text-cyan-300 text-sm font-medium">✨ No Account Needed</span>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
             <Button
-              data-testid="login-button"
-              onClick={handleLogin}
+              data-testid="get-started-button"
+              onClick={handleGetStarted}
               size="lg"
               className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70"
             >
-              Get Started - It's Free
+              Start Using (No Login Required)
             </Button>
           </div>
 
