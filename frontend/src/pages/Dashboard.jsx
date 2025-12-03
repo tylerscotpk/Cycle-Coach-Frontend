@@ -155,13 +155,41 @@ const Dashboard = () => {
     }
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!chatMessage.trim() || !partner) return;
+    if (!chatMessage.trim()) return;
 
-    // LOCAL-ONLY: AI chat disabled for now (requires backend)
-    toast.info('AI Wingman coming soon in local-only mode!');
+    const userMsg = chatMessage;
     setChatMessage('');
+
+    // Add user message to history immediately
+    setChatHistory(prev => [...prev, { message: userMsg, response: '...' }]);
+
+    try {
+      // ANONYMOUS CHAT: No user ID, ephemeral only
+      const response = await axios.post(
+        `${API}/chat/anonymous`,
+        {
+          message: userMsg,
+          cycle_day: cycleInfo?.cycle_day,
+          phase: cycleInfo?.phase
+        }
+      );
+
+      // Update with AI response
+      setChatHistory(prev => {
+        const newHistory = [...prev];
+        newHistory[newHistory.length - 1] = {
+          message: userMsg,
+          response: response.data.response
+        };
+        return newHistory;
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+      setChatHistory(prev => prev.slice(0, -1));
+    }
   };
 
   const updatePreference = async (key, value) => {
