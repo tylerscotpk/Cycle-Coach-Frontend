@@ -146,7 +146,7 @@ export const calculateStatistics = (history) => {
   }
   
   const lengths = completed.map(h => h.cycle_length);
-  const average = Math.floor(lengths.reduce((a, b) => a + b, 0) / lengths.length);
+  const average = Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
   const min = Math.min(...lengths);
   const max = Math.max(...lengths);
   
