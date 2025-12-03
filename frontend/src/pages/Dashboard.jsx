@@ -192,27 +192,21 @@ const Dashboard = () => {
     }
   };
 
-  const updatePreference = async (key, value) => {
+  const updatePreference = (key, value) => {
     if (!value.trim() || !partner) return;
     
     try {
-      await axios.post(
-        `${API}/preferences`,
-        { key, value },
-        { 
-          params: { partner_id: partner.id },
-          withCredentials: true 
-        }
-      );
-      
-      // Update local partner state
-      setPartner(prev => ({
-        ...prev,
+      // LOCAL-ONLY: Save to localStorage
+      const updatedPartner = {
+        ...partner,
         preferences: {
-          ...prev.preferences,
+          ...partner.preferences,
           [key]: value
         }
-      }));
+      };
+      
+      LocalStorage.savePartnerProfile(updatedPartner);
+      setPartner(updatedPartner);
       
       toast.success('Preference saved!');
     } catch (error) {
