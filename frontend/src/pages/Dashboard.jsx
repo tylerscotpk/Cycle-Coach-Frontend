@@ -175,50 +175,13 @@ const Dashboard = () => {
     }
   };
 
-  const handleSendMessage = async (e) => {
+  const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatMessage.trim() || !partner) return;
 
-    const userMsg = chatMessage;
+    // LOCAL-ONLY: AI chat disabled for now (requires backend)
+    toast.info('AI Wingman coming soon in local-only mode!');
     setChatMessage('');
-
-    // Add user message to history immediately
-    setChatHistory(prev => [...prev, { message: userMsg, response: '...' }]);
-
-    try {
-      const response = await axios.post(
-        `${API}/chat`,
-        {
-          message: userMsg,
-          partner_id: partner.id
-        },
-        { withCredentials: true }
-      );
-
-      // Update with AI response
-      setChatHistory(prev => {
-        const newHistory = [...prev];
-        newHistory[newHistory.length - 1] = {
-          message: userMsg,
-          response: response.data.response
-        };
-        return newHistory;
-      });
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
-      setChatHistory(prev => prev.slice(0, -1));
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
-      setUser(null);
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
   };
 
   const updatePreference = async (key, value) => {
