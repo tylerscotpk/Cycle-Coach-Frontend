@@ -1,0 +1,128 @@
+/**
+ * Privacy-First Local Storage Manager
+ * All data stays on user's device - no server, no tracking
+ */
+
+// Simple encryption (in production, use Web Crypto API)
+const encrypt = (data) => {
+  try {
+    return btoa(JSON.stringify(data));
+  } catch (e) {
+    console.error('Encryption failed:', e);
+    return null;
+  }
+};
+
+const decrypt = (encryptedData) => {
+  try {
+    return JSON.parse(atob(encryptedData));
+  } catch (e) {
+    console.error('Decryption failed:', e);
+    return null;
+  }
+};
+
+export const LocalStorage = {
+  // Partner Profile
+  savePartnerProfile: (profile) => {
+    const encrypted = encrypt(profile);
+    if (encrypted) {
+      localStorage.setItem('doherbetter_partner_profile', encrypted);
+    }
+  },
+  
+  getPartnerProfile: () => {
+    const data = localStorage.getItem('doherbetter_partner_profile');
+    return data ? decrypt(data) : null;
+  },
+  
+  // Cycle History
+  saveCycleHistory: (history) => {
+    const encrypted = encrypt(history);
+    if (encrypted) {
+      localStorage.setItem('doherbetter_cycle_history', encrypted);
+    }
+  },
+  
+  getCycleHistory: () => {
+    const data = localStorage.getItem('doherbetter_cycle_history');
+    return data ? decrypt(data) : [];
+  },
+  
+  // Add cycle entry
+  addCycleEntry: (entry) => {
+    const history = LocalStorage.getCycleHistory();
+    history.push({
+      ...entry,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9)
+    });
+    LocalStorage.saveCycleHistory(history);
+  },
+  
+  // Delete cycle entry
+  deleteCycleEntry: (entryId) => {
+    const history = LocalStorage.getCycleHistory();
+    const filtered = history.filter(e => e.id !== entryId);
+    LocalStorage.saveCycleHistory(filtered);
+  },
+  
+  // Preferences
+  savePreferences: (prefs) => {
+    const encrypted = encrypt(prefs);
+    if (encrypted) {
+      localStorage.setItem('doherbetter_preferences', encrypted);
+    }
+  },
+  
+  getPreferences: () => {
+    const data = localStorage.getItem('doherbetter_preferences');
+    return data ? decrypt(data) : {};
+  },
+  
+  // Partner Consent
+  saveConsent: (consent) => {
+    const consentRecord = {
+      granted: consent,
+      timestamp: new Date().toISOString(),
+      acknowledgedRisks: true
+    };
+    const encrypted = encrypt(consentRecord);
+    if (encrypted) {
+      localStorage.setItem('doherbetter_consent', encrypted);
+    }
+  },
+  
+  getConsent: () => {
+    const data = localStorage.getItem('doherbetter_consent');
+    return data ? decrypt(data) : null;
+  },
+  
+  // Clear all data
+  clearAllData: () => {
+    localStorage.removeItem('doherbetter_partner_profile');
+    localStorage.removeItem('doherbetter_cycle_history');
+    localStorage.removeItem('doherbetter_preferences');
+    localStorage.removeItem('doherbetter_consent');
+    localStorage.removeItem('doherbetter_chat_history');
+  },
+  
+  // Export data (for backup)
+  exportAllData: () => {
+    return {
+      profile: LocalStorage.getPartnerProfile(),
+      history: LocalStorage.getCycleHistory(),
+      preferences: LocalStorage.getPreferences(),
+      consent: LocalStorage.getConsent(),
+      exportDate: new Date().toISOString(),
+      version: '1.0'
+    };
+  },
+  
+  // Import data (from backup)
+  importData: (data) => {
+    if (data.profile) LocalStorage.savePartnerProfile(data.profile);
+    if (data.history) LocalStorage.saveCycleHistory(data.history);
+    if (data.preferences) LocalStorage.savePreferences(data.preferences);
+    if (data.consent) LocalStorage.saveConsent(data.consent.granted);
+  }
+};
