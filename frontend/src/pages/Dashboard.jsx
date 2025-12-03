@@ -88,33 +88,42 @@ const Dashboard = () => {
     }
   }, [partner, cycleInfo]);
 
-  const loadData = async () => {
+  const loadData = () => {
     try {
-      // Check if partner profile exists
-      try {
-        const partnerRes = await axios.get(`${API}/partner`, { withCredentials: true });
-        setPartner(partnerRes.data);
-        await loadCycleInfo(partnerRes.data.id);
-        await loadChatHistory(partnerRes.data.id);
-        await loadFunFact(partnerRes.data.id);
-      } catch (err) {
-        console.log('No partner profile yet');
+      // LOCAL-ONLY: Load from localStorage
+      const profile = LocalStorage.getPartnerProfile();
+      if (profile) {
+        setPartner(profile);
+        loadCycleInfoLocal(profile);
       }
-
-      // Load resources
-      try {
-        const nextResources = await axios.get(`${API}/resources/next?partner_id=${partnerRes.data.id}&limit=3`, { withCredentials: true });
-        setCurrentResources(nextResources.data || []);
-      } catch (err) {
-        console.log('No more unread resources');
-      }
-      
-      const bookmarked = await axios.get(`${API}/resources/bookmarked`, { withCredentials: true });
-      setBookmarkedResources(bookmarked.data);
+      // No chat history, resources, or fun facts in local mode (for now)
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCycleInfoLocal = (profile) => {
+    try {
+      const cycleDay = calculateCycleDay(profile.cycleStartDate, profile.cycleLength || 28);
+      const phaseInfo = getPhaseInfo(cycleDay);
+      setCycleInfo({
+        cycle_day: cycleDay,
+        phase: phaseInfo.phase,
+        phase_number: phaseInfo.phase_number,
+        phase_day: phaseInfo.phase_day,
+        description: phaseInfo.description,
+        tips: phaseInfo.tips
+      });
+      
+      // Set a random fun fact from phase tips
+      if (phaseInfo.tips && phaseInfo.tips.length > 0) {
+        const randomTip = phaseInfo.tips[Math.floor(Math.random() * phaseInfo.tips.length)];
+        setFunFact({ fact: randomTip, phase: phaseInfo.phase });
+      }
+    } catch (error) {
+      console.error('Error calculating cycle info:', error);
     }
   };
 
