@@ -8,20 +8,11 @@ const API = `${BACKEND_URL}/api`;
 const AUTH_BASE_URL = process.env.REACT_APP_AUTH_URL || 'https://auth.emergentagent.com';
 const AUTH_URL = `${AUTH_BASE_URL}/?redirect=${encodeURIComponent(window.location.origin)}`;
 
-const LandingPage = ({ setUser }) => {
-  const [processing, setProcessing] = useState(false);
-
-  const handleLogin = () => {
-    window.location.href = AUTH_URL;
+const LandingPage = () => {
+  const handleGetStarted = () => {
+    // LOCAL-ONLY MODE: No authentication, go straight to app
+    window.location.href = '/';
   };
-
-  if (processing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-white text-xl">Authenticating...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
