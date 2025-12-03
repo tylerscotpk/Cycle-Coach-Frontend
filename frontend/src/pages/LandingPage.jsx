@@ -74,9 +74,10 @@ const LandingPage = () => {
                   </p>
                   <ul className="list-disc list-inside space-y-2 ml-2">
                     <li><strong className="text-white">Get Partner Consent:</strong> Your partner MUST consent to you tracking their cycle data. Tracking without consent is a violation of privacy and trust.</li>
-                    <li><strong className="text-white">Legal Risks:</strong> In states with restrictive reproductive laws, cycle data can be used as evidence. We cannot protect data from government subpoenas.</li>
-                    <li><strong className="text-white">Data Collection:</strong> We collect your Google account info (email, name) and all cycle/preference data you enter. This data is linked to your identity.</li>
-                    <li><strong className="text-white">AI Processing:</strong> Chat messages are sent to OpenAI for processing. While we anonymize requests, be cautious about sharing identifying details.</li>
+                    <li><strong className="text-white">Privacy-First Design:</strong> All data is stored ONLY on your device. No servers, no accounts, no tracking. You have complete control.</li>
+                    <li><strong className="text-white">No Identity Collection:</strong> We don't collect names, emails, or any personally identifiable information. The app works entirely in your browser.</li>
+                    <li><strong className="text-white">AI Processing:</strong> If you use AI Wingman, messages are sent anonymously to OpenAI. Don't share identifying details in chat.</li>
+                    <li><strong className="text-white">Legal Note:</strong> While your data stays local, be aware of legal risks around reproductive health data in your region.</li>
                   </ul>
                   <p className="text-orange-200 font-semibold pt-2">
                     By using this app, you acknowledge these risks and confirm you have your partner's explicit consent.
