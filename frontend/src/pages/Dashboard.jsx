@@ -127,31 +127,11 @@ const Dashboard = () => {
     }
   };
 
-  const loadFunFact = async (partnerId) => {
-    try {
-      const response = await axios.get(`${API}/fun-fact?partner_id=${partnerId}`, { withCredentials: true });
-      setFunFact(response.data);
-    } catch (error) {
-      console.error('Error loading fun fact:', error);
-    }
-  };
-
-  const loadCycleInfo = async (partnerId) => {
-    try {
-      const response = await axios.get(`${API}/cycle/current?partner_id=${partnerId}`, { withCredentials: true });
-      setCycleInfo(response.data);
-    } catch (error) {
-      console.error('Error loading cycle info:', error);
-    }
-  };
-
-  const loadChatHistory = async (partnerId) => {
-    try {
-      const response = await axios.get(`${API}/chat/history?partner_id=${partnerId}`, { withCredentials: true });
-      setChatHistory(response.data.reverse());
-    } catch (error) {
-      console.error('Error loading chat history:', error);
-    }
+  // LOCAL-ONLY: Refresh fun fact from current phase tips
+  const loadFunFact = () => {
+    if (!cycleInfo || !cycleInfo.tips) return;
+    const randomTip = cycleInfo.tips[Math.floor(Math.random() * cycleInfo.tips.length)];
+    setFunFact({ fact: randomTip, phase: cycleInfo.phase });
   };
 
   const handleCreatePartner = (e) => {
