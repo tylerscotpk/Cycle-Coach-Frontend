@@ -1353,6 +1353,64 @@ async def seed_resources():
     
     return {"message": f"Seeded {len(resources)} resources"}
 
+# ============================================
+# ANONYMOUS CHAT ENDPOINT (Privacy-First)
+# ============================================
+
+class AnonymousChatRequest(BaseModel):
+    message: str
+    cycle_day: Optional[int] = None
+    phase: Optional[str] = None
+
+@api_router.post("/chat/anonymous")
+async def anonymous_chat(request: AnonymousChatRequest):
+    """
+    Privacy-first anonymous chat endpoint
+    - No user authentication required
+    - No conversation persistence
+    - Truly anonymous session IDs
+    - No logging of user data
+    """
+    
+    try:
+        # Generate truly random anonymous session (not linked to any user)
+        import secrets
+        anonymous_session = f"anon_{secrets.token_hex(8)}"
+        
+        # Build context without any identifying information
+        context = ""
+        if request.cycle_day and request.phase:
+            context = f"Current cycle context: Day {request.cycle_day} - {request.phase} phase\n\n"
+        
+        # Create ephemeral AI chat (no history persistence)
+        system_prompt = f"""You're the ultimate relationship wingman - like texting your wise older bro at 2am.
+
+{context}Keep advice:
+- Short and direct (3-5 sentences max)
+- Actionable and specific
+- Humorous and relatable
+- Bold key points
+
+NO identifying details. Just give straight-up advice."""
+
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=anonymous_session,
+            system_message=system_prompt
+        ).with_model("openai", "gpt-5")
+        
+        # Send message and get response
+        response = await chat.send_message(UserMessage(text=request.message))
+        
+        # Do NOT save to database - ephemeral only
+        # Do NOT log user message or response
+        
+        return {"response": response}
+        
+    except Exception as e:
+        logging.error(f"Anonymous chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to process chat message")
+
 # Include the router in the main app
 app.include_router(api_router)
 
