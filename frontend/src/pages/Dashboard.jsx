@@ -610,7 +610,7 @@ const Dashboard = () => {
                   <p className="text-white text-lg leading-relaxed">{funFact.fact}</p>
                 </div>
                 <Button
-                  onClick={() => loadFunFact(partner.id)}
+                  onClick={loadFunFact}
                   variant="ghost"
                   size="sm"
                   className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
