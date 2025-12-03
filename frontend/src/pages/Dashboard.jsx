@@ -154,20 +154,20 @@ const Dashboard = () => {
     }
   };
 
-  const handleCreatePartner = async (e) => {
+  const handleCreatePartner = (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        `${API}/partner`,
-        {
-          partner_name: partnerName,
-          cycle_start_date: cycleStartDate,
-          cycle_length: 28
-        },
-        { withCredentials: true }
-      );
-      setPartner(response.data);
-      await loadCycleInfo(response.data.id);
+      // LOCAL-ONLY: Save to localStorage
+      const newPartner = {
+        id: Date.now().toString(),
+        partnerName: partnerName,
+        cycleStartDate: cycleStartDate,
+        cycleLength: 28,
+        createdAt: new Date().toISOString()
+      };
+      LocalStorage.savePartnerProfile(newPartner);
+      setPartner(newPartner);
+      loadCycleInfoLocal(newPartner);
       toast.success('Partner profile created!');
     } catch (error) {
       console.error('Error creating partner:', error);
