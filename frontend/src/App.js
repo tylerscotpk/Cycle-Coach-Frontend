@@ -1,53 +1,51 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import axios from "axios";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
+import PrivacySettings from "@/pages/PrivacySettings";
+import PartnerConsent from "@/components/PartnerConsent";
 import { Toaster } from "@/components/ui/sonner";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { LocalStorage } from "@/utils/localStorageManager";
 
 function App() {
-  const [user, setUser] = useState(null);
+  // LOCAL-ONLY MODE: No server authentication
+  const [hasConsent, setHasConsent] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    handleAuthFlow();
+    checkLocalConsent();
   }, []);
 
-  const handleAuthFlow = async () => {
-    // Check for session_id in URL hash first
-    const hash = window.location.hash;
-    if (hash.includes('session_id=')) {
-      const sessionId = hash.split('session_id=')[1].split('&')[0];
-      await processSession(sessionId);
-    } else {
-      await checkAuth();
-    }
+  const checkLocalConsent = () => {
+    const consent = LocalStorage.getConsent();
+    setHasConsent(consent?.granted === true);
+    setLoading(false);
   };
 
-  const processSession = async (sessionId) => {
-    try {
-      const response = await axios.post(
-        `${API}/auth/process-session`,
-        null,
-        {
-          params: { session_id: sessionId },
-          withCredentials: true
-        }
-      );
-      setUser(response.data.user);
-      window.location.hash = ''; // Clear hash
-      setLoading(false);
-    } catch (error) {
-      console.error('Auth error:', error);
-      setLoading(false);
-    }
+  const handleConsentGranted = () => {
+    setHasConsent(true);
   };
 
-  const checkAuth = async () => {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show consent screen if not granted
+  if (!hasConsent) {
+    return (
+      <>
+        <PartnerConsent onConsentGranted={handleConsentGranted} />
+        <Toaster />
+      </>
+    );
+  }
+
+  const oldCheckAuth = async () => {
     try {
       const response = await axios.get(`${API}/auth/me`, { withCredentials: true });
       setUser(response.data);
