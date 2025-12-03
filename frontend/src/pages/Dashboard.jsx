@@ -81,12 +81,7 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Force scroll when data loads
-  useEffect(() => {
-    if (partner && cycleInfo) {
-      setTimeout(() => window.scrollTo(0, 0), 0);
-    }
-  }, [partner, cycleInfo]);
+  // Removed: was causing scroll-to-top on every partner state update (including preferences)
 
   const loadData = () => {
     try {
