@@ -341,8 +341,12 @@ const Dashboard = () => {
           {/* Header */}
           <div className="flex justify-between items-center mb-12">
             <h1 className="text-3xl font-bold text-white">Do Her Better</h1>
-            <Button onClick={handleLogout} variant="outline" className="border-slate-600 text-slate-300" data-testid="logout-button">
-              Logout
+            <Button
+              onClick={() => window.location.href = '/privacy'}
+              variant="outline"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              🔒 Privacy & Data
             </Button>
           </div>
 
