@@ -143,6 +143,7 @@ const Dashboard = () => {
         partnerName: partnerName,
         cycleStartDate: cycleStartDate,
         cycleLength: 28,
+        preferences: {}, // Initialize empty preferences object
         createdAt: new Date().toISOString()
       };
       LocalStorage.savePartnerProfile(newPartner);
