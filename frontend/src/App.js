@@ -45,31 +45,14 @@ function App() {
     );
   }
 
-  const oldCheckAuth = async () => {
-    try {
-      const response = await axios.get(`${API}/auth/me`, { withCredentials: true });
-      setUser(response.data);
-    } catch (error) {
-      console.log("Not authenticated");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
-
+  // LOCAL-ONLY MODE: Simple routing, no auth required
   return (
     <div className="App">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LandingPage setUser={setUser} />} />
-          <Route path="/dashboard" element={user ? <Dashboard user={user} setUser={setUser} /> : <Navigate to="/" />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/privacy" element={<PrivacySettings />} />
+          <Route path="/landing" element={<LandingPage />} />
         </Routes>
       </BrowserRouter>
       <Toaster />
