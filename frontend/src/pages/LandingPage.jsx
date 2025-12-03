@@ -157,11 +157,11 @@ const LandingPage = () => {
           <p className="text-slate-300 mb-8 text-lg">Join guys who went from clueless to clutch. Your relationship will thank you.</p>
           <Button
             data-testid="cta-get-started-button"
-            onClick={handleLogin}
+            onClick={handleGetStarted}
             size="lg"
             className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-lg shadow-cyan-500/50"
           >
-            Get Started Now
+            Start Using - No Account Needed
           </Button>
         </div>
       </div>
