@@ -468,15 +468,15 @@ const Dashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white" data-testid="dashboard-title">Do Her Better</h1>
-            <p className="text-slate-400 mt-1">Tracking {partner.partner_name}'s cycle</p>
+            <p className="text-slate-400 mt-1">Tracking {partner.partnerName}'s cycle</p>
           </div>
           <div className="flex items-center gap-4">
-            <Avatar>
-              <AvatarImage src={user.picture} />
-              <AvatarFallback className="bg-cyan-500 text-white">{user.name[0]}</AvatarFallback>
-            </Avatar>
-            <Button onClick={handleLogout} variant="outline" className="border-slate-600 text-slate-300" data-testid="logout-button">
-              Logout
+            <Button
+              onClick={() => window.location.href = '/privacy'}
+              variant="outline"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              🔒 Privacy & Data
             </Button>
           </div>
         </div>
