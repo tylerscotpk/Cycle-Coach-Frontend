@@ -4,7 +4,31 @@
  */
 
 export const calculateCycleDay = (startDate, cycleLength = 28) => {
-  const start = new Date(startDate);
+  // Parse date parts manually to avoid timezone issues
+  let year, month, day;
+  
+  // Handle different formats
+  if (startDate.includes('-')) {
+    if (startDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+      // YYYY-MM-DD
+      [year, month, day] = startDate.split('-').map(Number);
+    } else {
+      // MM-DD-YYYY
+      [month, day, year] = startDate.split('-').map(Number);
+    }
+  } else if (startDate.includes('/')) {
+    // MM/DD/YYYY
+    [month, day, year] = startDate.split('/').map(Number);
+  } else {
+    // Fallback to Date constructor
+    const start = new Date(startDate);
+    year = start.getFullYear();
+    month = start.getMonth() + 1;
+    day = start.getDate();
+  }
+  
+  // Create date using local timezone (not UTC)
+  const start = new Date(year, month - 1, day);
   const today = new Date();
   
   // Reset time to midnight for accurate day calculation
@@ -13,12 +37,20 @@ export const calculateCycleDay = (startDate, cycleLength = 28) => {
   
   const daysSinceStart = Math.floor((today - start) / (1000 * 60 * 60 * 24));
   
+  console.log('calculateCycleDay - start date string:', startDate);
+  console.log('calculateCycleDay - parsed as:', start.toDateString());
+  console.log('calculateCycleDay - today:', today.toDateString());
+  console.log('calculateCycleDay - days since start:', daysSinceStart);
+  
   // If start date is in the future, return 1 (shouldn't happen with validation)
   if (daysSinceStart < 0) {
     return 1;
   }
   
-  return (daysSinceStart % cycleLength) + 1;
+  const result = (daysSinceStart % cycleLength) + 1;
+  console.log('calculateCycleDay - result:', result);
+  
+  return result;
 };
 
 export const getPhaseInfo = (cycleDay) => {
