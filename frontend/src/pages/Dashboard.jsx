@@ -101,7 +101,12 @@ const Dashboard = () => {
 
   const loadCycleInfoLocal = (profile) => {
     try {
+      console.log('Loading cycle info from profile:', profile);
+      console.log('Cycle start date:', profile.cycleStartDate);
+      
       const cycleDay = calculateCycleDay(profile.cycleStartDate, profile.cycleLength || 28);
+      console.log('Calculated cycle day:', cycleDay);
+      
       const phaseInfo = getPhaseInfo(cycleDay);
       setCycleInfo({
         cycle_day: cycleDay,
