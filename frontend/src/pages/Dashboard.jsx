@@ -292,14 +292,22 @@ const Dashboard = () => {
       const history = LocalStorage.getCycleHistory();
       const recalculated = recalculateCycleLengths(history);
       
+      console.log('After logging period:');
+      console.log('- Total cycles:', recalculated.length);
+      console.log('- Recalculated history:', recalculated);
+      
       if (recalculated.length > 0) {
         const mostRecentCycle = recalculated[recalculated.length - 1];
+        console.log('- Most recent cycle:', mostRecentCycle);
+        console.log('- Most recent date:', mostRecentCycle.cycle_start_date);
+        
         const updatedPartner = {
           ...partner,
           cycleStartDate: mostRecentCycle.cycle_start_date
         };
         LocalStorage.savePartnerProfile(updatedPartner);
         setPartner(updatedPartner);
+        console.log('- Updated partner cycleStartDate to:', updatedPartner.cycleStartDate);
         loadCycleInfoLocal(updatedPartner);
       }
       
