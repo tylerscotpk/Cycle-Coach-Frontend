@@ -6,7 +6,18 @@
 export const calculateCycleDay = (startDate, cycleLength = 28) => {
   const start = new Date(startDate);
   const today = new Date();
+  
+  // Reset time to midnight for accurate day calculation
+  start.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  
   const daysSinceStart = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  
+  // If start date is in the future, return 1 (shouldn't happen with validation)
+  if (daysSinceStart < 0) {
+    return 1;
+  }
+  
   return (daysSinceStart % cycleLength) + 1;
 };
 
