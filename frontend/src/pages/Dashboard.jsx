@@ -283,12 +283,26 @@ const Dashboard = () => {
         status: 'current'
       });
       
+      // Update partner profile with most recent cycle start date
+      const history = LocalStorage.getCycleHistory();
+      const recalculated = recalculateCycleLengths(history);
+      
+      if (recalculated.length > 0) {
+        const mostRecentCycle = recalculated[recalculated.length - 1];
+        const updatedPartner = {
+          ...partner,
+          cycleStartDate: mostRecentCycle.cycle_start_date
+        };
+        LocalStorage.savePartnerProfile(updatedPartner);
+        setPartner(updatedPartner);
+        loadCycleInfoLocal(updatedPartner);
+      }
+      
       toast.success('Period logged!');
       setLogPeriodDate('');
       
-      // Reload cycle info
+      // Reload cycle history display
       loadCycleHistory();
-      loadCycleInfoLocal(partner);
     } catch (error) {
       console.error('Error logging period:', error);
       toast.error('Failed to log period');
