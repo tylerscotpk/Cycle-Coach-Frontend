@@ -88,6 +88,20 @@ const Dashboard = () => {
       // LOCAL-ONLY: Load from localStorage
       const profile = LocalStorage.getPartnerProfile();
       if (profile) {
+        // Sync with most recent cycle from history
+        const history = LocalStorage.getCycleHistory();
+        if (history && history.length > 0) {
+          const recalculated = recalculateCycleLengths(history);
+          const mostRecentCycle = recalculated[recalculated.length - 1];
+          
+          // Update profile if the most recent cycle is different
+          if (mostRecentCycle && profile.cycleStartDate !== mostRecentCycle.cycle_start_date) {
+            console.log('Syncing profile with most recent cycle:', mostRecentCycle.cycle_start_date);
+            profile.cycleStartDate = mostRecentCycle.cycle_start_date;
+            LocalStorage.savePartnerProfile(profile);
+          }
+        }
+        
         setPartner(profile);
         loadCycleInfoLocal(profile);
       }
