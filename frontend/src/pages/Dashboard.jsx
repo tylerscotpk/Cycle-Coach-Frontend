@@ -265,6 +265,16 @@ const Dashboard = () => {
     e.preventDefault();
     if (!logPeriodDate || !partner) return;
     
+    // Validate: don't allow future dates
+    const selectedDate = new Date(logPeriodDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate > today) {
+      toast.error('Cannot log a future date');
+      return;
+    }
+    
     try {
       // LOCAL-ONLY: Add cycle entry to localStorage
       LocalStorage.addCycleEntry({
