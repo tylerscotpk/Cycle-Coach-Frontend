@@ -260,17 +260,17 @@ const Dashboard = () => {
     }
   };
 
-  const handleArchiveResource = async (resourceId) => {
+  const handleArchiveResource = (resourceId) => {
     if (!partner) return;
     
     try {
-      await axios.post(`${API}/resources/${resourceId}/archive`, {}, { withCredentials: true });
-      toast.success('Resource archived!');
-      // Remove from current resources
+      // LOCAL-ONLY: Archive by removing from current resources
       setCurrentResources(prev => prev.filter(r => r.id !== resourceId));
-      // Load more if needed
-      if (currentResources.length <= 1) {
-        await loadNextResources();
+      toast.success('Resource archived!');
+      
+      // If we're running low on resources, load more
+      if (currentResources.length <= 2) {
+        loadMoreResources();
       }
     } catch (error) {
       console.error('Error archiving resource:', error);
@@ -278,21 +278,26 @@ const Dashboard = () => {
     }
   };
 
-  const handleBookmarkResource = async (resourceId) => {
+  const handleBookmarkResource = (resourceId) => {
     if (!partner) return;
     
     try {
-      await axios.post(`${API}/resources/${resourceId}/bookmark`, {}, { withCredentials: true });
-      toast.success('Resource bookmarked!');
       const bookmarkedResource = currentResources.find(r => r.id === resourceId);
       if (bookmarkedResource) {
-        setBookmarkedResources(prev => [...prev, bookmarkedResource]);
+        // Check if already bookmarked
+        if (!bookmarkedResources.find(r => r.id === resourceId)) {
+          setBookmarkedResources(prev => [...prev, bookmarkedResource]);
+          toast.success('Resource bookmarked!');
+        } else {
+          toast.info('Already bookmarked!');
+        }
       }
       // Remove from current resources
       setCurrentResources(prev => prev.filter(r => r.id !== resourceId));
-      // Load more if needed
-      if (currentResources.length <= 1) {
-        await loadNextResources();
+      
+      // If we're running low on resources, load more
+      if (currentResources.length <= 2) {
+        loadMoreResources();
       }
     } catch (error) {
       console.error('Error bookmarking resource:', error);
@@ -300,14 +305,36 @@ const Dashboard = () => {
     }
   };
 
-  const loadNextResources = async () => {
+  const loadMoreResources = () => {
+    if (!cycleInfo) return;
+    
     try {
-      const response = await axios.get(`${API}/resources/next?partner_id=${partner.id}&limit=3`, { withCredentials: true });
-      setCurrentResources(response.data || []);
+      const nextPhase = getNextPhase(cycleInfo.phase);
+      const relevantResources = getRelevantResources(cycleInfo.phase, nextPhase);
+      
+      // Get IDs of resources already shown or bookmarked
+      const usedIds = new Set([
+        ...currentResources.map(r => r.id),
+        ...bookmarkedResources.map(r => r.id)
+      ]);
+      
+      // Find resources not yet shown
+      const allAvailable = [
+        ...relevantResources.current,
+        ...relevantResources.upcoming,
+        ...relevantResources.general
+      ].filter(r => !usedIds.has(r.id));
+      
+      if (allAvailable.length > 0) {
+        setCurrentResources(prev => [...prev, ...allAvailable.slice(0, 3)]);
+      }
     } catch (error) {
-      console.error('Error loading next resources:', error);
-      setCurrentResources([]);
+      console.error('Error loading more resources:', error);
     }
+  };
+
+  const loadNextResources = () => {
+    loadMoreResources();
   };
 
   const handleLogPeriod = (e) => {
