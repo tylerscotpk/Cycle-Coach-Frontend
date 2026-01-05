@@ -1774,6 +1774,134 @@ async def reject_trial_request(email: str):
     
     return {"status": "rejected", "email": email}
 
+class GrantKeyRequest(BaseModel):
+    email: str
+    key_type: str  # 'lifetime' or 'yearly'
+
+@api_router.post("/admin/grant-key")
+async def grant_key(request: GrantKeyRequest):
+    """Grant a lifetime or yearly key to a user (for approved testers after trial)"""
+    email = request.email.lower().strip()
+    key_type = request.key_type.lower()
+    
+    if key_type not in ['lifetime', 'yearly']:
+        raise HTTPException(status_code=400, detail="key_type must be 'lifetime' or 'yearly'")
+    
+    # Generate license key
+    license_key = generate_license_key()
+    while await db.license_keys.find_one({"license_key": license_key}):
+        license_key = generate_license_key()
+    
+    # Set expiration based on key type
+    expires_at = None
+    if key_type == 'yearly':
+        expires_at = datetime.now(timezone.utc) + timedelta(days=365)
+    # lifetime keys have no expiration (expires_at = None)
+    
+    # Save license to database
+    license_dict = {
+        "id": str(uuid.uuid4()),
+        "license_key": license_key,
+        "customer_email": email,
+        "stripe_session_id": f"admin_grant_{uuid.uuid4()}",
+        "stripe_payment_intent": None,
+        "is_active": True,
+        "is_trial": False,
+        "key_type": key_type,
+        "expires_at": expires_at.isoformat() if expires_at else None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "activation_count": 0
+    }
+    await db.license_keys.insert_one(license_dict)
+    
+    logger.info(f"Granted {key_type} key to {email}: {license_key}")
+    
+    # Send email with the new key
+    email_sent = await send_upgrade_email(email, license_key, key_type)
+    
+    return {
+        "status": "success",
+        "email": email,
+        "license_key": license_key,
+        "key_type": key_type,
+        "expires_at": expires_at.isoformat() if expires_at else "never",
+        "email_sent": email_sent
+    }
+
+@api_router.get("/admin/users")
+async def get_all_users():
+    """Get all users with their license info"""
+    licenses = await db.license_keys.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"users": licenses, "count": len(licenses)}
+
+async def send_upgrade_email(customer_email: str, license_key: str, key_type: str):
+    """Send upgraded license key to customer via Resend"""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured - skipping email")
+        return False
+    
+    duration_text = "lifetime" if key_type == "lifetime" else "one year"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .license-box {{ background: #1e293b; color: #22d3ee; padding: 20px; border-radius: 8px; text-align: center; font-family: monospace; font-size: 24px; letter-spacing: 2px; margin: 20px 0; }}
+            .badge {{ display: inline-block; background: #22d3ee; color: #0f172a; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 15px; }}
+            .footer {{ text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin: 0;">🎁 You've Been Upgraded!</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Thank you for being an amazing tester</p>
+            </div>
+            <div class="content">
+                <div style="text-align: center;">
+                    <span class="badge">{key_type.upper()} ACCESS</span>
+                </div>
+                
+                <p>As a thank you for your valuable feedback during the trial, you've been granted <strong>{duration_text} access</strong> to Cycle Coach!</p>
+                
+                <p>Here's your new license key:</p>
+                
+                <div class="license-box">
+                    {license_key}
+                </div>
+                
+                <p><strong>Important:</strong> This key replaces your trial key. Clear your app data and enter this new key to activate your {duration_text} access.</p>
+                
+                <p>Thank you for helping make Cycle Coach better! 🙏</p>
+            </div>
+            <div class="footer">
+                <p>Cycle Coach - Your relationship game-changer</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [customer_email],
+            "subject": f"🎁 Your Cycle Coach {key_type.title()} Key",
+            "html": html_content
+        }
+        
+        email_result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Upgrade email sent to {customer_email}, email_id: {email_result.get('id')}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send upgrade email: {str(e)}")
+        return False
+
 # ============================================
 # ANONYMOUS CHAT ENDPOINT (Privacy-First)
 # ============================================
