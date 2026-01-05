@@ -1829,12 +1829,17 @@ async def grant_key(request: GrantKeyRequest):
     }
 
 @api_router.get("/admin/users")
-async def get_all_users(archived: bool = False, key_type: Optional[str] = None):
+async def get_all_users(archived: bool = False, cancelled: bool = False, key_type: Optional[str] = None):
     """Get all users with their license info"""
-    query = {"is_archived": True} if archived else {"is_archived": {"$ne": True}}
+    if archived:
+        query = {"is_archived": True}
+    elif cancelled:
+        query = {"is_cancelled": True}
+    else:
+        query = {"is_archived": {"$ne": True}, "is_cancelled": {"$ne": True}}
     
     # Filter by key_type if specified
-    if key_type and not archived:
+    if key_type and not archived and not cancelled:
         if key_type == 'trial':
             # Trial includes both explicit 'trial' and missing key_type (legacy)
             query["$or"] = [{"key_type": "trial"}, {"key_type": {"$exists": False}}, {"key_type": None}]
