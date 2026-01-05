@@ -1555,6 +1555,16 @@ async def validate_license(request: LicenseValidationRequest):
     )
     
     if license_record:
+        # Check if expired
+        expires_at = license_record.get("expires_at")
+        if expires_at:
+            expiry_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+            if datetime.now(timezone.utc) > expiry_date:
+                return LicenseValidationResponse(
+                    valid=False,
+                    message="This license key has expired. Please contact support for a new key."
+                )
+        
         # Check if already activated
         activation_count = license_record.get("activation_count", 0)
         
