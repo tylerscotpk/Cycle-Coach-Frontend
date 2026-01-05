@@ -1474,7 +1474,7 @@ async def stripe_webhook(request: Request):
     
     try:
         # Verify webhook signature if secret is configured
-        if STRIPE_WEBHOOK_SECRET:
+        if STRIPE_WEBHOOK_SECRET and sig_header:
             event = stripe.Webhook.construct_event(
                 payload, sig_header, STRIPE_WEBHOOK_SECRET
             )
@@ -1482,7 +1482,7 @@ async def stripe_webhook(request: Request):
             # For testing without webhook secret
             import json
             event = json.loads(payload)
-            logger.warning("Processing webhook without signature verification (STRIPE_WEBHOOK_SECRET not set)")
+            logger.warning("Processing webhook without signature verification")
         
         event_type = event.get("type") if isinstance(event, dict) else event.type
         
