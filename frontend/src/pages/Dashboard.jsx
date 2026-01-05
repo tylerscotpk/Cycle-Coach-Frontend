@@ -118,11 +118,15 @@ const Dashboard = () => {
 
   const loadStaticResources = (profile) => {
     try {
+      console.log('loadStaticResources called with profile:', profile);
       const cycleDay = calculateCycleDay(profile.cycleStartDate, profile.cycleLength || 28);
       const phaseInfo = getPhaseInfo(cycleDay);
+      console.log('Phase info:', phaseInfo);
       const nextPhase = getNextPhase(phaseInfo.phase);
+      console.log('Next phase:', nextPhase);
       
       const relevantResources = getRelevantResources(phaseInfo.phase, nextPhase);
+      console.log('Relevant resources:', relevantResources);
       
       // Combine current phase resources + some upcoming + general
       const allResources = [
@@ -130,12 +134,15 @@ const Dashboard = () => {
         ...relevantResources.upcoming.slice(0, 2),
         ...relevantResources.general.slice(0, 2)
       ];
+      console.log('All resources combined:', allResources);
       
       // Shuffle slightly for variety but keep phase-matched at top
       const phaseMatched = allResources.filter(r => r.is_phase_match);
       const others = allResources.filter(r => !r.is_phase_match);
       
-      setCurrentResources([...phaseMatched, ...others].slice(0, 6));
+      const finalResources = [...phaseMatched, ...others].slice(0, 6);
+      console.log('Final resources to set:', finalResources);
+      setCurrentResources(finalResources);
     } catch (error) {
       console.error('Error loading resources:', error);
       // Fallback to general resources
