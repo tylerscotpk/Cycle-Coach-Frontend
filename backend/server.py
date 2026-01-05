@@ -29,6 +29,17 @@ db = client[os.environ['DB_NAME']]
 # Emergent LLM Key
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 
+# Stripe Configuration
+STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+stripe.api_key = STRIPE_API_KEY
+
+# Resend Configuration
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'info@cyclecoach.net')
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+
 # Create the main app without a prefix
 app = FastAPI()
 
