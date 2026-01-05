@@ -200,6 +200,7 @@ const Dashboard = () => {
       LocalStorage.savePartnerProfile(newPartner);
       setPartner(newPartner);
       loadCycleInfoLocal(newPartner);
+      loadStaticResources(newPartner);
       toast.success('Partner profile created!');
     } catch (error) {
       console.error('Error creating partner:', error);
