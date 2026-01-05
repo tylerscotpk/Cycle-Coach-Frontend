@@ -1829,10 +1829,69 @@ async def grant_key(request: GrantKeyRequest):
     }
 
 @api_router.get("/admin/users")
-async def get_all_users():
+async def get_all_users(archived: bool = False):
     """Get all users with their license info"""
-    licenses = await db.license_keys.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    query = {"is_archived": True} if archived else {"is_archived": {"$ne": True}}
+    licenses = await db.license_keys.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return {"users": licenses, "count": len(licenses)}
+
+@api_router.post("/admin/archive-user/{email}")
+async def archive_user(email: str):
+    """Archive a user (hide from main list)"""
+    email = email.lower().strip()
+    
+    result = await db.license_keys.update_many(
+        {"customer_email": email},
+        {"$set": {"is_archived": True}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"status": "archived", "email": email}
+
+@api_router.post("/admin/unarchive-user/{email}")
+async def unarchive_user(email: str):
+    """Unarchive a user"""
+    email = email.lower().strip()
+    
+    result = await db.license_keys.update_many(
+        {"customer_email": email},
+        {"$set": {"is_archived": False}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"status": "unarchived", "email": email}
+
+@api_router.get("/admin/stats")
+async def get_admin_stats():
+    """Get overall stats for dashboard"""
+    # Trial requests stats
+    pending_count = await db.trial_requests.count_documents({"status": "pending"})
+    approved_count = await db.trial_requests.count_documents({"status": "approved"})
+    rejected_count = await db.trial_requests.count_documents({"status": "rejected"})
+    
+    # User/license stats (non-archived only)
+    trial_count = await db.license_keys.count_documents({"key_type": "trial", "is_archived": {"$ne": True}})
+    yearly_count = await db.license_keys.count_documents({"key_type": "yearly", "is_archived": {"$ne": True}})
+    lifetime_count = await db.license_keys.count_documents({"key_type": "lifetime", "is_archived": {"$ne": True}})
+    archived_count = await db.license_keys.count_documents({"is_archived": True})
+    
+    return {
+        "requests": {
+            "pending": pending_count,
+            "approved": approved_count,
+            "rejected": rejected_count
+        },
+        "users": {
+            "trial": trial_count,
+            "yearly": yearly_count,
+            "lifetime": lifetime_count,
+            "archived": archived_count
+        }
+    }
 
 async def send_upgrade_email(customer_email: str, license_key: str, key_type: str):
     """Send upgraded license key to customer via Resend"""
