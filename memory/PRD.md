@@ -94,6 +94,16 @@ Create a mobile-friendly web app called "Cycle Coach" (originally "Do Her Better
 - Resources are static (not dynamically fetched from API)
 - No user accounts (by design for privacy)
 - AI chat history is ephemeral (not stored)
+- **License validation is CLIENT-SIDE ONLY** - Keys are hardcoded in Paywall.jsx. For production, implement server-side validation.
+
+## Monetization
+- **Stripe Payment Link:** https://buy.stripe.com/test_7sY28t65k9Q18VS5dienS00
+- **Valid License Keys (for testing):**
+  - CYCLE-COACH-2024-ALPHA
+  - CYCLE-COACH-2024-BETA
+  - CYCLE-COACH-LAUNCH-001, 002, 003
+  - CC-EARLY-ACCESS-001, 002
+  - CC-FOUNDER-SPECIAL
 
 ## Data Model (localStorage)
 ```javascript
