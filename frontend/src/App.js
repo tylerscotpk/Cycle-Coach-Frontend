@@ -77,6 +77,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/privacy" element={<PrivacySettings />} />
           <Route path="/landing" element={<LandingPage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </BrowserRouter>
       <Toaster />
