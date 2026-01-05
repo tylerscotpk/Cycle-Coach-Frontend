@@ -5,22 +5,35 @@ import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import PrivacySettings from "@/pages/PrivacySettings";
 import PartnerConsent from "@/components/PartnerConsent";
+import Paywall from "@/components/Paywall";
 import { Toaster } from "@/components/ui/sonner";
 import { LocalStorage } from "@/utils/localStorageManager";
 
 function App() {
   // LOCAL-ONLY MODE: No server authentication
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [hasConsent, setHasConsent] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkLocalConsent();
+    checkAppState();
   }, []);
 
-  const checkLocalConsent = () => {
-    const consent = LocalStorage.getConsent();
-    setHasConsent(consent?.granted === true);
+  const checkAppState = () => {
+    // Check license first, then consent
+    const unlocked = LocalStorage.isUnlocked();
+    setIsUnlocked(unlocked);
+    
+    if (unlocked) {
+      const consent = LocalStorage.getConsent();
+      setHasConsent(consent?.granted === true);
+    }
+    
     setLoading(false);
+  };
+
+  const handleUnlock = () => {
+    setIsUnlocked(true);
   };
 
   const handleConsentGranted = () => {
@@ -32,6 +45,16 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <div className="text-white text-xl">Loading...</div>
       </div>
+    );
+  }
+
+  // Show paywall if not unlocked
+  if (!isUnlocked) {
+    return (
+      <>
+        <Paywall onUnlock={handleUnlock} />
+        <Toaster />
+      </>
     );
   }
 
