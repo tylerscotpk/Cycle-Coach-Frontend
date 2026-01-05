@@ -11,7 +11,11 @@ const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_7sY28t65k9Q18VS5dienS00
 
 const Paywall = ({ onUnlock }) => {
   const [licenseKey, setLicenseKey] = useState('');
+  const [trialEmail, setTrialEmail] = useState('');
   const [isValidating, setIsValidating] = useState(false);
+  const [isRequestingTrial, setIsRequestingTrial] = useState(false);
+  const [showTrialForm, setShowTrialForm] = useState(false);
+  const [trialRequested, setTrialRequested] = useState(false);
 
   const handleValidateLicense = async (e) => {
     e.preventDefault();
@@ -20,7 +24,6 @@ const Paywall = ({ onUnlock }) => {
     try {
       const normalizedKey = licenseKey.trim().toUpperCase();
       
-      // Validate license key via server
       const response = await fetch(`${API}/api/license/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,6 +47,40 @@ const Paywall = ({ onUnlock }) => {
     }
   };
 
+  const handleRequestTrial = async (e) => {
+    e.preventDefault();
+    setIsRequestingTrial(true);
+
+    try {
+      const response = await fetch(`${API}/api/trial/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trialEmail.trim().toLowerCase() })
+      });
+      
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        setTrialRequested(true);
+        toast.success('Trial request submitted!');
+      } else if (result.status === 'already_licensed') {
+        toast.info('You already have a license! Check your email.');
+      } else if (result.status === 'already_requested') {
+        setTrialRequested(true);
+        toast.info('Request already submitted. We\'ll email you soon!');
+      } else if (result.status === 'already_approved') {
+        toast.success('Your trial is approved! Check your email for the license key.');
+      } else {
+        toast.error(result.message || 'Something went wrong');
+      }
+    } catch (error) {
+      console.error('Trial request error:', error);
+      toast.error('Unable to submit request. Please try again.');
+    } finally {
+      setIsRequestingTrial(false);
+    }
+  };
+
   const handleBuyNow = () => {
     window.open(STRIPE_PAYMENT_LINK, '_blank');
   };
@@ -62,7 +99,7 @@ const Paywall = ({ onUnlock }) => {
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-2xl text-white">Unlock Full Access</CardTitle>
             <CardDescription className="text-slate-400">
-              Get lifetime access to all features
+              Get access to all features
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -97,21 +134,76 @@ const Paywall = ({ onUnlock }) => {
               </ul>
             </div>
 
-            {/* Buy Button */}
-            <Button
-              onClick={handleBuyNow}
-              className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-6 text-lg font-semibold"
-              data-testid="buy-now-button"
-            >
-              Get Full Access
-            </Button>
+            {/* Request Trial Button */}
+            {!showTrialForm && !trialRequested && (
+              <Button
+                onClick={() => setShowTrialForm(true)}
+                className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-6 text-lg font-semibold"
+                data-testid="request-trial-button"
+              >
+                Request Free Trial
+              </Button>
+            )}
+
+            {/* Trial Request Form */}
+            {showTrialForm && !trialRequested && (
+              <form onSubmit={handleRequestTrial} className="space-y-4">
+                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+                  <Label htmlFor="trial-email" className="text-cyan-300 text-sm font-medium">
+                    Enter your email to request trial access
+                  </Label>
+                  <Input
+                    id="trial-email"
+                    type="email"
+                    data-testid="trial-email-input"
+                    value={trialEmail}
+                    onChange={(e) => setTrialEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="bg-slate-700/50 border-slate-600 text-white mt-2"
+                    required
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    We'll review your request and email you a license key.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowTrialForm(false)}
+                    className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white"
+                    disabled={isRequestingTrial || !trialEmail.trim()}
+                    data-testid="submit-trial-button"
+                  >
+                    {isRequestingTrial ? 'Submitting...' : 'Submit Request'}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Trial Requested Confirmation */}
+            {trialRequested && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                <div className="text-green-400 text-2xl mb-2">✓</div>
+                <p className="text-green-300 font-medium">Trial Request Submitted!</p>
+                <p className="text-slate-400 text-sm mt-1">
+                  Check your email - we'll send your license key soon.
+                </p>
+              </div>
+            )}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-600"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-slate-800 px-2 text-slate-500">Already purchased?</span>
+                <span className="bg-slate-800 px-2 text-slate-500">Have a license key?</span>
               </div>
             </div>
 
@@ -126,7 +218,7 @@ const Paywall = ({ onUnlock }) => {
                   data-testid="license-key-input"
                   value={licenseKey}
                   onChange={(e) => setLicenseKey(e.target.value)}
-                  placeholder="CYCLE-COACH-XXXX-XXXX"
+                  placeholder="CC-XXXX-XXXX-XXXX"
                   className="bg-slate-700/50 border-slate-600 text-white mt-2 uppercase"
                   required
                 />
@@ -143,8 +235,7 @@ const Paywall = ({ onUnlock }) => {
             </form>
 
             <p className="text-xs text-slate-500 text-center">
-              After purchase, you will receive your license key via email.
-              Check your spam folder if you do not see it.
+              License keys are sent via email after approval.
             </p>
           </CardContent>
         </Card>
