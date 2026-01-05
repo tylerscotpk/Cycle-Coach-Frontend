@@ -14,7 +14,7 @@ const PrivacySettings = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `do-her-better-backup-${Date.now()}.json`;
+      a.download = `cycle-coach-backup-${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

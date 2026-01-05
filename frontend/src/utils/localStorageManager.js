@@ -27,12 +27,12 @@ export const LocalStorage = {
   savePartnerProfile: (profile) => {
     const encrypted = encrypt(profile);
     if (encrypted) {
-      localStorage.setItem('doherbetter_partner_profile', encrypted);
+      localStorage.setItem('cyclecoach_partner_profile', encrypted);
     }
   },
   
   getPartnerProfile: () => {
-    const data = localStorage.getItem('doherbetter_partner_profile');
+    const data = localStorage.getItem('cyclecoach_partner_profile');
     return data ? decrypt(data) : null;
   },
   
@@ -40,12 +40,12 @@ export const LocalStorage = {
   saveCycleHistory: (history) => {
     const encrypted = encrypt(history);
     if (encrypted) {
-      localStorage.setItem('doherbetter_cycle_history', encrypted);
+      localStorage.setItem('cyclecoach_cycle_history', encrypted);
     }
   },
   
   getCycleHistory: () => {
-    const data = localStorage.getItem('doherbetter_cycle_history');
+    const data = localStorage.getItem('cyclecoach_cycle_history');
     return data ? decrypt(data) : [];
   },
   
@@ -70,12 +70,12 @@ export const LocalStorage = {
   savePreferences: (prefs) => {
     const encrypted = encrypt(prefs);
     if (encrypted) {
-      localStorage.setItem('doherbetter_preferences', encrypted);
+      localStorage.setItem('cyclecoach_preferences', encrypted);
     }
   },
   
   getPreferences: () => {
-    const data = localStorage.getItem('doherbetter_preferences');
+    const data = localStorage.getItem('cyclecoach_preferences');
     return data ? decrypt(data) : {};
   },
   
@@ -88,22 +88,22 @@ export const LocalStorage = {
     };
     const encrypted = encrypt(consentRecord);
     if (encrypted) {
-      localStorage.setItem('doherbetter_consent', encrypted);
+      localStorage.setItem('cyclecoach_consent', encrypted);
     }
   },
   
   getConsent: () => {
-    const data = localStorage.getItem('doherbetter_consent');
+    const data = localStorage.getItem('cyclecoach_consent');
     return data ? decrypt(data) : null;
   },
   
   // Clear all data
   clearAllData: () => {
-    localStorage.removeItem('doherbetter_partner_profile');
-    localStorage.removeItem('doherbetter_cycle_history');
-    localStorage.removeItem('doherbetter_preferences');
-    localStorage.removeItem('doherbetter_consent');
-    localStorage.removeItem('doherbetter_chat_history');
+    localStorage.removeItem('cyclecoach_partner_profile');
+    localStorage.removeItem('cyclecoach_cycle_history');
+    localStorage.removeItem('cyclecoach_preferences');
+    localStorage.removeItem('cyclecoach_consent');
+    localStorage.removeItem('cyclecoach_chat_history');
   },
   
   // Export data (for backup)

@@ -409,7 +409,7 @@ const Dashboard = () => {
         <div className="container mx-auto px-6 py-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-12">
-            <h1 className="text-3xl font-bold text-white">Do Her Better</h1>
+            <h1 className="text-3xl font-bold text-white">Cycle Coach</h1>
             <Button
               onClick={() => window.location.href = '/privacy'}
               variant="outline"
@@ -477,7 +477,7 @@ const Dashboard = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white" data-testid="dashboard-title">Do Her Better</h1>
+            <h1 className="text-3xl font-bold text-white" data-testid="dashboard-title">Cycle Coach</h1>
             {partner && <p className="text-slate-400 mt-1">Tracking {partner.partnerName}'s cycle</p>}
           </div>
           <div className="flex items-center gap-4">

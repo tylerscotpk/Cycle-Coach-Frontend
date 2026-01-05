@@ -30,7 +30,7 @@ const LandingPage = () => {
           </div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight" data-testid="landing-main-heading">
-            Do Her <span className="text-cyan-400">Better</span>
+            Cycle <span className="text-cyan-400">Coach</span>
           </h1>
 
           <p className="text-xl sm:text-2xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
