@@ -6,41 +6,42 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { LocalStorage } from '../utils/localStorageManager';
 
-// Valid license keys (in production, this would be validated server-side)
-const VALID_LICENSE_KEYS = [
-  'CYCLE-COACH-2024-ALPHA',
-  'CYCLE-COACH-2024-BETA',
-  'CYCLE-COACH-LAUNCH-001',
-  'CYCLE-COACH-LAUNCH-002',
-  'CYCLE-COACH-LAUNCH-003',
-  'CC-EARLY-ACCESS-001',
-  'CC-EARLY-ACCESS-002',
-  'CC-FOUNDER-SPECIAL'
-];
-
+const API = process.env.REACT_APP_BACKEND_URL;
 const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_7sY28t65k9Q18VS5dienS00';
 
 const Paywall = ({ onUnlock }) => {
   const [licenseKey, setLicenseKey] = useState('');
   const [isValidating, setIsValidating] = useState(false);
 
-  const handleValidateLicense = (e) => {
+  const handleValidateLicense = async (e) => {
     e.preventDefault();
     setIsValidating(true);
 
-    // Simulate validation delay
-    setTimeout(() => {
+    try {
       const normalizedKey = licenseKey.trim().toUpperCase();
       
-      if (VALID_LICENSE_KEYS.includes(normalizedKey)) {
+      // Validate license key via server
+      const response = await fetch(`${API}/api/license/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ license_key: normalizedKey })
+      });
+      
+      const result = await response.json();
+      
+      if (result.valid) {
         LocalStorage.saveLicenseKey(normalizedKey);
         toast.success('License activated! Welcome to Cycle Coach.');
         onUnlock();
       } else {
         toast.error('Invalid license key. Please check and try again.');
       }
+    } catch (error) {
+      console.error('License validation error:', error);
+      toast.error('Unable to validate license. Please try again.');
+    } finally {
       setIsValidating(false);
-    }, 800);
+    }
   };
 
   const handleBuyNow = () => {
