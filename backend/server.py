@@ -1886,10 +1886,13 @@ async def get_admin_stats():
     # Trial includes legacy keys without key_type
     trial_count = await db.license_keys.count_documents({
         "$or": [{"key_type": "trial"}, {"key_type": {"$exists": False}}, {"key_type": None}],
-        "is_archived": {"$ne": True}
+        "is_archived": {"$ne": True},
+        "is_cancelled": {"$ne": True}
     })
-    yearly_count = await db.license_keys.count_documents({"key_type": "yearly", "is_archived": {"$ne": True}})
-    lifetime_count = await db.license_keys.count_documents({"key_type": "lifetime", "is_archived": {"$ne": True}})
+    monthly_count = await db.license_keys.count_documents({"key_type": "monthly", "is_archived": {"$ne": True}, "is_cancelled": {"$ne": True}})
+    yearly_count = await db.license_keys.count_documents({"key_type": "yearly", "is_archived": {"$ne": True}, "is_cancelled": {"$ne": True}})
+    lifetime_count = await db.license_keys.count_documents({"key_type": "lifetime", "is_archived": {"$ne": True}, "is_cancelled": {"$ne": True}})
+    cancelled_count = await db.license_keys.count_documents({"is_cancelled": True})
     archived_count = await db.license_keys.count_documents({"is_archived": True})
     
     return {
@@ -1900,8 +1903,10 @@ async def get_admin_stats():
         },
         "users": {
             "trial": trial_count,
+            "monthly": monthly_count,
             "yearly": yearly_count,
             "lifetime": lifetime_count,
+            "cancelled": cancelled_count,
             "archived": archived_count
         }
     }
