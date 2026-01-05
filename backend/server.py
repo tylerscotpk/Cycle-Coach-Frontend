@@ -1545,7 +1545,7 @@ async def stripe_webhook(request: Request):
 
 @api_router.post("/license/validate", response_model=LicenseValidationResponse)
 async def validate_license(request: LicenseValidationRequest):
-    """Validate a license key (server-side validation)"""
+    """Validate a license key (server-side validation) - ONE-TIME USE ONLY"""
     normalized_key = request.license_key.strip().upper()
     
     # Check database for license
@@ -1555,12 +1555,29 @@ async def validate_license(request: LicenseValidationRequest):
     )
     
     if license_record:
+        # Check if already activated
+        activation_count = license_record.get("activation_count", 0)
+        
+        if activation_count >= 1:
+            return LicenseValidationResponse(
+                valid=False,
+                message="This license key has already been activated on another device."
+            )
+        
+        # Mark as activated (increment count)
+        await db.license_keys.update_one(
+            {"license_key": normalized_key},
+            {
+                "$set": {"activation_count": 1, "activated_at": datetime.now(timezone.utc).isoformat()},
+            }
+        )
+        
         return LicenseValidationResponse(
             valid=True,
             message="License key is valid"
         )
     
-    # Also check hardcoded keys for backward compatibility
+    # Also check hardcoded keys for backward compatibility (these are unlimited for testing)
     hardcoded_keys = [
         'CYCLE-COACH-2024-ALPHA',
         'CYCLE-COACH-2024-BETA',
