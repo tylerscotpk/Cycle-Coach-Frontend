@@ -1370,6 +1370,237 @@ async def seed_resources():
     return {"message": f"Seeded {len(resources)} resources"}
 
 # ============================================
+# LICENSE KEY & STRIPE WEBHOOK (Monetization)
+# ============================================
+
+def generate_license_key():
+    """Generate a unique license key in format: CC-XXXX-XXXX-XXXX"""
+    chars = string.ascii_uppercase + string.digits
+    segments = [''.join(secrets.choice(chars) for _ in range(4)) for _ in range(3)]
+    return f"CC-{'-'.join(segments)}"
+
+class LicenseKey(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    license_key: str
+    customer_email: str
+    stripe_session_id: str
+    stripe_payment_intent: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class LicenseValidationRequest(BaseModel):
+    license_key: str
+
+class LicenseValidationResponse(BaseModel):
+    valid: bool
+    message: str
+
+async def send_license_email(customer_email: str, license_key: str):
+    """Send license key to customer via Resend"""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured - skipping email")
+        return False
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .license-box {{ background: #1e293b; color: #22d3ee; padding: 20px; border-radius: 8px; text-align: center; font-family: monospace; font-size: 24px; letter-spacing: 2px; margin: 20px 0; }}
+            .instructions {{ background: white; padding: 20px; border-radius: 8px; margin-top: 20px; }}
+            .footer {{ text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin: 0;">🎉 Welcome to Cycle Coach!</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Your purchase is complete</p>
+            </div>
+            <div class="content">
+                <p>Thanks for your purchase! Here's your license key to unlock Cycle Coach:</p>
+                
+                <div class="license-box">
+                    {license_key}
+                </div>
+                
+                <div class="instructions">
+                    <h3 style="margin-top: 0;">How to activate:</h3>
+                    <ol>
+                        <li>Open the Cycle Coach app</li>
+                        <li>Enter your license key in the activation field</li>
+                        <li>Click "Activate License"</li>
+                        <li>Start tracking!</li>
+                    </ol>
+                </div>
+                
+                <p style="margin-top: 20px;"><strong>Keep this email safe!</strong> Your license key grants lifetime access to Cycle Coach.</p>
+            </div>
+            <div class="footer">
+                <p>Cycle Coach - Your relationship game-changer</p>
+                <p>Questions? Reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [customer_email],
+            "subject": "🔑 Your Cycle Coach License Key",
+            "html": html_content
+        }
+        
+        # Run sync SDK in thread to keep FastAPI non-blocking
+        email_result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"License email sent to {customer_email}, email_id: {email_result.get('id')}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send license email: {str(e)}")
+        return False
+
+@api_router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events"""
+    payload = await request.body()
+    sig_header = request.headers.get("Stripe-Signature")
+    
+    try:
+        # Verify webhook signature if secret is configured
+        if STRIPE_WEBHOOK_SECRET:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, STRIPE_WEBHOOK_SECRET
+            )
+        else:
+            # For testing without webhook secret
+            import json
+            event = json.loads(payload)
+            logger.warning("Processing webhook without signature verification (STRIPE_WEBHOOK_SECRET not set)")
+        
+        event_type = event.get("type") if isinstance(event, dict) else event.type
+        
+        # Handle checkout.session.completed event
+        if event_type == "checkout.session.completed":
+            session = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
+            
+            customer_email = session.get("customer_email") or session.get("customer_details", {}).get("email")
+            session_id = session.get("id")
+            payment_intent = session.get("payment_intent")
+            
+            if not customer_email:
+                logger.error(f"No customer email in session {session_id}")
+                return {"status": "error", "message": "No customer email"}
+            
+            # Check if license already exists for this session
+            existing = await db.license_keys.find_one({"stripe_session_id": session_id})
+            if existing:
+                logger.info(f"License already exists for session {session_id}")
+                return {"status": "already_processed"}
+            
+            # Generate unique license key
+            license_key = generate_license_key()
+            
+            # Ensure uniqueness
+            while await db.license_keys.find_one({"license_key": license_key}):
+                license_key = generate_license_key()
+            
+            # Save license to database
+            license_record = LicenseKey(
+                license_key=license_key,
+                customer_email=customer_email,
+                stripe_session_id=session_id,
+                stripe_payment_intent=payment_intent
+            )
+            
+            license_dict = license_record.model_dump()
+            license_dict['created_at'] = license_dict['created_at'].isoformat()
+            await db.license_keys.insert_one(license_dict)
+            
+            logger.info(f"Created license {license_key} for {customer_email}")
+            
+            # Send email with license key
+            email_sent = await send_license_email(customer_email, license_key)
+            
+            return {
+                "status": "success",
+                "license_key": license_key,
+                "email_sent": email_sent
+            }
+        
+        return {"status": "ignored", "event_type": event_type}
+        
+    except stripe.error.SignatureVerificationError as e:
+        logger.error(f"Webhook signature verification failed: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/license/validate", response_model=LicenseValidationResponse)
+async def validate_license(request: LicenseValidationRequest):
+    """Validate a license key (server-side validation)"""
+    normalized_key = request.license_key.strip().upper()
+    
+    # Check database for license
+    license_record = await db.license_keys.find_one(
+        {"license_key": normalized_key, "is_active": True},
+        {"_id": 0}
+    )
+    
+    if license_record:
+        return LicenseValidationResponse(
+            valid=True,
+            message="License key is valid"
+        )
+    
+    # Also check hardcoded keys for backward compatibility
+    hardcoded_keys = [
+        'CYCLE-COACH-2024-ALPHA',
+        'CYCLE-COACH-2024-BETA',
+        'CYCLE-COACH-LAUNCH-001',
+        'CYCLE-COACH-LAUNCH-002',
+        'CYCLE-COACH-LAUNCH-003',
+        'CC-EARLY-ACCESS-001',
+        'CC-EARLY-ACCESS-002',
+        'CC-FOUNDER-SPECIAL'
+    ]
+    
+    if normalized_key in hardcoded_keys:
+        return LicenseValidationResponse(
+            valid=True,
+            message="License key is valid"
+        )
+    
+    return LicenseValidationResponse(
+        valid=False,
+        message="Invalid license key"
+    )
+
+@api_router.get("/license/check/{email}")
+async def check_license_by_email(email: str):
+    """Check if a license exists for an email (for customer support)"""
+    license_record = await db.license_keys.find_one(
+        {"customer_email": email.lower()},
+        {"_id": 0, "license_key": 1, "created_at": 1, "is_active": 1}
+    )
+    
+    if license_record:
+        return {
+            "found": True,
+            "license_key": license_record.get("license_key"),
+            "is_active": license_record.get("is_active", True)
+        }
+    
+    return {"found": False}
+
+# ============================================
 # ANONYMOUS CHAT ENDPOINT (Privacy-First)
 # ============================================
 
