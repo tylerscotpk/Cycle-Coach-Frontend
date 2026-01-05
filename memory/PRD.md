@@ -74,12 +74,15 @@ Create a mobile-friendly web app called "Cycle Coach" (originally "Do Her Better
 - [x] Rename app from "Do Her Better" to "Cycle Coach" (December 2025)
 - [x] Re-enable Resources Tab with static data (December 2025)
 - [x] Implement Minimum Viable Monetization - Paywall + License Key (December 2025)
+- [x] Stripe webhook integration for auto license key generation (December 2025)
+- [x] Resend email integration for license key delivery (December 2025)
+- [x] Server-side license key validation (December 2025)
 
 ## Upcoming Tasks (Prioritized Backlog)
 
-### P0 - High Priority
-- [ ] Set up Stripe webhook to auto-generate license keys on purchase
-- [ ] Create license key delivery system (email on purchase)
+### P1 - Medium Priority
+- [ ] Add more resources to resourcesData.js
+- [ ] Refactor Dashboard.jsx into smaller components
 
 ### P1 - Medium Priority
 - [ ] Automate license key system (Stripe webhooks)
