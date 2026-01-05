@@ -49,6 +49,22 @@ function App() {
     );
   }
 
+  // Check if we're on the admin route - bypass paywall
+  const isAdminRoute = window.location.pathname === '/admin';
+  
+  if (isAdminRoute) {
+    return (
+      <>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster />
+      </>
+    );
+  }
+
   // Show paywall if not unlocked
   if (!isUnlocked) {
     return (
