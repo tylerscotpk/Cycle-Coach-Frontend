@@ -57,6 +57,7 @@ Create a mobile-friendly web app called "Cycle Coach" (originally "Do Her Better
 
 ## Key Files
 - `/app/frontend/src/pages/Dashboard.jsx` - Main app component
+- `/app/frontend/src/components/Paywall.jsx` - Monetization paywall
 - `/app/frontend/src/utils/localStorageManager.js` - Data persistence
 - `/app/frontend/src/utils/cycleCalculations.js` - Cycle logic
 - `/app/frontend/src/utils/resourcesData.js` - Static resources
