@@ -104,6 +104,32 @@ export const LocalStorage = {
     localStorage.removeItem('cyclecoach_preferences');
     localStorage.removeItem('cyclecoach_consent');
     localStorage.removeItem('cyclecoach_chat_history');
+    localStorage.removeItem('cyclecoach_license');
+  },
+  
+  // License Key Management
+  saveLicenseKey: (key) => {
+    const licenseData = {
+      key: key,
+      activatedAt: new Date().toISOString(),
+      isValid: true
+    };
+    const encrypted = encrypt(licenseData);
+    if (encrypted) {
+      localStorage.setItem('cyclecoach_license', encrypted);
+    }
+  },
+  
+  getLicenseKey: () => {
+    const data = localStorage.getItem('cyclecoach_license');
+    return data ? decrypt(data) : null;
+  },
+  
+  isUnlocked: () => {
+    const license = localStorage.getItem('cyclecoach_license');
+    if (!license) return false;
+    const data = decrypt(license);
+    return data?.isValid === true;
   },
   
   // Export data (for backup)
