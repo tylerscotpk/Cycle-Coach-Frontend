@@ -105,12 +105,41 @@ const Dashboard = () => {
         
         setPartner(profile);
         loadCycleInfoLocal(profile);
+        
+        // Load static resources
+        loadStaticResources(profile);
       }
-      // No chat history, resources, or fun facts in local mode (for now)
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStaticResources = (profile) => {
+    try {
+      const cycleDay = calculateCycleDay(profile.cycleStartDate, profile.cycleLength || 28);
+      const phaseInfo = getPhaseInfo(cycleDay);
+      const nextPhase = getNextPhase(phaseInfo.phase);
+      
+      const relevantResources = getRelevantResources(phaseInfo.phase, nextPhase);
+      
+      // Combine current phase resources + some upcoming + general
+      const allResources = [
+        ...relevantResources.current,
+        ...relevantResources.upcoming.slice(0, 2),
+        ...relevantResources.general.slice(0, 2)
+      ];
+      
+      // Shuffle slightly for variety but keep phase-matched at top
+      const phaseMatched = allResources.filter(r => r.is_phase_match);
+      const others = allResources.filter(r => !r.is_phase_match);
+      
+      setCurrentResources([...phaseMatched, ...others].slice(0, 6));
+    } catch (error) {
+      console.error('Error loading resources:', error);
+      // Fallback to general resources
+      setCurrentResources(RESOURCES.filter(r => r.phase === 'General').slice(0, 3));
     }
   };
 
