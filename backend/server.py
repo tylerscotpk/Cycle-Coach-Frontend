@@ -1696,7 +1696,7 @@ async def get_trial_requests(status: Optional[str] = None):
 
 @api_router.post("/trial/approve/{email}")
 async def approve_trial_request(email: str):
-    """Approve a trial request - generates license key and sends email"""
+    """Approve a trial request - generates 1-MONTH trial license key and sends email"""
     email = email.lower().strip()
     
     # Find the request
@@ -1715,6 +1715,9 @@ async def approve_trial_request(email: str):
     while await db.license_keys.find_one({"license_key": license_key}):
         license_key = generate_license_key()
     
+    # Set expiration to 1 month from now
+    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    
     # Save license to database
     license_record = LicenseKey(
         license_key=license_key,
@@ -1725,7 +1728,9 @@ async def approve_trial_request(email: str):
     
     license_dict = license_record.model_dump()
     license_dict['created_at'] = license_dict['created_at'].isoformat()
-    license_dict['is_trial'] = True  # Mark as trial user
+    license_dict['is_trial'] = True
+    license_dict['key_type'] = 'trial'  # trial, yearly, lifetime
+    license_dict['expires_at'] = expires_at.isoformat()
     await db.license_keys.insert_one(license_dict)
     
     # Update trial request status
@@ -1740,7 +1745,7 @@ async def approve_trial_request(email: str):
         }
     )
     
-    logger.info(f"Approved trial for {email}, license: {license_key}")
+    logger.info(f"Approved trial for {email}, license: {license_key}, expires: {expires_at}")
     
     # Send email with license key
     email_sent = await send_license_email(email, license_key)
@@ -1749,6 +1754,8 @@ async def approve_trial_request(email: str):
         "status": "approved",
         "email": email,
         "license_key": license_key,
+        "key_type": "trial",
+        "expires_at": expires_at.isoformat(),
         "email_sent": email_sent
     }
 
