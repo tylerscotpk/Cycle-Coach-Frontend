@@ -131,4 +131,11 @@ Create a mobile-friendly web app called "Cycle Coach" (originally "Do Her Better
   timestamp: string,
   acknowledgedRisks: boolean
 }
+
+// Key: cyclecoach_license
+{
+  key: string,
+  activatedAt: string,
+  isValid: boolean
+}
 ```
