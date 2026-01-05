@@ -15,7 +15,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({ requests: {}, users: {} });
   const [loading, setLoading] = useState(false);
   const [requestFilter, setRequestFilter] = useState('pending');
-  const [userFilter, setUserFilter] = useState('trial'); // trial, yearly, lifetime, archived
+  const [userFilter, setUserFilter] = useState('trial');
   const [activeTab, setActiveTab] = useState('requests');
 
   useEffect(() => {
@@ -77,12 +77,14 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const isArchived = userFilter === 'archived';
-      let url = `${API}/api/admin/users?archived=${isArchived}`;
+      let url = `${API}/api/admin/users?`;
       
-      // Add key_type filter if not archived
-      if (!isArchived) {
-        url += `&key_type=${userFilter}`;
+      if (userFilter === 'archived') {
+        url += 'archived=true';
+      } else if (userFilter === 'cancelled') {
+        url += 'cancelled=true';
+      } else {
+        url += `archived=false&key_type=${userFilter}`;
       }
       
       const response = await fetch(url);
@@ -186,7 +188,7 @@ const AdminDashboard = () => {
       const result = await response.json();
       
       if (result.status === 'unarchived') {
-        toast.success('User restored');
+        toast.success('User restored from archive');
         fetchUsers();
         fetchStats();
       } else {
@@ -194,6 +196,46 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error('Error unarchiving:', error);
+      toast.error('Failed to restore user');
+    }
+  };
+
+  const handleCancel = async (email) => {
+    try {
+      const response = await fetch(`${API}/api/admin/cancel-user/${email}`, {
+        method: 'POST'
+      });
+      const result = await response.json();
+      
+      if (result.status === 'cancelled') {
+        toast.success('User access cancelled');
+        fetchUsers();
+        fetchStats();
+      } else {
+        toast.error('Failed to cancel');
+      }
+    } catch (error) {
+      console.error('Error cancelling:', error);
+      toast.error('Failed to cancel user');
+    }
+  };
+
+  const handleRestoreCancelled = async (email) => {
+    try {
+      const response = await fetch(`${API}/api/admin/restore-user/${email}`, {
+        method: 'POST'
+      });
+      const result = await response.json();
+      
+      if (result.status === 'restored') {
+        toast.success('User access restored');
+        fetchUsers();
+        fetchStats();
+      } else {
+        toast.error('Failed to restore');
+      }
+    } catch (error) {
+      console.error('Error restoring:', error);
       toast.error('Failed to restore user');
     }
   };
@@ -207,8 +249,9 @@ const AdminDashboard = () => {
     switch(keyType) {
       case 'lifetime': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case 'yearly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'monthly': return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'trial': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+      default: return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
     }
   };
 
@@ -242,6 +285,15 @@ const AdminDashboard = () => {
       </div>
     );
   }
+
+  const userFilters = [
+    { key: 'trial', label: 'Trial', color: 'yellow', count: stats.users?.trial || 0 },
+    { key: 'monthly', label: 'Monthly', color: 'green', count: stats.users?.monthly || 0 },
+    { key: 'yearly', label: 'Yearly', color: 'blue', count: stats.users?.yearly || 0 },
+    { key: 'lifetime', label: 'Lifetime', color: 'purple', count: stats.users?.lifetime || 0 },
+    { key: 'cancelled', label: 'Cancelled', color: 'red', count: stats.users?.cancelled || 0 },
+    { key: 'archived', label: 'Archived', color: 'slate', count: stats.users?.archived || 0 },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
@@ -282,7 +334,7 @@ const AdminDashboard = () => {
         {/* Trial Requests Tab */}
         {activeTab === 'requests' && (
           <>
-            {/* Stats - Always show totals */}
+            {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               <Card className={`border ${requestFilter === 'pending' ? 'border-yellow-500' : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
                     onClick={() => setRequestFilter('pending')}>
@@ -398,45 +450,24 @@ const AdminDashboard = () => {
         {activeTab === 'users' && (
           <>
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
-              <Card className={`border ${userFilter === 'trial' ? 'border-yellow-500' : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
-                    onClick={() => setUserFilter('trial')}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-yellow-400">{stats.users?.trial || 0}</p>
-                  <p className="text-slate-400 text-sm">Trial (1-mo)</p>
-                </CardContent>
-              </Card>
-              <Card className={`border ${userFilter === 'yearly' ? 'border-blue-500' : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
-                    onClick={() => setUserFilter('yearly')}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-blue-400">{stats.users?.yearly || 0}</p>
-                  <p className="text-slate-400 text-sm">Yearly</p>
-                </CardContent>
-              </Card>
-              <Card className={`border ${userFilter === 'lifetime' ? 'border-purple-500' : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
-                    onClick={() => setUserFilter('lifetime')}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-purple-400">{stats.users?.lifetime || 0}</p>
-                  <p className="text-slate-400 text-sm">Lifetime</p>
-                </CardContent>
-              </Card>
-              <Card className={`border ${userFilter === 'archived' ? 'border-slate-500' : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
-                    onClick={() => setUserFilter('archived')}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-slate-400">{stats.users?.archived || 0}</p>
-                  <p className="text-slate-400 text-sm">Archived</p>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-6 gap-3">
+              {userFilters.map((f) => (
+                <Card 
+                  key={f.key}
+                  className={`border ${userFilter === f.key ? `border-${f.color}-500` : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
+                  onClick={() => setUserFilter(f.key)}
+                >
+                  <CardContent className="p-3 text-center">
+                    <p className={`text-xl font-bold text-${f.color}-400`}>{f.count}</p>
+                    <p className="text-slate-400 text-xs">{f.label}</p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex gap-2">
-              {[
-                { key: 'trial', label: 'Trial (1-mo)', color: 'yellow' },
-                { key: 'yearly', label: 'Yearly', color: 'blue' },
-                { key: 'lifetime', label: 'Lifetime', color: 'purple' },
-                { key: 'archived', label: 'Archived', color: 'slate' }
-              ].map((f) => (
+            <div className="flex gap-2 flex-wrap">
+              {userFilters.map((f) => (
                 <Button
                   key={f.key}
                   variant={userFilter === f.key ? 'default' : 'outline'}
@@ -446,7 +477,7 @@ const AdminDashboard = () => {
                     : 'border-slate-600 text-slate-300 hover:bg-slate-700'}
                   onClick={() => setUserFilter(f.key)}
                 >
-                  {f.label}
+                  {f.label} ({f.count})
                 </Button>
               ))}
               <Button 
@@ -477,7 +508,7 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <p className="text-white font-medium">{user.customer_email}</p>
                               <span className={`px-2 py-0.5 rounded text-xs border ${getKeyTypeColor(user.key_type)}`}>
-                                {user.key_type || 'standard'}
+                                {user.key_type || 'trial'}
                               </span>
                               {isExpired(user.expires_at) && (
                                 <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30">
@@ -489,6 +520,11 @@ const AdminDashboard = () => {
                                   activated
                                 </span>
                               )}
+                              {user.is_cancelled && (
+                                <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30">
+                                  cancelled
+                                </span>
+                              )}
                             </div>
                             <p className="text-cyan-400 text-sm font-mono">{user.license_key}</p>
                             <div className="flex gap-4 mt-1 text-xs text-slate-500">
@@ -496,7 +532,7 @@ const AdminDashboard = () => {
                               <span>Expires: {user.expires_at ? formatDate(user.expires_at) : 'Never'}</span>
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap justify-end">
                             {userFilter === 'archived' ? (
                               <Button
                                 size="sm"
@@ -506,6 +542,14 @@ const AdminDashboard = () => {
                               >
                                 Restore
                               </Button>
+                            ) : userFilter === 'cancelled' ? (
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => handleRestoreCancelled(user.customer_email)}
+                              >
+                                Restore Access
+                              </Button>
                             ) : (
                               <>
                                 {user.key_type !== 'lifetime' && (
@@ -514,7 +558,7 @@ const AdminDashboard = () => {
                                     className="bg-purple-600 hover:bg-purple-700"
                                     onClick={() => handleGrantKey(user.customer_email, 'lifetime')}
                                   >
-                                    Grant Lifetime
+                                    Lifetime
                                   </Button>
                                 )}
                                 {user.key_type !== 'yearly' && user.key_type !== 'lifetime' && (
@@ -523,9 +567,17 @@ const AdminDashboard = () => {
                                     className="bg-blue-600 hover:bg-blue-700"
                                     onClick={() => handleGrantKey(user.customer_email, 'yearly')}
                                   >
-                                    Grant Yearly
+                                    Yearly
                                   </Button>
                                 )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
+                                  onClick={() => handleCancel(user.customer_email)}
+                                >
+                                  Cancel
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
