@@ -103,7 +103,7 @@ const Paywall = ({ onUnlock }) => {
               className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-6 text-lg font-semibold"
               data-testid="buy-now-button"
             >
-              Get Lifetime Access
+              Get Full Access
             </Button>
 
             <div className="relative">
