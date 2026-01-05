@@ -1601,6 +1601,146 @@ async def check_license_by_email(email: str):
     return {"found": False}
 
 # ============================================
+# TRIAL ACCESS SYSTEM
+# ============================================
+
+class TrialRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: str
+    status: str = "pending"  # pending, approved, rejected
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    approved_at: Optional[datetime] = None
+    license_key: Optional[str] = None
+
+class TrialRequestInput(BaseModel):
+    email: str
+
+@api_router.post("/trial/request")
+async def request_trial_access(request: TrialRequestInput):
+    """Request trial access - stores email for admin approval"""
+    email = request.email.lower().strip()
+    
+    # Check if already has a license
+    existing_license = await db.license_keys.find_one({"customer_email": email})
+    if existing_license:
+        return {
+            "status": "already_licensed",
+            "message": "This email already has a license. Check your inbox for your license key."
+        }
+    
+    # Check if already requested
+    existing_request = await db.trial_requests.find_one({"email": email})
+    if existing_request:
+        status = existing_request.get("status", "pending")
+        if status == "pending":
+            return {
+                "status": "already_requested",
+                "message": "Your trial request is pending approval. We'll email you soon!"
+            }
+        elif status == "approved":
+            return {
+                "status": "already_approved",
+                "message": "Your trial was already approved! Check your email for the license key."
+            }
+    
+    # Create new trial request
+    trial_request = TrialRequest(email=email)
+    request_dict = trial_request.model_dump()
+    request_dict['created_at'] = request_dict['created_at'].isoformat()
+    await db.trial_requests.insert_one(request_dict)
+    
+    logger.info(f"New trial request from: {email}")
+    
+    return {
+        "status": "success",
+        "message": "Trial request submitted! We'll review and email you within 24 hours."
+    }
+
+@api_router.get("/trial/requests")
+async def get_trial_requests(status: Optional[str] = None):
+    """Get all trial requests (admin endpoint)"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    requests = await db.trial_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"requests": requests, "count": len(requests)}
+
+@api_router.post("/trial/approve/{email}")
+async def approve_trial_request(email: str):
+    """Approve a trial request - generates license key and sends email"""
+    email = email.lower().strip()
+    
+    # Find the request
+    trial_request = await db.trial_requests.find_one({"email": email})
+    if not trial_request:
+        raise HTTPException(status_code=404, detail="Trial request not found")
+    
+    if trial_request.get("status") == "approved":
+        return {
+            "status": "already_approved",
+            "license_key": trial_request.get("license_key")
+        }
+    
+    # Generate license key
+    license_key = generate_license_key()
+    while await db.license_keys.find_one({"license_key": license_key}):
+        license_key = generate_license_key()
+    
+    # Save license to database
+    license_record = LicenseKey(
+        license_key=license_key,
+        customer_email=email,
+        stripe_session_id=f"trial_{uuid.uuid4()}",
+        stripe_payment_intent=None
+    )
+    
+    license_dict = license_record.model_dump()
+    license_dict['created_at'] = license_dict['created_at'].isoformat()
+    license_dict['is_trial'] = True  # Mark as trial user
+    await db.license_keys.insert_one(license_dict)
+    
+    # Update trial request status
+    await db.trial_requests.update_one(
+        {"email": email},
+        {
+            "$set": {
+                "status": "approved",
+                "approved_at": datetime.now(timezone.utc).isoformat(),
+                "license_key": license_key
+            }
+        }
+    )
+    
+    logger.info(f"Approved trial for {email}, license: {license_key}")
+    
+    # Send email with license key
+    email_sent = await send_license_email(email, license_key)
+    
+    return {
+        "status": "approved",
+        "email": email,
+        "license_key": license_key,
+        "email_sent": email_sent
+    }
+
+@api_router.post("/trial/reject/{email}")
+async def reject_trial_request(email: str):
+    """Reject a trial request"""
+    email = email.lower().strip()
+    
+    result = await db.trial_requests.update_one(
+        {"email": email},
+        {"$set": {"status": "rejected"}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Trial request not found")
+    
+    return {"status": "rejected", "email": email}
+
+# ============================================
 # ANONYMOUS CHAT ENDPOINT (Privacy-First)
 # ============================================
 
