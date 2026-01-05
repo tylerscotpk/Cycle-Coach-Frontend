@@ -1879,6 +1879,36 @@ async def unarchive_user(email: str):
     
     return {"status": "unarchived", "email": email}
 
+@api_router.post("/admin/cancel-user/{email}")
+async def cancel_user(email: str):
+    """Cancel a user's access"""
+    email = email.lower().strip()
+    
+    result = await db.license_keys.update_many(
+        {"customer_email": email},
+        {"$set": {"is_cancelled": True, "is_active": False}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"status": "cancelled", "email": email}
+
+@api_router.post("/admin/restore-user/{email}")
+async def restore_user(email: str):
+    """Restore a cancelled user's access"""
+    email = email.lower().strip()
+    
+    result = await db.license_keys.update_many(
+        {"customer_email": email},
+        {"$set": {"is_cancelled": False, "is_active": True}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"status": "restored", "email": email}
+
 @api_router.get("/admin/stats")
 async def get_admin_stats():
     """Get overall stats for dashboard"""
