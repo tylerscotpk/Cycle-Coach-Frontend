@@ -77,8 +77,13 @@ Create a mobile-friendly web app called "Cycle Coach" (originally "Do Her Better
 - [x] Stripe webhook integration for auto license key generation (December 2025)
 - [x] Resend email integration for license key delivery (December 2025)
 - [x] Server-side license key validation (December 2025)
+- [x] Trial request system with admin approval workflow (December 2025)
+- [x] Admin Dashboard for managing trial requests (December 2025)
 
 ## Upcoming Tasks (Prioritized Backlog)
+
+### P0 - High Priority
+- [ ] Phase 2: Convert to monthly subscription model (after testing phase)
 
 ### P1 - Medium Priority
 - [ ] Add more resources to resourcesData.js
