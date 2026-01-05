@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import PrivacySettings from "@/pages/PrivacySettings";
+import AdminDashboard from "@/pages/AdminDashboard";
 import PartnerConsent from "@/components/PartnerConsent";
 import Paywall from "@/components/Paywall";
 import { Toaster } from "@/components/ui/sonner";
