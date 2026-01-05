@@ -1883,7 +1883,11 @@ async def get_admin_stats():
     rejected_count = await db.trial_requests.count_documents({"status": "rejected"})
     
     # User/license stats (non-archived only)
-    trial_count = await db.license_keys.count_documents({"key_type": "trial", "is_archived": {"$ne": True}})
+    # Trial includes legacy keys without key_type
+    trial_count = await db.license_keys.count_documents({
+        "$or": [{"key_type": "trial"}, {"key_type": {"$exists": False}}, {"key_type": None}],
+        "is_archived": {"$ne": True}
+    })
     yearly_count = await db.license_keys.count_documents({"key_type": "yearly", "is_archived": {"$ne": True}})
     lifetime_count = await db.license_keys.count_documents({"key_type": "lifetime", "is_archived": {"$ne": True}})
     archived_count = await db.license_keys.count_documents({"is_archived": True})
