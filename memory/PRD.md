@@ -101,11 +101,13 @@ Create a mobile-friendly web app called "Cycle Coach" (originally "Do Her Better
 
 ## Monetization
 - **Stripe Payment Link:** https://buy.stripe.com/test_7sY28t65k9Q18VS5dienS00
-- **Valid License Keys (for testing):**
+- **Stripe Webhook:** `/api/webhook/stripe` (receives `checkout.session.completed`)
+- **Email Service:** Resend (sends from `info@cyclecoach.net`)
+- **License Format:** `CC-XXXX-XXXX-XXXX` (auto-generated)
+- **Validation:** Server-side via `/api/license/validate`
+- **Legacy Test Keys (still work):**
   - CYCLE-COACH-2024-ALPHA
   - CYCLE-COACH-2024-BETA
-  - CYCLE-COACH-LAUNCH-001, 002, 003
-  - CC-EARLY-ACCESS-001, 002
   - CC-FOUNDER-SPECIAL
 
 ## Data Model (localStorage)
