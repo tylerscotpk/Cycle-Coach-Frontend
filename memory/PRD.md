@@ -72,15 +72,13 @@ Create a mobile-friendly web app called "Cycle Coach" (originally "Do Her Better
 - [x] Fix average cycle length calculation
 - [x] Rename app from "Do Her Better" to "Cycle Coach" (December 2025)
 - [x] Re-enable Resources Tab with static data (December 2025)
+- [x] Implement Minimum Viable Monetization - Paywall + License Key (December 2025)
 
 ## Upcoming Tasks (Prioritized Backlog)
 
 ### P0 - High Priority
-- [ ] Implement Minimum Viable Monetization (paywall + license key)
-  - Create paywall page blocking app until valid license key
-  - "Buy Now" button linking to Stripe payment
-  - Client-side license key validation
-  - Save "unlocked" state in localStorage
+- [ ] Set up Stripe webhook to auto-generate license keys on purchase
+- [ ] Create license key delivery system (email on purchase)
 
 ### P1 - Medium Priority
 - [ ] Automate license key system (Stripe webhooks)
