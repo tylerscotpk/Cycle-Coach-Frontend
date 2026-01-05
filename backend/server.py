@@ -1829,9 +1829,18 @@ async def grant_key(request: GrantKeyRequest):
     }
 
 @api_router.get("/admin/users")
-async def get_all_users(archived: bool = False):
+async def get_all_users(archived: bool = False, key_type: Optional[str] = None):
     """Get all users with their license info"""
     query = {"is_archived": True} if archived else {"is_archived": {"$ne": True}}
+    
+    # Filter by key_type if specified
+    if key_type and not archived:
+        if key_type == 'trial':
+            # Trial includes both explicit 'trial' and missing key_type (legacy)
+            query["$or"] = [{"key_type": "trial"}, {"key_type": {"$exists": False}}, {"key_type": None}]
+        else:
+            query["key_type"] = key_type
+    
     licenses = await db.license_keys.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return {"users": licenses, "count": len(licenses)}
 
