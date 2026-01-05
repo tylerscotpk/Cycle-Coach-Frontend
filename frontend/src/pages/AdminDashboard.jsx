@@ -78,16 +78,16 @@ const AdminDashboard = () => {
     setLoading(true);
     try {
       const isArchived = userFilter === 'archived';
-      const response = await fetch(`${API}/api/admin/users?archived=${isArchived}`);
-      const data = await response.json();
+      let url = `${API}/api/admin/users?archived=${isArchived}`;
       
-      // Filter by key type if not archived view
-      let filteredUsers = data.users || [];
-      if (!isArchived && userFilter !== 'all') {
-        filteredUsers = filteredUsers.filter(u => u.key_type === userFilter);
+      // Add key_type filter if not archived
+      if (!isArchived) {
+        url += `&key_type=${userFilter}`;
       }
       
-      setUsers(filteredUsers);
+      const response = await fetch(url);
+      const data = await response.json();
+      setUsers(data.users || []);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to fetch users');
