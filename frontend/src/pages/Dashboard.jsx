@@ -162,21 +162,29 @@ const Dashboard = () => {
         tips: phaseInfo.tips
       });
       
-      // Set a random fun fact from phase tips
-      if (phaseInfo.tips && phaseInfo.tips.length > 0) {
-        const randomTip = phaseInfo.tips[Math.floor(Math.random() * phaseInfo.tips.length)];
-        setFunFact({ fact: randomTip, phase: phaseInfo.phase });
-      }
+      // Set a research-backed fun fact for the current phase
+      const researchFact = getUnseenFact(phaseInfo.phase);
+      setFunFact({ 
+        fact: researchFact.fact, 
+        practical: researchFact.practical,
+        source: researchFact.source,
+        phase: phaseInfo.phase 
+      });
     } catch (error) {
       console.error('Error calculating cycle info:', error);
     }
   };
 
-  // LOCAL-ONLY: Refresh fun fact from current phase tips
+  // LOCAL-ONLY: Refresh fun fact from research database
   const loadFunFact = () => {
-    if (!cycleInfo || !cycleInfo.tips) return;
-    const randomTip = cycleInfo.tips[Math.floor(Math.random() * cycleInfo.tips.length)];
-    setFunFact({ fact: randomTip, phase: cycleInfo.phase });
+    if (!cycleInfo) return;
+    const researchFact = getUnseenFact(cycleInfo.phase);
+    setFunFact({ 
+      fact: researchFact.fact, 
+      practical: researchFact.practical,
+      source: researchFact.source,
+      phase: cycleInfo.phase 
+    });
   };
 
   const handleCreatePartner = (e) => {
