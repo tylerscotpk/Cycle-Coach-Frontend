@@ -675,7 +675,6 @@ const Dashboard = () => {
                   <h4 className="text-white font-semibold mb-2">Recent Cycles</h4>
                   {cycleHistory.history.slice(0, 8).map((cycle, idx) => {
                     const isCurrent = cycle.status === 'current' && idx === 0; // Only first entry can be current
-                    const showDelete = !isCurrent; // Allow delete for all except true current
                     
                     // Format date without timezone conversion
                     const formatDate = (dateStr) => {
@@ -709,17 +708,16 @@ const Dashboard = () => {
                           ) : (
                             <span className="text-slate-400 italic">Calculating...</span>
                           )}
-                          {showDelete && (
-                            <Button
-                              onClick={() => handleDeleteCycle(cycle.id)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/20 h-8 w-8 p-0 flex-shrink-0"
-                              data-testid={`delete-cycle-${idx}`}
-                            >
-                              ×
-                            </Button>
-                          )}
+                          <Button
+                            onClick={() => handleDeleteCycle(cycle.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/20 h-8 w-8 p-0 flex-shrink-0"
+                            data-testid={`delete-cycle-${idx}`}
+                            title={isCurrent ? "Delete current cycle" : "Delete cycle"}
+                          >
+                            ×
+                          </Button>
                         </div>
                       </div>
                     );
