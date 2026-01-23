@@ -447,25 +447,17 @@ const Dashboard = () => {
   };
 
   const handleDeleteCycle = (cycleId) => {
-    console.log('handleDeleteCycle called with cycleId:', cycleId);
-    
     if (!cycleId) {
-      console.error('No cycle ID provided');
       toast.error('Cannot delete: No cycle ID');
       return;
     }
     
     try {
-      // Get current history before delete
-      const historyBefore = LocalStorage.getCycleHistory();
-      console.log('History before delete:', historyBefore);
-      
       // LOCAL-ONLY: Remove from localStorage
       LocalStorage.deleteCycleEntry(cycleId);
       
       // Get updated history
       const updatedHistory = LocalStorage.getCycleHistory();
-      console.log('History after delete:', updatedHistory);
       
       // If there are remaining cycles, update partner profile with the most recent one
       if (updatedHistory.length > 0) {
