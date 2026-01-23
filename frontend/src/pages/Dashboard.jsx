@@ -200,6 +200,14 @@ const Dashboard = () => {
         createdAt: new Date().toISOString()
       };
       LocalStorage.savePartnerProfile(newPartner);
+      
+      // Also add the initial cycle to cycle history
+      LocalStorage.addCycleEntry({
+        cycle_start_date: cycleStartDate,
+        cycle_length: null,
+        status: 'current'
+      });
+      
       setPartner(newPartner);
       loadCycleInfoLocal(newPartner);
       loadStaticResources(newPartner);
