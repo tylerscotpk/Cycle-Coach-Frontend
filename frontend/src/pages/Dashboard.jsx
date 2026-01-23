@@ -737,17 +737,27 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Fun Fact Card */}
+        {/* Research-Backed Fact Card */}
         {funFact && (
           <Card className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 backdrop-blur-sm border-cyan-500/30 mb-8" data-testid="fun-fact-card">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <div className="text-4xl">💡</div>
+                <div className="text-4xl">🔬</div>
                 <div className="flex-1">
                   <div className="text-cyan-400 font-semibold text-sm mb-2">
-                    {funFact.phase ? `${funFact.phase} Phase Fun Fact` : 'Did You Know?'}
+                    {funFact.phase ? `${funFact.phase} Phase • Research Insight` : 'Research Insight'}
                   </div>
-                  <p className="text-white text-lg leading-relaxed">{funFact.fact}</p>
+                  <p className="text-white text-base leading-relaxed mb-3">{funFact.fact}</p>
+                  {funFact.practical && (
+                    <div className="bg-slate-800/50 rounded-lg p-3 mb-2">
+                      <p className="text-cyan-300 text-sm">
+                        <span className="font-semibold">💡 What this means for you:</span> {funFact.practical}
+                      </p>
+                    </div>
+                  )}
+                  {funFact.source && (
+                    <p className="text-slate-500 text-xs italic">Source: {funFact.source}</p>
+                  )}
                 </div>
                 <Button
                   onClick={loadFunFact}
@@ -755,6 +765,7 @@ const Dashboard = () => {
                   size="sm"
                   className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
                   data-testid="refresh-fun-fact-button"
+                  title="Show another fact"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
