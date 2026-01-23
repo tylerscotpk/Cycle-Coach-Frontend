@@ -718,7 +718,6 @@ const Dashboard = () => {
                   <h4 className="text-white font-semibold mb-2">Recent Cycles</h4>
                   {cycleHistory.history.slice(0, 8).map((cycle, idx) => {
                     const isCurrent = cycle.status === 'current' && idx === 0; // Only first entry can be current
-                    console.log(`Cycle ${idx}:`, cycle.id, cycle.cycle_start_date, cycle.status);
                     
                     // Format date without timezone conversion
                     const formatDate = (dateStr) => {
