@@ -433,6 +433,27 @@ const Dashboard = () => {
     try {
       // LOCAL-ONLY: Remove from localStorage
       LocalStorage.deleteCycleEntry(cycleId);
+      
+      // Get updated history
+      const updatedHistory = LocalStorage.getCycleHistory();
+      
+      // If there are remaining cycles, update partner profile with the most recent one
+      if (updatedHistory.length > 0) {
+        // Recalculate to get proper ordering
+        const recalculated = recalculateCycleLengths(updatedHistory);
+        const mostRecent = recalculated[recalculated.length - 1];
+        
+        if (mostRecent) {
+          // Update partner profile with new current cycle start date
+          const updatedPartner = {
+            ...partner,
+            cycleStartDate: mostRecent.cycle_start_date
+          };
+          LocalStorage.savePartnerProfile(updatedPartner);
+          setPartner(updatedPartner);
+        }
+      }
+      
       toast.success('Cycle entry deleted');
       
       // Reload
