@@ -91,7 +91,18 @@ const Dashboard = () => {
       const profile = LocalStorage.getPartnerProfile();
       if (profile) {
         // Sync with most recent cycle from history
-        const history = LocalStorage.getCycleHistory();
+        let history = LocalStorage.getCycleHistory();
+        
+        // If no history but profile has a cycleStartDate, create initial entry
+        if ((!history || history.length === 0) && profile.cycleStartDate) {
+          LocalStorage.addCycleEntry({
+            cycle_start_date: profile.cycleStartDate,
+            cycle_length: null,
+            status: 'current'
+          });
+          history = LocalStorage.getCycleHistory();
+        }
+        
         if (history && history.length > 0) {
           const recalculated = recalculateCycleLengths(history);
           const mostRecentCycle = recalculated[recalculated.length - 1];
