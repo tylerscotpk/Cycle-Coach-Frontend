@@ -455,8 +455,6 @@ const Dashboard = () => {
       return;
     }
     
-    if (!confirm('Delete this cycle entry? This will recalculate your cycle statistics.')) return;
-    
     try {
       // Get current history before delete
       const historyBefore = LocalStorage.getCycleHistory();
