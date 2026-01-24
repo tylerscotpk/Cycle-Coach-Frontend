@@ -1920,10 +1920,10 @@ async def create_upgrade_checkout(request: UpgradeRequest):
     if not current_license:
         raise HTTPException(status_code=404, detail="No active license found")
     
-    current_tier = current_license.get("subscription_tier", current_license.get("key_type", "free_trial"))
+    current_tier = current_license.get("subscription_tier", current_license.get("key_type", "free_training"))
     
     # Validate upgrade path
-    tier_order = {"free_trial": 0, "basic": 1, "premium": 2, "grandfathered": 3, "lifetime": 3, "yearly": 2}
+    tier_order = {"free_training": 0, "winning": 1, "elite": 2, "grandfathered": 3, "lifetime": 3, "yearly": 2}
     if tier_order.get(new_tier, 0) <= tier_order.get(current_tier, 0):
         raise HTTPException(status_code=400, detail=f"Cannot upgrade from {current_tier} to {new_tier}")
     
