@@ -1985,6 +1985,9 @@ async def check_license_by_email(email: str):
     
     return {"found": False}
 
+class TrialRequestInput(BaseModel):
+    email: str
+
 @api_router.post("/license/resend")
 async def resend_license_key(request: TrialRequestInput):
     """Resend license key to a user's email"""
