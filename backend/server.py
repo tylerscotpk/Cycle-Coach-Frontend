@@ -1543,14 +1543,23 @@ async def stripe_webhook(request: Request):
         logger.error(f"Webhook error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.post("/license/validate", response_model=LicenseValidationResponse)
+class LicenseValidationResponseExtended(BaseModel):
+    valid: bool
+    message: str
+    tier: Optional[str] = None
+    has_partner_profile: Optional[bool] = None
+    has_ai_wingman: Optional[bool] = None
+    expires_at: Optional[str] = None
+    email: Optional[str] = None
+
+@api_router.post("/license/validate")
 async def validate_license(request: LicenseValidationRequest):
-    """Validate a license key (server-side validation) - ONE-TIME USE ONLY"""
+    """Validate a license key and return tier info"""
     normalized_key = request.license_key.strip().upper()
     
     # Check database for license
     license_record = await db.license_keys.find_one(
-        {"license_key": normalized_key, "is_active": True},
+        {"license_key": normalized_key, "is_active": True, "is_cancelled": {"$ne": True}},
         {"_id": 0}
     )
     
@@ -1560,34 +1569,56 @@ async def validate_license(request: LicenseValidationRequest):
         if expires_at:
             expiry_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
             if datetime.now(timezone.utc) > expiry_date:
-                return LicenseValidationResponse(
-                    valid=False,
-                    message="This license key has expired. Please contact support for a new key."
-                )
+                return {
+                    "valid": False,
+                    "message": "Your subscription has expired. Please choose a plan to continue."
+                }
         
-        # Check if already activated
+        # Check if already activated (allow re-activation for same device/returning users)
         activation_count = license_record.get("activation_count", 0)
         
-        if activation_count >= 1:
-            return LicenseValidationResponse(
-                valid=False,
-                message="This license key has already been activated on another device."
+        # First-time activation - mark as activated
+        if activation_count == 0:
+            await db.license_keys.update_one(
+                {"license_key": normalized_key},
+                {
+                    "$set": {"activation_count": 1, "activated_at": datetime.now(timezone.utc).isoformat()},
+                }
             )
         
-        # Mark as activated (increment count)
-        await db.license_keys.update_one(
-            {"license_key": normalized_key},
-            {
-                "$set": {"activation_count": 1, "activated_at": datetime.now(timezone.utc).isoformat()},
-            }
-        )
+        # Determine tier and features
+        key_type = license_record.get("key_type", "free_trial")
+        subscription_tier = license_record.get("subscription_tier", key_type)
         
-        return LicenseValidationResponse(
-            valid=True,
-            message="License key is valid"
-        )
+        # Grandfathered users: existing lifetime/yearly keys get full access
+        if key_type in ["lifetime", "yearly"] or subscription_tier == "grandfathered":
+            tier = "grandfathered"
+            has_partner_profile = True
+            has_ai_wingman = True
+        elif subscription_tier == "premium" or key_type == "premium":
+            tier = "premium"
+            has_partner_profile = True
+            has_ai_wingman = True
+        elif subscription_tier == "basic" or key_type == "basic":
+            tier = "basic"
+            has_partner_profile = False
+            has_ai_wingman = False
+        else:  # free_trial or trial
+            tier = "free_trial"
+            has_partner_profile = False
+            has_ai_wingman = False
+        
+        return {
+            "valid": True,
+            "message": "License key is valid",
+            "tier": tier,
+            "has_partner_profile": has_partner_profile,
+            "has_ai_wingman": has_ai_wingman,
+            "expires_at": expires_at,
+            "email": license_record.get("customer_email")
+        }
     
-    # Also check hardcoded keys for backward compatibility (these are unlimited for testing)
+    # Also check hardcoded keys for backward compatibility (grandfathered with full access)
     hardcoded_keys = [
         'CYCLE-COACH-2024-ALPHA',
         'CYCLE-COACH-2024-BETA',
@@ -1600,15 +1631,20 @@ async def validate_license(request: LicenseValidationRequest):
     ]
     
     if normalized_key in hardcoded_keys:
-        return LicenseValidationResponse(
-            valid=True,
-            message="License key is valid"
-        )
+        return {
+            "valid": True,
+            "message": "License key is valid",
+            "tier": "grandfathered",
+            "has_partner_profile": True,
+            "has_ai_wingman": True,
+            "expires_at": None,
+            "email": None
+        }
     
-    return LicenseValidationResponse(
-        valid=False,
-        message="Invalid license key"
-    )
+    return {
+        "valid": False,
+        "message": "Invalid license key"
+    }
 
 @api_router.get("/license/check/{email}")
 async def check_license_by_email(email: str):
