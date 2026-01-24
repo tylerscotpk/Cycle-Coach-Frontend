@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import uuid
 
 class DoHerBetterAPITester:
-    def __init__(self, base_url="https://relationsense.preview.emergentagent.com"):
+    def __init__(self, base_url="https://mentrack.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.session_token = None
