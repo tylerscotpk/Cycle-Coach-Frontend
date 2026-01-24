@@ -1843,11 +1843,12 @@ async def get_subscription_tiers():
     return {
         "tiers": [
             {
-                "id": "free_trial",
-                "name": "Free Trial",
+                "id": "free_training",
+                "name": "Free Training",
                 "price": 0,
                 "price_display": "Free",
                 "duration": "30 days",
+                "converts_to": "Winning Game Plan ($1.99/mo)",
                 "features": [
                     "Cycle tracking & phase predictions",
                     "Research-backed insights & tips",
@@ -1856,11 +1857,13 @@ async def get_subscription_tiers():
                 ],
                 "has_partner_profile": False,
                 "has_ai_wingman": False,
-                "cta": "Start Free Trial"
+                "cta": "Start Free Training",
+                "requires_payment": True,
+                "cancel_anytime": True
             },
             {
-                "id": "basic",
-                "name": "Basic",
+                "id": "winning",
+                "name": "Winning Game Plan",
                 "price": 1.99,
                 "price_display": "$1.99/mo",
                 "duration": "Monthly",
@@ -1872,23 +1875,23 @@ async def get_subscription_tiers():
                 ],
                 "has_partner_profile": False,
                 "has_ai_wingman": False,
-                "cta": "Subscribe Basic"
+                "cta": "Choose Winning"
             },
             {
-                "id": "premium",
-                "name": "Premium",
+                "id": "elite",
+                "name": "Elite Game Plan",
                 "price": 2.99,
                 "price_display": "$2.99/mo",
                 "duration": "Monthly",
                 "features": [
-                    "Everything in Basic, plus:",
+                    "Everything in Winning, plus:",
                     "Partner Profile - save her preferences",
                     "AI Wingman - 24/7 personalized advice",
                     "Priority support"
                 ],
                 "has_partner_profile": True,
                 "has_ai_wingman": True,
-                "cta": "Go Premium",
+                "cta": "Go Elite",
                 "recommended": True
             }
         ]
@@ -1897,7 +1900,7 @@ async def get_subscription_tiers():
 class UpgradeRequest(BaseModel):
     email: str
     current_license_key: str
-    new_tier: str  # 'basic' or 'premium'
+    new_tier: str  # 'winning' or 'elite'
 
 @api_router.post("/subscription/upgrade")
 async def create_upgrade_checkout(request: UpgradeRequest):
@@ -1905,8 +1908,8 @@ async def create_upgrade_checkout(request: UpgradeRequest):
     email = request.email.lower().strip()
     new_tier = request.new_tier.lower()
     
-    if new_tier not in ['basic', 'premium']:
-        raise HTTPException(status_code=400, detail="Invalid tier. Must be 'basic' or 'premium'")
+    if new_tier not in ['winning', 'elite']:
+        raise HTTPException(status_code=400, detail="Invalid tier. Must be 'winning' or 'elite'")
     
     # Verify current license exists
     current_license = await db.license_keys.find_one(
