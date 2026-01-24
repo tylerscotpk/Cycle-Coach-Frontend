@@ -1197,6 +1197,9 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
+            ) : (
+              <UpgradePrompt feature="Partner Profile" />
+            )}
           </TabsContent>
 
           {/* Resources Tab */}
