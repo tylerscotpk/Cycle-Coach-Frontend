@@ -132,6 +132,49 @@ export const LocalStorage = {
     return data?.isValid === true;
   },
   
+  // Subscription Tier Management
+  saveSubscriptionTier: (tierData) => {
+    const encrypted = encrypt({
+      tier: tierData.tier,
+      has_partner_profile: tierData.has_partner_profile,
+      has_ai_wingman: tierData.has_ai_wingman,
+      expires_at: tierData.expires_at,
+      email: tierData.email,
+      savedAt: new Date().toISOString()
+    });
+    if (encrypted) {
+      localStorage.setItem('cyclecoach_subscription', encrypted);
+    }
+  },
+  
+  getSubscriptionTier: () => {
+    const data = localStorage.getItem('cyclecoach_subscription');
+    return data ? decrypt(data) : null;
+  },
+  
+  // Check if user has premium features
+  hasPartnerProfile: () => {
+    const tier = LocalStorage.getSubscriptionTier();
+    return tier?.has_partner_profile === true;
+  },
+  
+  hasAIWingman: () => {
+    const tier = LocalStorage.getSubscriptionTier();
+    return tier?.has_ai_wingman === true;
+  },
+  
+  getTierName: () => {
+    const tier = LocalStorage.getSubscriptionTier();
+    if (!tier) return null;
+    switch (tier.tier) {
+      case 'premium': return 'Premium';
+      case 'basic': return 'Basic';
+      case 'grandfathered': return 'Lifetime';
+      case 'free_trial': return 'Free Trial';
+      default: return 'Free Trial';
+    }
+  },
+  
   // Export data (for backup)
   exportAllData: () => {
     return {
