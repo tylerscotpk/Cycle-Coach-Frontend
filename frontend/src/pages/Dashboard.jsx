@@ -1205,7 +1205,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
             ) : (
-              <UpgradePrompt feature="Partner Profile" />
+              <UpgradePrompt feature="Partner Profile" onUpgrade={handleUpgradeToPremium} isUpgrading={isUpgrading} />
             )}
           </TabsContent>
 
