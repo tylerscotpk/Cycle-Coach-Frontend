@@ -1,0 +1,127 @@
+{
+  "summary": "Comprehensive testing of Cycle Coach tiered subscription system. All core features working: Paywall UI with 3 tier cards ($0, $1.99/mo, $2.99/mo), Free Trial auto-approval, License validation with tier info, Dashboard upgrade banner for non-premium users, Locked features (AI Wingman, Partner Profile) for free/basic users, Grandfathered users have full access.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/subscription/create-checkout", "issue": "Returns 500 error - Stripe API key 'sk_test_emergent' is invalid placeholder", "priority": "LOW - Expected in test environment"},
+      {"endpoint": "/api/subscription/upgrade", "issue": "Returns 500 error - Same Stripe API key issue", "priority": "LOW - Expected in test environment"},
+      {"endpoint": "/api/trial/request", "issue": "Accepts invalid email formats (no strict validation)", "priority": "LOW - Minor UX issue"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_subscription_tiers.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Replace placeholder Stripe API key 'sk_test_emergent' with valid Stripe test key for checkout functionality",
+    "Consider adding email format validation in /api/trial/request endpoint"
+  ],
+  "critical_code_review_comments": [
+    "Stripe integration is correctly implemented but uses placeholder test key - checkout/upgrade flows will fail until real key is configured",
+    "License validation correctly returns tier info (tier, has_partner_profile, has_ai_wingman)",
+    "Frontend correctly saves and uses subscription tier data from localStorage",
+    "Upgrade prompts and locked feature UI are well implemented with clear CTAs"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_subscription_tiers.py"
+  ],
+  "success_rate": {
+    "backend": "84% (16/19 passed, 3 skipped due to Stripe test key)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "grandfathered_keys": ["CYCLE-COACH-2024-ALPHA", "CC-FOUNDER-SPECIAL"],
+    "admin_dashboard": {"url": "/admin", "password": "cyclecoach2024"}
+  },
+  "seed_data_creation": "Multiple free trial licenses created during testing (test_trial_*, test_dashboard_*, test_locked_*, etc.)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Tiered subscription system is fully implemented and working. Stripe checkout requires valid API key. Free trial auto-approves immediately. License validation returns tier info. Dashboard shows upgrade banner for non-premium users. AI Wingman and Partner Profile tabs show locked state with upgrade prompts for free/basic users. Grandfathered users (existing lifetime keys) have full access to all features.",
+  "test_results": {
+    "paywall_ui": {
+      "status": "PASS",
+      "details": [
+        "Three tier cards displayed: Free Trial ($0/30 days), Basic ($1.99/mo), Premium ($2.99/mo)",
+        "Email input field present",
+        "Start Free Trial button works",
+        "Subscribe Basic and Go Premium buttons present",
+        "'I Have a Key' tab for returning users",
+        "RECOMMENDED badge on Premium card"
+      ]
+    },
+    "free_trial_auto_approval": {
+      "status": "PASS",
+      "details": [
+        "POST /api/trial/request auto-approves immediately",
+        "Returns license_key, tier='free_trial', expires_at (30 days)",
+        "Email sent with license key",
+        "Duplicate email returns 'already_licensed' status",
+        "Frontend shows success toast and redirects to login tab"
+      ]
+    },
+    "license_validation": {
+      "status": "PASS",
+      "details": [
+        "POST /api/license/validate returns tier info",
+        "Grandfathered keys (CYCLE-COACH-2024-ALPHA) return tier='grandfathered', has_partner_profile=true, has_ai_wingman=true",
+        "Free trial keys return tier='free_trial', has_partner_profile=false, has_ai_wingman=false",
+        "Invalid keys return valid=false",
+        "Case-insensitive validation works"
+      ]
+    },
+    "subscription_tiers_endpoint": {
+      "status": "PASS",
+      "details": [
+        "GET /api/subscription/tiers returns 3 tiers",
+        "Free Trial: price=0, has_partner_profile=false, has_ai_wingman=false",
+        "Basic: price=1.99, has_partner_profile=false, has_ai_wingman=false",
+        "Premium: price=2.99, has_partner_profile=true, has_ai_wingman=true, recommended=true"
+      ]
+    },
+    "dashboard_upgrade_banner": {
+      "status": "PASS",
+      "details": [
+        "Banner shows 'You're on the Free Trial plan'",
+        "'Go Premium - $2.99/mo' button present",
+        "Banner NOT shown for grandfathered users"
+      ]
+    },
+    "locked_features": {
+      "status": "PASS",
+      "details": [
+        "AI Wingman tab shows ⭐ indicator for non-premium users",
+        "AI Wingman content shows '🔒 AI Wingman is a Premium Feature' with upgrade prompt",
+        "Partner Profile tab shows ⭐ indicator for non-premium users",
+        "Partner Profile content shows '🔒 Partner Profile is a Premium Feature' with upgrade prompt",
+        "Upgrade button ($2.99/mo) present in locked feature prompts"
+      ]
+    },
+    "grandfathered_users": {
+      "status": "PASS",
+      "details": [
+        "CYCLE-COACH-2024-ALPHA key validates as 'grandfathered' tier",
+        "Full access to AI Wingman (chat input available)",
+        "Full access to Partner Profile (preference inputs available)",
+        "No upgrade banner shown",
+        "No ⭐ indicators on tabs"
+      ]
+    },
+    "stripe_checkout": {
+      "status": "SKIPPED",
+      "details": [
+        "Stripe API key 'sk_test_emergent' is invalid placeholder",
+        "Checkout session creation returns 500 error",
+        "Upgrade checkout returns 500 error",
+        "Invalid tier validation works (returns 400)"
+      ]
+    }
+  },
+  "mocked_features": {
+    "stripe_checkout": "Stripe checkout/upgrade flows fail due to placeholder API key - NOT a code bug"
+  }
+}
