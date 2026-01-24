@@ -38,7 +38,7 @@ const Paywall = ({ onUnlock }) => {
       
       if (result.valid) {
         LocalStorage.saveLicenseKey(normalizedKey);
-        toast.success('Welcome back to Cycle Coach!');
+        toast.success('Welcome to Cycle Coach!');
         onUnlock();
       } else {
         toast.error(result.message || 'Invalid license key. Please check and try again.');
@@ -159,7 +159,7 @@ const Paywall = ({ onUnlock }) => {
               <CardHeader className="text-center pb-2">
                 <CardTitle className="text-2xl text-white">Get Started</CardTitle>
                 <CardDescription className="text-slate-400">
-                  Request a free trial or purchase access
+                  Request a trial or enter your license key
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -250,9 +250,41 @@ const Paywall = ({ onUnlock }) => {
                   </div>
                 )}
 
-                <p className="text-xs text-slate-500 text-center">
-                  License keys are sent via email after approval.
-                </p>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-600"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-slate-800 px-2 text-slate-500">Have a license key?</span>
+                  </div>
+                </div>
+
+                {/* License Key Input */}
+                <form onSubmit={handleValidateLicense} className="space-y-4">
+                  <div>
+                    <Label htmlFor="license-key-new" className="text-slate-300 text-sm">
+                      Enter your license key
+                    </Label>
+                    <Input
+                      id="license-key-new"
+                      data-testid="license-key-input"
+                      value={licenseKey}
+                      onChange={(e) => setLicenseKey(e.target.value)}
+                      placeholder="CC-XXXX-XXXX-XXXX"
+                      className="bg-slate-700/50 border-slate-600 text-white mt-2 uppercase text-center text-lg tracking-wider"
+                      required
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    className="w-full border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white"
+                    disabled={isValidating || !licenseKey.trim()}
+                    data-testid="activate-license-button"
+                  >
+                    {isValidating ? 'Validating...' : 'Activate License'}
+                  </Button>
+                </form>
               </CardContent>
             </>
           ) : (
@@ -273,7 +305,6 @@ const Paywall = ({ onUnlock }) => {
                     </Label>
                     <Input
                       id="license-key"
-                      data-testid="license-key-input"
                       value={licenseKey}
                       onChange={(e) => setLicenseKey(e.target.value)}
                       placeholder="CC-XXXX-XXXX-XXXX"
@@ -285,7 +316,6 @@ const Paywall = ({ onUnlock }) => {
                     type="submit"
                     className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-5"
                     disabled={isValidating || !licenseKey.trim()}
-                    data-testid="activate-license-button"
                   >
                     {isValidating ? 'Validating...' : 'Activate License'}
                   </Button>
