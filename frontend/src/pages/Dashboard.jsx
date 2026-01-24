@@ -497,6 +497,110 @@ const Dashboard = () => {
     }
   };
 
+  // Check if user has premium features
+  const hasPremiumFeatures = () => {
+    if (!subscriptionTier) return false;
+    return subscriptionTier.has_partner_profile === true && subscriptionTier.has_ai_wingman === true;
+  };
+
+  const hasPartnerProfile = () => {
+    if (!subscriptionTier) return false;
+    return subscriptionTier.has_partner_profile === true;
+  };
+
+  const hasAIWingman = () => {
+    if (!subscriptionTier) return false;
+    return subscriptionTier.has_ai_wingman === true;
+  };
+
+  const handleUpgradeToPremium = async () => {
+    setIsUpgrading(true);
+    try {
+      const license = LocalStorage.getLicenseKey();
+      const tier = LocalStorage.getSubscriptionTier();
+      
+      if (!license || !tier?.email) {
+        toast.error('Please log in first');
+        return;
+      }
+
+      const response = await fetch(`${API}/subscription/upgrade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: tier.email,
+          current_license_key: license.key,
+          new_tier: 'premium'
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.status === 'success' && result.checkout_url) {
+        window.location.href = result.checkout_url;
+      } else {
+        toast.error(result.detail || 'Failed to create upgrade checkout');
+      }
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      toast.error('Unable to upgrade. Please try again.');
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+
+  // Upgrade prompt component for locked features
+  const UpgradePrompt = ({ feature }) => (
+    <Card className="bg-gradient-to-r from-purple-900/30 to-slate-800/50 border-purple-500/30">
+      <CardContent className="p-6 text-center">
+        <div className="text-4xl mb-3">🔒</div>
+        <h3 className="text-xl font-bold text-white mb-2">{feature} is a Premium Feature</h3>
+        <p className="text-slate-400 mb-4">
+          Upgrade to Premium to unlock {feature} and get personalized advice tailored to your relationship.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+          <Button
+            onClick={handleUpgradeToPremium}
+            disabled={isUpgrading}
+            className="bg-purple-500 hover:bg-purple-600 text-white px-6"
+            data-testid="upgrade-premium-btn"
+          >
+            {isUpgrading ? 'Loading...' : 'Upgrade to Premium - $2.99/mo'}
+          </Button>
+          <span className="text-slate-500 text-sm">Cancel anytime</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Upgrade banner for basic users (shown at top of dashboard)
+  const UpgradeBanner = () => {
+    if (hasPremiumFeatures()) return null;
+    const tierName = subscriptionTier?.tier === 'basic' ? 'Basic' : 'Free Trial';
+    
+    return (
+      <div className="bg-gradient-to-r from-purple-600/20 to-cyan-600/20 border border-purple-500/30 rounded-lg p-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⭐</span>
+            <div>
+              <p className="text-white font-medium">You're on the {tierName} plan</p>
+              <p className="text-slate-400 text-sm">Upgrade to Premium for Partner Profile & AI Wingman</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleUpgradeToPremium}
+            disabled={isUpgrading}
+            className="bg-purple-500 hover:bg-purple-600 text-white whitespace-nowrap"
+            data-testid="banner-upgrade-btn"
+          >
+            {isUpgrading ? 'Loading...' : 'Go Premium - $2.99/mo'}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   const getPhaseColor = (phase) => {
     switch (phase) {
       case 'Menstrual':
