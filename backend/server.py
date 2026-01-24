@@ -2189,44 +2189,50 @@ async def send_trial_email(customer_email: str, license_key: str, trial_end_date
             .instructions {{ background: white; padding: 20px; border-radius: 8px; margin-top: 20px; }}
             .upgrade-box {{ background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center; }}
             .footer {{ text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }}
+            .cancel-note {{ background: #fef3c7; padding: 12px; border-radius: 6px; margin-top: 15px; color: #92400e; font-size: 13px; }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1 style="margin: 0;">🎉 Welcome to Cycle Coach!</h1>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">Your free trial is now active</p>
+                <h1 style="margin: 0;">🏆 Welcome to Free Training!</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Your 30-day training has begun</p>
             </div>
             <div class="content">
                 <div style="text-align: center;">
-                    <span class="trial-badge">✨ 30-Day Free Trial</span>
+                    <span class="trial-badge">🎯 30-Day Free Training</span>
                 </div>
                 
-                <p>Great news! Your free trial has been activated. Here's your license key:</p>
+                <p>Great news! Your Free Training has started. Here's your license key:</p>
                 
                 <div class="license-box">
                     {license_key}
                 </div>
                 
                 <p style="text-align: center; color: #64748b; font-size: 14px;">
-                    Trial expires: <strong>{expiry_date}</strong>
+                    Free Training ends: <strong>{expiry_date}</strong><br/>
+                    <em>Then continues as Winning Game Plan ($1.99/mo)</em>
                 </p>
                 
                 <div class="instructions">
-                    <h3 style="margin-top: 0;">What's included in your free trial:</h3>
+                    <h3 style="margin-top: 0;">What's included in Free Training:</h3>
                     <ul>
                         <li>✅ Cycle tracking & phase predictions</li>
                         <li>✅ Research-backed insights & tips</li>
                         <li>✅ Educational resources</li>
                     </ul>
                     <p style="color: #64748b; font-size: 14px; margin-bottom: 0;">
-                        <em>Note: Partner Profile and AI Wingman are available with Premium.</em>
+                        <em>Partner Profile and AI Wingman are available with Elite Game Plan.</em>
                     </p>
+                </div>
+                
+                <div class="cancel-note">
+                    💡 <strong>Cancel anytime</strong> - You won't be charged during your 30-day Free Training. If you cancel before it ends, you won't be billed.
                 </div>
                 
                 <div class="upgrade-box">
                     <h3 style="margin: 0 0 10px 0;">Want the full experience?</h3>
-                    <p style="margin: 0; opacity: 0.9;">Upgrade to Premium for Partner Profile + AI Wingman</p>
+                    <p style="margin: 0; opacity: 0.9;">Upgrade to Elite Game Plan for Partner Profile + AI Wingman</p>
                     <p style="margin: 10px 0 0 0; font-size: 24px; font-weight: bold;">Only $2.99/month</p>
                 </div>
             </div>
@@ -2243,7 +2249,7 @@ async def send_trial_email(customer_email: str, license_key: str, trial_end_date
         params = {
             "from": SENDER_EMAIL,
             "to": [customer_email],
-            "subject": "🎉 Your Cycle Coach Free Trial is Active!",
+            "subject": "🏆 Your Cycle Coach Free Training Has Begun!",
             "html": html_content
         }
         
@@ -2253,6 +2259,114 @@ async def send_trial_email(customer_email: str, license_key: str, trial_end_date
     except Exception as e:
         logger.error(f"Failed to send trial email: {str(e)}")
         return False
+
+# ============================================
+# FEEDBACK SYSTEM
+# ============================================
+
+class FeedbackInput(BaseModel):
+    email: str
+    rating: int  # 1-5 stars
+    feedback_text: Optional[str] = None
+    feedback_type: str  # 'trial_midpoint', 'trial_end', 'cancellation', 'general'
+    subscription_tier: Optional[str] = None
+
+@api_router.post("/feedback/submit")
+async def submit_feedback(request: FeedbackInput):
+    """Submit user feedback"""
+    email = request.email.lower().strip()
+    
+    if request.rating < 1 or request.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+    
+    feedback_doc = {
+        "id": str(uuid.uuid4()),
+        "email": email,
+        "rating": request.rating,
+        "feedback_text": request.feedback_text,
+        "feedback_type": request.feedback_type,
+        "subscription_tier": request.subscription_tier,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.feedback.insert_one(feedback_doc)
+    logger.info(f"Feedback submitted from {email}: {request.rating} stars ({request.feedback_type})")
+    
+    return {
+        "status": "success",
+        "message": "Thank you for your feedback!"
+    }
+
+@api_router.get("/feedback/check/{email}")
+async def check_feedback_status(email: str):
+    """Check if user should be prompted for feedback based on their trial status"""
+    email = email.lower().strip()
+    
+    # Get user's license info
+    license = await db.license_keys.find_one(
+        {"customer_email": email, "is_active": True},
+        {"_id": 0}
+    )
+    
+    if not license:
+        return {"should_prompt": False, "reason": "no_active_license"}
+    
+    # Check existing feedback
+    existing_feedback = await db.feedback.find(
+        {"email": email},
+        {"_id": 0, "feedback_type": 1, "created_at": 1}
+    ).to_list(100)
+    
+    feedback_types_given = [f["feedback_type"] for f in existing_feedback]
+    
+    # Calculate days since trial started
+    created_at = license.get("created_at")
+    if created_at:
+        start_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        days_in_trial = (datetime.now(timezone.utc) - start_date).days
+    else:
+        days_in_trial = 0
+    
+    # Determine if we should prompt
+    prompts_needed = []
+    
+    # Day 7 feedback
+    if days_in_trial >= 7 and "trial_day7" not in feedback_types_given:
+        prompts_needed.append("trial_day7")
+    
+    # Day 14 feedback
+    if days_in_trial >= 14 and "trial_day14" not in feedback_types_given:
+        prompts_needed.append("trial_day14")
+    
+    # Day 25+ (near end of trial)
+    if days_in_trial >= 25 and "trial_end" not in feedback_types_given:
+        prompts_needed.append("trial_end")
+    
+    return {
+        "should_prompt": len(prompts_needed) > 0,
+        "prompt_type": prompts_needed[0] if prompts_needed else None,
+        "days_in_trial": days_in_trial,
+        "is_trial": license.get("is_trial", False),
+        "tier": license.get("subscription_tier", "unknown")
+    }
+
+@api_router.get("/admin/feedback")
+async def get_all_feedback():
+    """Get all feedback (admin endpoint)"""
+    feedback_list = await db.feedback.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Calculate stats
+    total = len(feedback_list)
+    avg_rating = sum(f["rating"] for f in feedback_list) / total if total > 0 else 0
+    
+    return {
+        "feedback": feedback_list,
+        "stats": {
+            "total_feedback": total,
+            "average_rating": round(avg_rating, 2),
+            "by_type": {}
+        }
+    }
 
 @api_router.get("/trial/requests")
 async def get_trial_requests(status: Optional[str] = None):
