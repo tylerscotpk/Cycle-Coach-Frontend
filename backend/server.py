@@ -2083,7 +2083,7 @@ SUBSCRIPTION_TIERS = {
 
 @api_router.post("/trial/request")
 async def request_trial_access(request: TrialRequestInput):
-    """Request trial access - AUTO-APPROVED, generates free trial immediately"""
+    """Request trial access - Creates Stripe checkout with 30-day free trial, then converts to Winning Game Plan"""
     email = request.email.lower().strip()
     
     # Check if already has a license
@@ -2100,69 +2100,80 @@ async def request_trial_access(request: TrialRequestInput):
         status = existing_request.get("status", "pending")
         if status == "approved":
             return {
-                "status": "already_approved",
-                "message": "Your free trial is active! Check your email for the license key."
+                "status": "already_approved", 
+                "message": "Your Free Training is active! Check your email for the license key."
             }
     
-    # AUTO-APPROVE: Generate license key immediately
-    license_key = generate_license_key()
-    while await db.license_keys.find_one({"license_key": license_key}):
-        license_key = generate_license_key()
-    
-    # Set expiration to 30 days from now (free trial)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
-    
-    # Save license to database with tier info
-    license_dict = {
-        "id": str(uuid.uuid4()),
-        "license_key": license_key,
-        "customer_email": email,
-        "stripe_session_id": f"free_trial_{uuid.uuid4()}",
-        "stripe_subscription_id": None,
-        "is_active": True,
-        "is_trial": True,
-        "key_type": "free_trial",
-        "subscription_tier": "free_trial",
-        "expires_at": expires_at.isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "activation_count": 0
-    }
-    await db.license_keys.insert_one(license_dict)
-    
-    # Create trial request record
-    trial_request = TrialRequest(email=email, status="approved", license_key=license_key)
-    request_dict = trial_request.model_dump()
-    request_dict['created_at'] = request_dict['created_at'].isoformat()
-    request_dict['approved_at'] = datetime.now(timezone.utc).isoformat()
-    
-    # Update or insert trial request
-    await db.trial_requests.update_one(
-        {"email": email},
-        {"$set": request_dict},
-        upsert=True
-    )
-    
-    logger.info(f"Auto-approved free trial for {email}, license: {license_key}, expires: {expires_at}")
-    
-    # Send email with license key
-    email_sent = await send_trial_email(email, license_key, expires_at)
-    
-    return {
-        "status": "success",
-        "message": "Your free trial is activated! Check your email for the license key.",
-        "license_key": license_key,
-        "tier": "free_trial",
-        "expires_at": expires_at.isoformat(),
-        "email_sent": email_sent
-    }
+    # Create Stripe checkout session with 30-day trial, converts to Winning Game Plan ($1.99/mo)
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'unit_amount': SUBSCRIPTION_TIERS["winning"]["price_cents"],  # $1.99
+                    'recurring': {
+                        'interval': 'month'
+                    },
+                    'product_data': {
+                        'name': 'Cycle Coach - Winning Game Plan',
+                        'description': 'Monthly subscription after 30-day Free Training',
+                    },
+                },
+                'quantity': 1,
+            }],
+            mode='subscription',
+            subscription_data={
+                'trial_period_days': 30,
+                'metadata': {
+                    'tier': 'free_training',
+                    'converts_to': 'winning'
+                }
+            },
+            customer_email=email,
+            success_url=f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}?trial=success",
+            cancel_url=f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}?trial=cancelled",
+            metadata={
+                'tier': 'free_training',
+                'customer_email': email,
+                'is_trial': 'true'
+            }
+        )
+        
+        # Record trial request as pending (will be approved when checkout completes)
+        trial_request = TrialRequest(email=email, status="pending")
+        request_dict = trial_request.model_dump()
+        request_dict['created_at'] = request_dict['created_at'].isoformat()
+        request_dict['checkout_session_id'] = checkout_session.id
+        
+        await db.trial_requests.update_one(
+            {"email": email},
+            {"$set": request_dict},
+            upsert=True
+        )
+        
+        logger.info(f"Created trial checkout session {checkout_session.id} for {email}")
+        
+        return {
+            "status": "checkout_required",
+            "message": "Please complete checkout to start your Free Training",
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id
+        }
+    except Exception as e:
+        logger.error(f"Error creating trial checkout: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Unable to create checkout: {str(e)}"
+        }
 
-async def send_trial_email(customer_email: str, license_key: str, expires_at: datetime):
-    """Send trial license key to customer via Resend"""
+async def send_trial_email(customer_email: str, license_key: str, trial_end_date: datetime):
+    """Send trial welcome email with license key"""
     if not RESEND_API_KEY:
         logger.warning("RESEND_API_KEY not configured - skipping email")
         return False
     
-    expiry_date = expires_at.strftime("%B %d, %Y")
+    expiry_date = trial_end_date.strftime("%B %d, %Y")
     
     html_content = f"""
     <!DOCTYPE html>
@@ -2176,7 +2187,7 @@ async def send_trial_email(customer_email: str, license_key: str, expires_at: da
             .license-box {{ background: #1e293b; color: #22d3ee; padding: 20px; border-radius: 8px; text-align: center; font-family: monospace; font-size: 24px; letter-spacing: 2px; margin: 20px 0; }}
             .trial-badge {{ background: #10b981; color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 15px; }}
             .instructions {{ background: white; padding: 20px; border-radius: 8px; margin-top: 20px; }}
-            .upgrade-box {{ background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center; }}
+            .upgrade-box {{ background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center; }}
             .footer {{ text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }}
         </style>
     </head>
