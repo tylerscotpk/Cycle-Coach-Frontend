@@ -91,6 +91,12 @@ const Dashboard = () => {
 
   const loadData = () => {
     try {
+      // Load subscription tier info
+      const tierData = LocalStorage.getSubscriptionTier();
+      if (tierData) {
+        setSubscriptionTier(tierData);
+      }
+      
       // LOCAL-ONLY: Load from localStorage
       const profile = LocalStorage.getPartnerProfile();
       if (profile) {
