@@ -2035,9 +2035,6 @@ class TrialRequest(BaseModel):
     approved_at: Optional[datetime] = None
     license_key: Optional[str] = None
 
-class TrialRequestInput(BaseModel):
-    email: str
-
 # ============================================
 # SUBSCRIPTION TIERS CONFIGURATION
 # ============================================
