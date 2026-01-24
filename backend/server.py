@@ -1837,6 +1837,137 @@ async def validate_license(request: LicenseValidationRequest):
         "message": "Invalid license key"
     }
 
+@api_router.get("/subscription/tiers")
+async def get_subscription_tiers():
+    """Get available subscription tiers and pricing"""
+    return {
+        "tiers": [
+            {
+                "id": "free_trial",
+                "name": "Free Trial",
+                "price": 0,
+                "price_display": "Free",
+                "duration": "30 days",
+                "features": [
+                    "Cycle tracking & phase predictions",
+                    "Research-backed insights & tips",
+                    "Educational resources",
+                    "100% privacy - data stays on your device"
+                ],
+                "has_partner_profile": False,
+                "has_ai_wingman": False,
+                "cta": "Start Free Trial"
+            },
+            {
+                "id": "basic",
+                "name": "Basic",
+                "price": 1.99,
+                "price_display": "$1.99/mo",
+                "duration": "Monthly",
+                "features": [
+                    "Cycle tracking & phase predictions",
+                    "Research-backed insights & tips",
+                    "Educational resources",
+                    "100% privacy - data stays on your device"
+                ],
+                "has_partner_profile": False,
+                "has_ai_wingman": False,
+                "cta": "Subscribe Basic"
+            },
+            {
+                "id": "premium",
+                "name": "Premium",
+                "price": 2.99,
+                "price_display": "$2.99/mo",
+                "duration": "Monthly",
+                "features": [
+                    "Everything in Basic, plus:",
+                    "Partner Profile - save her preferences",
+                    "AI Wingman - 24/7 personalized advice",
+                    "Priority support"
+                ],
+                "has_partner_profile": True,
+                "has_ai_wingman": True,
+                "cta": "Go Premium",
+                "recommended": True
+            }
+        ]
+    }
+
+class UpgradeRequest(BaseModel):
+    email: str
+    current_license_key: str
+    new_tier: str  # 'basic' or 'premium'
+
+@api_router.post("/subscription/upgrade")
+async def create_upgrade_checkout(request: UpgradeRequest):
+    """Create checkout session to upgrade from current tier"""
+    email = request.email.lower().strip()
+    new_tier = request.new_tier.lower()
+    
+    if new_tier not in ['basic', 'premium']:
+        raise HTTPException(status_code=400, detail="Invalid tier. Must be 'basic' or 'premium'")
+    
+    # Verify current license exists
+    current_license = await db.license_keys.find_one(
+        {"customer_email": email, "is_active": True, "is_cancelled": {"$ne": True}},
+        {"_id": 0}
+    )
+    
+    if not current_license:
+        raise HTTPException(status_code=404, detail="No active license found")
+    
+    current_tier = current_license.get("subscription_tier", current_license.get("key_type", "free_trial"))
+    
+    # Validate upgrade path
+    tier_order = {"free_trial": 0, "basic": 1, "premium": 2, "grandfathered": 3, "lifetime": 3, "yearly": 2}
+    if tier_order.get(new_tier, 0) <= tier_order.get(current_tier, 0):
+        raise HTTPException(status_code=400, detail=f"Cannot upgrade from {current_tier} to {new_tier}")
+    
+    # Create checkout session
+    price_cents = SUBSCRIPTION_TIERS[new_tier]["price_cents"]
+    tier_name = SUBSCRIPTION_TIERS[new_tier]["name"]
+    
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'unit_amount': price_cents,
+                    'recurring': {
+                        'interval': 'month'
+                    },
+                    'product_data': {
+                        'name': f'Cycle Coach {tier_name}',
+                        'description': f'Upgrade to Cycle Coach {tier_name}',
+                    },
+                },
+                'quantity': 1,
+            }],
+            mode='subscription',
+            customer_email=email,
+            success_url=f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}?upgrade=success&tier={new_tier}",
+            cancel_url=f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}?upgrade=cancelled",
+            metadata={
+                'tier': new_tier,
+                'customer_email': email,
+                'upgrade_from': current_tier,
+                'previous_license_key': request.current_license_key
+            }
+        )
+        
+        logger.info(f"Created upgrade checkout session {checkout_session.id} for {email} ({current_tier} -> {new_tier})")
+        
+        return {
+            "status": "success",
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id
+        }
+    except Exception as e:
+        logger.error(f"Error creating upgrade checkout: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create checkout: {str(e)}")
+
 @api_router.get("/license/check/{email}")
 async def check_license_by_email(email: str):
     """Check if a license exists for an email (for customer support)"""
