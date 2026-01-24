@@ -1466,9 +1466,157 @@ async def send_license_email(customer_email: str, license_key: str):
         logger.error(f"Failed to send license email: {str(e)}")
         return False
 
+# ============================================
+# STRIPE SUBSCRIPTION ENDPOINTS
+# ============================================
+
+class CreateCheckoutRequest(BaseModel):
+    email: str
+    tier: str  # 'basic' or 'premium'
+    success_url: Optional[str] = None
+    cancel_url: Optional[str] = None
+
+@api_router.post("/subscription/create-checkout")
+async def create_checkout_session(request: CreateCheckoutRequest):
+    """Create a Stripe Checkout session for subscription"""
+    email = request.email.lower().strip()
+    tier = request.tier.lower()
+    
+    if tier not in ['basic', 'premium']:
+        raise HTTPException(status_code=400, detail="Invalid tier. Must be 'basic' or 'premium'")
+    
+    # Set pricing
+    price_cents = SUBSCRIPTION_TIERS[tier]["price_cents"]
+    tier_name = SUBSCRIPTION_TIERS[tier]["name"]
+    
+    try:
+        # Create Stripe checkout session with subscription mode
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'unit_amount': price_cents,
+                    'recurring': {
+                        'interval': 'month'
+                    },
+                    'product_data': {
+                        'name': f'Cycle Coach {tier_name}',
+                        'description': f'Monthly subscription to Cycle Coach {tier_name}',
+                    },
+                },
+                'quantity': 1,
+            }],
+            mode='subscription',
+            customer_email=email,
+            success_url=request.success_url or f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}?subscription=success&tier={tier}",
+            cancel_url=request.cancel_url or f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000')}?subscription=cancelled",
+            metadata={
+                'tier': tier,
+                'customer_email': email
+            }
+        )
+        
+        logger.info(f"Created checkout session {checkout_session.id} for {email} ({tier})")
+        
+        return {
+            "status": "success",
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id
+        }
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create checkout: {str(e)}")
+
+async def send_subscription_email(customer_email: str, license_key: str, tier: str):
+    """Send subscription confirmation email with license key"""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured - skipping email")
+        return False
+    
+    tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["basic"])
+    tier_name = tier_config["name"]
+    has_ai = tier_config["has_ai_wingman"]
+    has_profile = tier_config["has_partner_profile"]
+    
+    features_html = """
+        <li>✅ Cycle tracking & phase predictions</li>
+        <li>✅ Research-backed insights & tips</li>
+        <li>✅ Educational resources</li>
+    """
+    if has_profile:
+        features_html += "<li>✅ Partner Profile - save all her preferences</li>"
+    if has_ai:
+        features_html += "<li>✅ AI Wingman - personalized advice 24/7</li>"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .license-box {{ background: #1e293b; color: #22d3ee; padding: 20px; border-radius: 8px; text-align: center; font-family: monospace; font-size: 24px; letter-spacing: 2px; margin: 20px 0; }}
+            .tier-badge {{ background: {'#8b5cf6' if tier == 'premium' else '#06b6d4'}; color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 15px; }}
+            .instructions {{ background: white; padding: 20px; border-radius: 8px; margin-top: 20px; }}
+            .footer {{ text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin: 0;">🎉 Welcome to Cycle Coach {tier_name}!</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Your subscription is now active</p>
+            </div>
+            <div class="content">
+                <div style="text-align: center;">
+                    <span class="tier-badge">⭐ {tier_name} Plan</span>
+                </div>
+                
+                <p>Thank you for subscribing! Here's your license key:</p>
+                
+                <div class="license-box">
+                    {license_key}
+                </div>
+                
+                <div class="instructions">
+                    <h3 style="margin-top: 0;">Your {tier_name} features:</h3>
+                    <ul>
+                        {features_html}
+                    </ul>
+                </div>
+                
+                <p style="margin-top: 20px;"><strong>Keep this email safe!</strong> Use this license key to access Cycle Coach.</p>
+            </div>
+            <div class="footer">
+                <p>Cycle Coach - Your relationship game-changer</p>
+                <p>Questions? Reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [customer_email],
+            "subject": f"🔑 Your Cycle Coach {tier_name} License Key",
+            "html": html_content
+        }
+        
+        email_result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Subscription email sent to {customer_email}, email_id: {email_result.get('id')}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send subscription email: {str(e)}")
+        return False
+
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
-    """Handle Stripe webhook events"""
+    """Handle Stripe webhook events for subscriptions"""
     payload = await request.body()
     sig_header = request.headers.get("Stripe-Signature")
     
@@ -1485,14 +1633,17 @@ async def stripe_webhook(request: Request):
             logger.warning("Processing webhook without signature verification")
         
         event_type = event.get("type") if isinstance(event, dict) else event.type
+        logger.info(f"Received Stripe webhook: {event_type}")
         
-        # Handle checkout.session.completed event
+        # Handle checkout.session.completed event (subscription created)
         if event_type == "checkout.session.completed":
             session = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
             
             customer_email = session.get("customer_email") or session.get("customer_details", {}).get("email")
             session_id = session.get("id")
-            payment_intent = session.get("payment_intent")
+            subscription_id = session.get("subscription")
+            metadata = session.get("metadata", {})
+            tier = metadata.get("tier", "basic")
             
             if not customer_email:
                 logger.error(f"No customer email in session {session_id}")
@@ -1504,35 +1655,75 @@ async def stripe_webhook(request: Request):
                 logger.info(f"License already exists for session {session_id}")
                 return {"status": "already_processed"}
             
+            # Deactivate any existing trial/free licenses for this email
+            await db.license_keys.update_many(
+                {"customer_email": customer_email.lower(), "key_type": {"$in": ["free_trial", "trial"]}},
+                {"$set": {"is_active": False}}
+            )
+            
             # Generate unique license key
             license_key = generate_license_key()
-            
-            # Ensure uniqueness
             while await db.license_keys.find_one({"license_key": license_key}):
                 license_key = generate_license_key()
             
-            # Save license to database
-            license_record = LicenseKey(
-                license_key=license_key,
-                customer_email=customer_email,
-                stripe_session_id=session_id,
-                stripe_payment_intent=payment_intent
-            )
-            
-            license_dict = license_record.model_dump()
-            license_dict['created_at'] = license_dict['created_at'].isoformat()
+            # Save license to database with subscription info
+            license_dict = {
+                "id": str(uuid.uuid4()),
+                "license_key": license_key,
+                "customer_email": customer_email.lower(),
+                "stripe_session_id": session_id,
+                "stripe_subscription_id": subscription_id,
+                "is_active": True,
+                "key_type": tier,
+                "subscription_tier": tier,
+                "expires_at": None,  # Subscriptions don't expire until cancelled
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "activation_count": 0
+            }
             await db.license_keys.insert_one(license_dict)
             
-            logger.info(f"Created license {license_key} for {customer_email}")
+            logger.info(f"Created {tier} license {license_key} for {customer_email}")
             
             # Send email with license key
-            email_sent = await send_license_email(customer_email, license_key)
+            email_sent = await send_subscription_email(customer_email, license_key, tier)
             
             return {
                 "status": "success",
                 "license_key": license_key,
+                "tier": tier,
                 "email_sent": email_sent
             }
+        
+        # Handle subscription cancelled
+        elif event_type == "customer.subscription.deleted":
+            subscription = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
+            subscription_id = subscription.get("id")
+            
+            # Deactivate the license
+            result = await db.license_keys.update_one(
+                {"stripe_subscription_id": subscription_id},
+                {"$set": {"is_active": False, "is_cancelled": True, "cancelled_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            
+            if result.modified_count > 0:
+                logger.info(f"Deactivated license for subscription {subscription_id}")
+            
+            return {"status": "subscription_cancelled"}
+        
+        # Handle payment failed
+        elif event_type == "invoice.payment_failed":
+            invoice = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
+            subscription_id = invoice.get("subscription")
+            
+            logger.warning(f"Payment failed for subscription {subscription_id}")
+            
+            # Optionally deactivate or mark as past_due
+            await db.license_keys.update_one(
+                {"stripe_subscription_id": subscription_id},
+                {"$set": {"payment_status": "past_due"}}
+            )
+            
+            return {"status": "payment_failed_recorded"}
         
         return {"status": "ignored", "event_type": event_type}
         
