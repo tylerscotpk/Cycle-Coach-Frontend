@@ -14,25 +14,30 @@ const Paywall = ({ onUnlock }) => {
   const [trialEmail, setTrialEmail] = useState('');
   const [returningEmail, setReturningEmail] = useState('');
   const [isValidating, setIsValidating] = useState(false);
-  const [isRequestingTrial, setIsRequestingTrial] = useState(false);
+  const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isCreatingCheckout, setIsCreatingCheckout] = useState(null);
-  const [showTrialForm, setShowTrialForm] = useState(false);
   const [keySent, setKeySent] = useState(false);
 
   // Check URL params for subscription success
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    const trialStatus = urlParams.get('trial');
     const subscriptionStatus = urlParams.get('subscription');
     const upgradeStatus = urlParams.get('upgrade');
     const tier = urlParams.get('tier');
     
-    if (subscriptionStatus === 'success' || upgradeStatus === 'success') {
-      toast.success(`🎉 ${tier === 'premium' ? 'Premium' : 'Basic'} subscription activated! Check your email for the license key.`);
-      // Clean up URL
+    if (trialStatus === 'success') {
+      toast.success('🏆 Free Training activated! Check your email for your license key.');
       window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (subscriptionStatus === 'cancelled' || upgradeStatus === 'cancelled') {
-      toast.info('Subscription was cancelled. No worries, try again when ready!');
+      setActiveView('login');
+    } else if (subscriptionStatus === 'success' || upgradeStatus === 'success') {
+      const tierName = tier === 'elite' ? 'Elite Game Plan' : 'Winning Game Plan';
+      toast.success(`🎉 ${tierName} activated! Check your email for your license key.`);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setActiveView('login');
+    } else if (trialStatus === 'cancelled' || subscriptionStatus === 'cancelled' || upgradeStatus === 'cancelled') {
+      toast.info('No worries! Come back when you\'re ready.');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -57,16 +62,16 @@ const Paywall = ({ onUnlock }) => {
         LocalStorage.saveLicenseKey(normalizedKey);
         LocalStorage.saveSubscriptionTier({
           tier: result.tier,
+          tier_display: result.tier_display,
           has_partner_profile: result.has_partner_profile,
           has_ai_wingman: result.has_ai_wingman,
           expires_at: result.expires_at,
-          email: result.email
+          email: result.email,
+          is_trial: result.is_trial,
+          created_at: result.created_at
         });
         
-        const tierName = result.tier === 'premium' ? 'Premium' : 
-                         result.tier === 'grandfathered' ? 'Lifetime' :
-                         result.tier === 'basic' ? 'Basic' : 'Free Trial';
-        toast.success(`Welcome to Cycle Coach ${tierName}!`);
+        toast.success(`Welcome to Cycle Coach ${result.tier_display || result.tier}!`);
         onUnlock();
       } else {
         toast.error(result.message || 'Invalid license key. Please check and try again.');
@@ -96,7 +101,7 @@ const Paywall = ({ onUnlock }) => {
         setKeySent(true);
         toast.success('License key sent to your email!');
       } else if (result.status === 'not_found') {
-        toast.error('No license found for this email. Try starting a free trial!');
+        toast.error('No license found for this email. Try starting Free Training!');
       } else {
         toast.error(result.message || 'Unable to resend. Please try again.');
       }
@@ -108,9 +113,13 @@ const Paywall = ({ onUnlock }) => {
     }
   };
 
-  const handleStartFreeTrial = async (e) => {
-    e.preventDefault();
-    setIsRequestingTrial(true);
+  const handleStartFreeTrial = async () => {
+    if (!trialEmail.trim()) {
+      toast.error('Please enter your email first');
+      return;
+    }
+
+    setIsStartingTrial(true);
 
     try {
       const response = await fetch(`${API}/api/trial/request`, {
@@ -121,31 +130,30 @@ const Paywall = ({ onUnlock }) => {
       
       const result = await response.json();
       
-      if (result.status === 'success') {
-        toast.success('🎉 Free trial activated! Check your email for the license key.');
-        setShowTrialForm(false);
-        setActiveView('login');
+      if (result.status === 'checkout_required' && result.checkout_url) {
+        // Redirect to Stripe checkout for payment info
+        toast.info('Redirecting to secure checkout...');
+        window.location.href = result.checkout_url;
       } else if (result.status === 'already_licensed') {
-        toast.info('You already have access! Check your email or enter your license key below.');
+        toast.info('You already have access! Enter your license key below.');
         setActiveView('login');
       } else if (result.status === 'already_approved') {
-        toast.success('Your trial is already active! Check your email for the license key.');
+        toast.success('Your Free Training is active! Check your email for the license key.');
         setActiveView('login');
-      } else {
+      } else if (result.status === 'error') {
         toast.error(result.message || 'Something went wrong');
       }
     } catch (error) {
       console.error('Trial request error:', error);
-      toast.error('Unable to start trial. Please try again.');
+      toast.error('Unable to start Free Training. Please try again.');
     } finally {
-      setIsRequestingTrial(false);
+      setIsStartingTrial(false);
     }
   };
 
   const handleSubscribe = async (tier) => {
     if (!trialEmail.trim()) {
       toast.error('Please enter your email first');
-      setShowTrialForm(true);
       return;
     }
 
@@ -164,7 +172,6 @@ const Paywall = ({ onUnlock }) => {
       const result = await response.json();
       
       if (result.status === 'success' && result.checkout_url) {
-        // Redirect to Stripe Checkout
         window.location.href = result.checkout_url;
       } else {
         toast.error('Failed to create checkout. Please try again.');
@@ -197,7 +204,7 @@ const Paywall = ({ onUnlock }) => {
             onClick={() => setActiveView('plans')}
             data-testid="plans-tab"
           >
-            Choose Plan
+            Choose Game Plan
           </button>
           <button
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
@@ -237,21 +244,22 @@ const Paywall = ({ onUnlock }) => {
 
             {/* Pricing Cards */}
             <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
-              {/* Free Trial */}
-              <Card className="bg-slate-800/90 border-slate-700 hover:border-cyan-500/50 transition-all" data-testid="free-trial-card">
+              {/* Free Training */}
+              <Card className="bg-slate-800/90 border-slate-700 hover:border-emerald-500/50 transition-all" data-testid="free-training-card">
                 <CardHeader className="text-center pb-2">
-                  <div className="text-emerald-400 text-sm font-semibold mb-2">TRY FREE</div>
-                  <CardTitle className="text-xl text-white">Free Trial</CardTitle>
+                  <div className="text-emerald-400 text-sm font-semibold mb-2">START HERE</div>
+                  <CardTitle className="text-xl text-white">Free Training</CardTitle>
                   <div className="mt-2">
                     <span className="text-3xl font-bold text-white">$0</span>
                     <span className="text-slate-400 text-sm ml-1">/ 30 days</span>
                   </div>
+                  <p className="text-xs text-slate-500 mt-1">Then $1.99/mo • Cancel anytime</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <ul className="space-y-2 text-sm text-slate-300">
                     <li className="flex items-center gap-2">
                       <span className="text-emerald-400">✓</span>
-                      Cycle tracking & predictions
+                      Cycle tracking &amp; predictions
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-emerald-400">✓</span>
@@ -272,20 +280,23 @@ const Paywall = ({ onUnlock }) => {
                   </ul>
                   <Button
                     onClick={handleStartFreeTrial}
-                    disabled={isRequestingTrial || !trialEmail.trim()}
+                    disabled={isStartingTrial || !trialEmail.trim()}
                     className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
-                    data-testid="start-trial-btn"
+                    data-testid="start-training-btn"
                   >
-                    {isRequestingTrial ? 'Starting...' : 'Start Free Trial'}
+                    {isStartingTrial ? 'Loading...' : 'Start Free Training'}
                   </Button>
+                  <p className="text-xs text-slate-500 text-center">
+                    💳 Payment info required • Won&apos;t be charged today
+                  </p>
                 </CardContent>
               </Card>
 
-              {/* Basic Plan */}
-              <Card className="bg-slate-800/90 border-slate-700 hover:border-cyan-500/50 transition-all" data-testid="basic-plan-card">
+              {/* Winning Game Plan */}
+              <Card className="bg-slate-800/90 border-slate-700 hover:border-cyan-500/50 transition-all" data-testid="winning-plan-card">
                 <CardHeader className="text-center pb-2">
-                  <div className="text-cyan-400 text-sm font-semibold mb-2">BASIC</div>
-                  <CardTitle className="text-xl text-white">Basic</CardTitle>
+                  <div className="text-cyan-400 text-sm font-semibold mb-2">WINNING</div>
+                  <CardTitle className="text-xl text-white">Winning Game Plan</CardTitle>
                   <div className="mt-2">
                     <span className="text-3xl font-bold text-white">$1.99</span>
                     <span className="text-slate-400 text-sm ml-1">/ month</span>
@@ -295,7 +306,7 @@ const Paywall = ({ onUnlock }) => {
                   <ul className="space-y-2 text-sm text-slate-300">
                     <li className="flex items-center gap-2">
                       <span className="text-cyan-400">✓</span>
-                      Cycle tracking & predictions
+                      Cycle tracking &amp; predictions
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-cyan-400">✓</span>
@@ -315,25 +326,25 @@ const Paywall = ({ onUnlock }) => {
                     </li>
                   </ul>
                   <Button
-                    onClick={() => handleSubscribe('basic')}
-                    disabled={isCreatingCheckout === 'basic' || !trialEmail.trim()}
+                    onClick={() => handleSubscribe('winning')}
+                    disabled={isCreatingCheckout === 'winning' || !trialEmail.trim()}
                     variant="outline"
                     className="w-full border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white"
-                    data-testid="subscribe-basic-btn"
+                    data-testid="subscribe-winning-btn"
                   >
-                    {isCreatingCheckout === 'basic' ? 'Loading...' : 'Subscribe Basic'}
+                    {isCreatingCheckout === 'winning' ? 'Loading...' : 'Choose Winning'}
                   </Button>
                 </CardContent>
               </Card>
 
-              {/* Premium Plan */}
-              <Card className="bg-gradient-to-b from-purple-900/50 to-slate-800/90 border-purple-500/50 relative overflow-hidden" data-testid="premium-plan-card">
+              {/* Elite Game Plan */}
+              <Card className="bg-gradient-to-b from-purple-900/50 to-slate-800/90 border-purple-500/50 relative overflow-hidden" data-testid="elite-plan-card">
                 <div className="absolute top-0 right-0 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-bl">
                   RECOMMENDED
                 </div>
                 <CardHeader className="text-center pb-2 pt-6">
-                  <div className="text-purple-400 text-sm font-semibold mb-2">PREMIUM</div>
-                  <CardTitle className="text-xl text-white">Premium</CardTitle>
+                  <div className="text-purple-400 text-sm font-semibold mb-2">ELITE</div>
+                  <CardTitle className="text-xl text-white">Elite Game Plan</CardTitle>
                   <div className="mt-2">
                     <span className="text-3xl font-bold text-white">$2.99</span>
                     <span className="text-slate-400 text-sm ml-1">/ month</span>
@@ -343,7 +354,7 @@ const Paywall = ({ onUnlock }) => {
                   <ul className="space-y-2 text-sm text-slate-300">
                     <li className="flex items-center gap-2">
                       <span className="text-purple-400">✓</span>
-                      Cycle tracking & predictions
+                      Cycle tracking &amp; predictions
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-purple-400">✓</span>
@@ -363,12 +374,12 @@ const Paywall = ({ onUnlock }) => {
                     </li>
                   </ul>
                   <Button
-                    onClick={() => handleSubscribe('premium')}
-                    disabled={isCreatingCheckout === 'premium' || !trialEmail.trim()}
+                    onClick={() => handleSubscribe('elite')}
+                    disabled={isCreatingCheckout === 'elite' || !trialEmail.trim()}
                     className="w-full bg-purple-500 hover:bg-purple-600 text-white"
-                    data-testid="subscribe-premium-btn"
+                    data-testid="subscribe-elite-btn"
                   >
-                    {isCreatingCheckout === 'premium' ? 'Loading...' : 'Go Premium'}
+                    {isCreatingCheckout === 'elite' ? 'Loading...' : 'Go Elite'}
                   </Button>
                 </CardContent>
               </Card>
@@ -470,7 +481,7 @@ const Paywall = ({ onUnlock }) => {
                   className="text-cyan-400 hover:text-cyan-300 text-sm underline"
                   data-testid="back-to-plans-btn"
                 >
-                  Don&apos;t have a key? View pricing plans
+                  Don&apos;t have a key? Choose your Game Plan
                 </button>
               </div>
             </CardContent>
