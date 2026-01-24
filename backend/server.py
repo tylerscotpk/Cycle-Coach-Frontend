@@ -2038,29 +2038,34 @@ class TrialRequest(BaseModel):
 # ============================================
 # SUBSCRIPTION TIERS CONFIGURATION
 # ============================================
-# Tiers: free_trial (30 days), basic ($1.99/mo), premium ($2.99/mo), grandfathered (existing lifetime/yearly users)
+# Tiers: free_training (30 days trial with payment), winning (Basic $1.99/mo), elite (Premium $2.99/mo), grandfathered (existing lifetime/yearly users)
 # Features:
-#   - free_trial/basic: Cycle tracking, tips, research insights (NO Partner Profile, NO AI Wingman)
-#   - premium/grandfathered: ALL features including Partner Profile and AI Wingman
+#   - free_training/winning: Cycle tracking, tips, research insights (NO Partner Profile, NO AI Wingman)
+#   - elite/grandfathered: ALL features including Partner Profile and AI Wingman
 
 SUBSCRIPTION_TIERS = {
-    "free_trial": {
-        "name": "Free Trial",
+    "free_training": {
+        "name": "Free Training",
+        "display_name": "Free Training",
         "price": 0,
-        "duration_days": 30,
+        "price_cents": 0,
+        "trial_days": 30,
+        "converts_to": "winning",
         "features": ["cycle_tracking", "tips", "research_insights", "resources"],
         "has_partner_profile": False,
         "has_ai_wingman": False
     },
-    "basic": {
-        "name": "Basic",
+    "winning": {
+        "name": "Winning Game Plan",
+        "display_name": "Winning Game Plan",
         "price_cents": 199,  # $1.99
         "features": ["cycle_tracking", "tips", "research_insights", "resources"],
         "has_partner_profile": False,
         "has_ai_wingman": False
     },
-    "premium": {
-        "name": "Premium",
+    "elite": {
+        "name": "Elite Game Plan",
+        "display_name": "Elite Game Plan",
         "price_cents": 299,  # $2.99
         "features": ["cycle_tracking", "tips", "research_insights", "resources", "partner_profile", "ai_wingman"],
         "has_partner_profile": True,
@@ -2068,6 +2073,7 @@ SUBSCRIPTION_TIERS = {
     },
     "grandfathered": {
         "name": "Grandfathered (Lifetime)",
+        "display_name": "Elite Game Plan (Lifetime)",
         "price": 0,
         "features": ["cycle_tracking", "tips", "research_insights", "resources", "partner_profile", "ai_wingman"],
         "has_partner_profile": True,
