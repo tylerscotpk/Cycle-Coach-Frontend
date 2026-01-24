@@ -34,6 +34,10 @@ const Dashboard = () => {
   const [showCycleHistory, setShowCycleHistory] = useState(false);
   const [cycleHistory, setCycleHistory] = useState(null);
   const [logPeriodDate, setLogPeriodDate] = useState('');
+  
+  // Subscription tier state
+  const [subscriptionTier, setSubscriptionTier] = useState(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   // Setup form
   const [partnerName, setPartnerName] = useState('');
