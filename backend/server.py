@@ -1627,6 +1627,40 @@ async def check_license_by_email(email: str):
     
     return {"found": False}
 
+@api_router.post("/license/resend")
+async def resend_license_key(request: TrialRequestInput):
+    """Resend license key to a user's email"""
+    email = request.email.lower().strip()
+    
+    # Find the most recent active license for this email
+    license_record = await db.license_keys.find_one(
+        {"customer_email": email, "is_active": True, "is_cancelled": {"$ne": True}},
+        {"_id": 0},
+        sort=[("created_at", -1)]
+    )
+    
+    if not license_record:
+        return {
+            "status": "not_found",
+            "message": "No active license found for this email. Please request a trial or purchase access."
+        }
+    
+    license_key = license_record.get("license_key")
+    
+    # Send email with license key
+    email_sent = await send_license_email(email, license_key)
+    
+    if email_sent:
+        return {
+            "status": "success",
+            "message": "License key sent! Check your email."
+        }
+    else:
+        return {
+            "status": "error",
+            "message": "Unable to send email. Please try again or contact support."
+        }
+
 # ============================================
 # TRIAL ACCESS SYSTEM
 # ============================================
