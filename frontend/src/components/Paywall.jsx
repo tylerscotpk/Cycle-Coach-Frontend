@@ -470,7 +470,7 @@ const Paywall = ({ onUnlock }) => {
                   className="text-cyan-400 hover:text-cyan-300 text-sm underline"
                   data-testid="back-to-plans-btn"
                 >
-                  Don't have a key? View pricing plans
+                  Don&apos;t have a key? View pricing plans
                 </button>
               </div>
             </CardContent>
