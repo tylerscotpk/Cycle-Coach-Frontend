@@ -933,7 +933,13 @@ const Dashboard = () => {
         )}
 
         {/* Upgrade Banner for non-premium users */}
-        <UpgradeBanner />
+        {!hasPremiumFeatures() && (
+          <UpgradeBanner 
+            tierName={getTierDisplayName()} 
+            onUpgrade={handleUpgradeToPremium} 
+            isUpgrading={isUpgrading} 
+          />
+        )}
 
         {/* Tabs Section */}
         <Tabs defaultValue="resources" className="space-y-6">
