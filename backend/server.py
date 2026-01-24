@@ -1677,46 +1677,207 @@ class TrialRequest(BaseModel):
 class TrialRequestInput(BaseModel):
     email: str
 
+# ============================================
+# SUBSCRIPTION TIERS CONFIGURATION
+# ============================================
+# Tiers: free_trial (30 days), basic ($1.99/mo), premium ($2.99/mo), grandfathered (existing lifetime/yearly users)
+# Features:
+#   - free_trial/basic: Cycle tracking, tips, research insights (NO Partner Profile, NO AI Wingman)
+#   - premium/grandfathered: ALL features including Partner Profile and AI Wingman
+
+SUBSCRIPTION_TIERS = {
+    "free_trial": {
+        "name": "Free Trial",
+        "price": 0,
+        "duration_days": 30,
+        "features": ["cycle_tracking", "tips", "research_insights", "resources"],
+        "has_partner_profile": False,
+        "has_ai_wingman": False
+    },
+    "basic": {
+        "name": "Basic",
+        "price_cents": 199,  # $1.99
+        "features": ["cycle_tracking", "tips", "research_insights", "resources"],
+        "has_partner_profile": False,
+        "has_ai_wingman": False
+    },
+    "premium": {
+        "name": "Premium",
+        "price_cents": 299,  # $2.99
+        "features": ["cycle_tracking", "tips", "research_insights", "resources", "partner_profile", "ai_wingman"],
+        "has_partner_profile": True,
+        "has_ai_wingman": True
+    },
+    "grandfathered": {
+        "name": "Grandfathered (Lifetime)",
+        "price": 0,
+        "features": ["cycle_tracking", "tips", "research_insights", "resources", "partner_profile", "ai_wingman"],
+        "has_partner_profile": True,
+        "has_ai_wingman": True
+    }
+}
+
 @api_router.post("/trial/request")
 async def request_trial_access(request: TrialRequestInput):
-    """Request trial access - stores email for admin approval"""
+    """Request trial access - AUTO-APPROVED, generates free trial immediately"""
     email = request.email.lower().strip()
     
     # Check if already has a license
-    existing_license = await db.license_keys.find_one({"customer_email": email})
+    existing_license = await db.license_keys.find_one({"customer_email": email, "is_active": True, "is_cancelled": {"$ne": True}})
     if existing_license:
         return {
             "status": "already_licensed",
-            "message": "This email already has a license. Check your inbox for your license key."
+            "message": "This email already has access. Check your inbox for your license key."
         }
     
-    # Check if already requested
+    # Check if already requested/approved
     existing_request = await db.trial_requests.find_one({"email": email})
     if existing_request:
         status = existing_request.get("status", "pending")
-        if status == "pending":
-            return {
-                "status": "already_requested",
-                "message": "Your trial request is pending approval. We'll email you soon!"
-            }
-        elif status == "approved":
+        if status == "approved":
             return {
                 "status": "already_approved",
-                "message": "Your trial was already approved! Check your email for the license key."
+                "message": "Your free trial is active! Check your email for the license key."
             }
     
-    # Create new trial request
-    trial_request = TrialRequest(email=email)
+    # AUTO-APPROVE: Generate license key immediately
+    license_key = generate_license_key()
+    while await db.license_keys.find_one({"license_key": license_key}):
+        license_key = generate_license_key()
+    
+    # Set expiration to 30 days from now (free trial)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    
+    # Save license to database with tier info
+    license_dict = {
+        "id": str(uuid.uuid4()),
+        "license_key": license_key,
+        "customer_email": email,
+        "stripe_session_id": f"free_trial_{uuid.uuid4()}",
+        "stripe_subscription_id": None,
+        "is_active": True,
+        "is_trial": True,
+        "key_type": "free_trial",
+        "subscription_tier": "free_trial",
+        "expires_at": expires_at.isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "activation_count": 0
+    }
+    await db.license_keys.insert_one(license_dict)
+    
+    # Create trial request record
+    trial_request = TrialRequest(email=email, status="approved", license_key=license_key)
     request_dict = trial_request.model_dump()
     request_dict['created_at'] = request_dict['created_at'].isoformat()
-    await db.trial_requests.insert_one(request_dict)
+    request_dict['approved_at'] = datetime.now(timezone.utc).isoformat()
     
-    logger.info(f"New trial request from: {email}")
+    # Update or insert trial request
+    await db.trial_requests.update_one(
+        {"email": email},
+        {"$set": request_dict},
+        upsert=True
+    )
+    
+    logger.info(f"Auto-approved free trial for {email}, license: {license_key}, expires: {expires_at}")
+    
+    # Send email with license key
+    email_sent = await send_trial_email(email, license_key, expires_at)
     
     return {
         "status": "success",
-        "message": "Trial request submitted! We'll review and email you within 24 hours."
+        "message": "Your free trial is activated! Check your email for the license key.",
+        "license_key": license_key,
+        "tier": "free_trial",
+        "expires_at": expires_at.isoformat(),
+        "email_sent": email_sent
     }
+
+async def send_trial_email(customer_email: str, license_key: str, expires_at: datetime):
+    """Send trial license key to customer via Resend"""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured - skipping email")
+        return False
+    
+    expiry_date = expires_at.strftime("%B %d, %Y")
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+            .content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
+            .license-box {{ background: #1e293b; color: #22d3ee; padding: 20px; border-radius: 8px; text-align: center; font-family: monospace; font-size: 24px; letter-spacing: 2px; margin: 20px 0; }}
+            .trial-badge {{ background: #10b981; color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 15px; }}
+            .instructions {{ background: white; padding: 20px; border-radius: 8px; margin-top: 20px; }}
+            .upgrade-box {{ background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: white; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center; }}
+            .footer {{ text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="margin: 0;">🎉 Welcome to Cycle Coach!</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">Your free trial is now active</p>
+            </div>
+            <div class="content">
+                <div style="text-align: center;">
+                    <span class="trial-badge">✨ 30-Day Free Trial</span>
+                </div>
+                
+                <p>Great news! Your free trial has been activated. Here's your license key:</p>
+                
+                <div class="license-box">
+                    {license_key}
+                </div>
+                
+                <p style="text-align: center; color: #64748b; font-size: 14px;">
+                    Trial expires: <strong>{expiry_date}</strong>
+                </p>
+                
+                <div class="instructions">
+                    <h3 style="margin-top: 0;">What's included in your free trial:</h3>
+                    <ul>
+                        <li>✅ Cycle tracking & phase predictions</li>
+                        <li>✅ Research-backed insights & tips</li>
+                        <li>✅ Educational resources</li>
+                    </ul>
+                    <p style="color: #64748b; font-size: 14px; margin-bottom: 0;">
+                        <em>Note: Partner Profile and AI Wingman are available with Premium.</em>
+                    </p>
+                </div>
+                
+                <div class="upgrade-box">
+                    <h3 style="margin: 0 0 10px 0;">Want the full experience?</h3>
+                    <p style="margin: 0; opacity: 0.9;">Upgrade to Premium for Partner Profile + AI Wingman</p>
+                    <p style="margin: 10px 0 0 0; font-size: 24px; font-weight: bold;">Only $2.99/month</p>
+                </div>
+            </div>
+            <div class="footer">
+                <p>Cycle Coach - Your relationship game-changer</p>
+                <p>Questions? Reply to this email.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [customer_email],
+            "subject": "🎉 Your Cycle Coach Free Trial is Active!",
+            "html": html_content
+        }
+        
+        email_result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Trial email sent to {customer_email}, email_id: {email_result.get('id')}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send trial email: {str(e)}")
+        return False
 
 @api_router.get("/trial/requests")
 async def get_trial_requests(status: Optional[str] = None):
