@@ -84,6 +84,10 @@ Create a mobile-friendly web app called "Cycle Coach" (originally "Do Her Better
 
 ### P0 - High Priority
 - [ ] Phase 2: Convert to monthly subscription model (after testing phase)
+- [ ] Create Privacy Policy page/URL (required for app stores)
+- [ ] Generate app store screenshots
+- [ ] Submit to Apple App Store
+- [ ] Submit to Google Play Store
 
 ### P1 - Medium Priority
 - [ ] Add more resources to resourcesData.js
