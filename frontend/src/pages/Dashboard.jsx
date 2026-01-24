@@ -1015,7 +1015,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <UpgradePrompt feature="AI Wingman" />
+              <UpgradePrompt feature="AI Wingman" onUpgrade={handleUpgradeToPremium} isUpgrading={isUpgrading} />
             )}
           </TabsContent>
 
