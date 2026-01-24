@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import MoodMap from '@/components/MoodMap';
+import FeedbackModal from '@/components/FeedbackModal';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -24,18 +25,18 @@ const UpgradePrompt = ({ feature, onUpgrade, isUpgrading }) => (
   <Card className="bg-gradient-to-r from-purple-900/30 to-slate-800/50 border-purple-500/30">
     <CardContent className="p-6 text-center">
       <div className="text-4xl mb-3">🔒</div>
-      <h3 className="text-xl font-bold text-white mb-2">{feature} is a Premium Feature</h3>
+      <h3 className="text-xl font-bold text-white mb-2">{feature} is an Elite Feature</h3>
       <p className="text-slate-400 mb-4">
-        Upgrade to Premium to unlock {feature} and get personalized advice tailored to your relationship.
+        Upgrade to Elite Game Plan to unlock {feature} and get personalized advice tailored to your relationship.
       </p>
       <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
         <Button
           onClick={onUpgrade}
           disabled={isUpgrading}
           className="bg-purple-500 hover:bg-purple-600 text-white px-6"
-          data-testid="upgrade-premium-btn"
+          data-testid="upgrade-elite-btn"
         >
-          {isUpgrading ? 'Loading...' : 'Upgrade to Premium - $2.99/mo'}
+          {isUpgrading ? 'Loading...' : 'Go Elite - $2.99/mo'}
         </Button>
         <span className="text-slate-500 text-sm">Cancel anytime</span>
       </div>
@@ -43,15 +44,15 @@ const UpgradePrompt = ({ feature, onUpgrade, isUpgrading }) => (
   </Card>
 );
 
-// Upgrade banner for basic users (moved outside to avoid re-render issues)
+// Upgrade banner for non-elite users (moved outside to avoid re-render issues)
 const UpgradeBanner = ({ tierName, onUpgrade, isUpgrading }) => (
   <div className="bg-gradient-to-r from-purple-600/20 to-cyan-600/20 border border-purple-500/30 rounded-lg p-4 mb-6">
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
       <div className="flex items-center gap-3">
-        <span className="text-2xl">⭐</span>
+        <span className="text-2xl">🏆</span>
         <div>
-          <p className="text-white font-medium">You&apos;re on the {tierName} plan</p>
-          <p className="text-slate-400 text-sm">Upgrade to Premium for Partner Profile &amp; AI Wingman</p>
+          <p className="text-white font-medium">You&apos;re on {tierName}</p>
+          <p className="text-slate-400 text-sm">Upgrade to Elite Game Plan for Partner Profile &amp; AI Wingman</p>
         </div>
       </div>
       <Button
@@ -60,7 +61,7 @@ const UpgradeBanner = ({ tierName, onUpgrade, isUpgrading }) => (
         className="bg-purple-500 hover:bg-purple-600 text-white whitespace-nowrap"
         data-testid="banner-upgrade-btn"
       >
-        {isUpgrading ? 'Loading...' : 'Go Premium - $2.99/mo'}
+        {isUpgrading ? 'Loading...' : 'Go Elite - $2.99/mo'}
       </Button>
     </div>
   </div>
