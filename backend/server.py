@@ -1778,35 +1778,62 @@ async def validate_license(request: LicenseValidationRequest):
             )
         
         # Determine tier and features
-        key_type = license_record.get("key_type", "free_trial")
+        key_type = license_record.get("key_type", "free_training")
         subscription_tier = license_record.get("subscription_tier", key_type)
+        is_trial = license_record.get("is_trial", False)
+        
+        # Get trial start date for feedback prompts
+        created_at = license_record.get("created_at")
         
         # Grandfathered users: existing lifetime/yearly keys get full access
         if key_type in ["lifetime", "yearly"] or subscription_tier == "grandfathered":
             tier = "grandfathered"
+            tier_display = "Elite Game Plan (Lifetime)"
             has_partner_profile = True
             has_ai_wingman = True
-        elif subscription_tier == "premium" or key_type == "premium":
-            tier = "premium"
+        elif subscription_tier == "elite" or key_type == "elite":
+            tier = "elite"
+            tier_display = "Elite Game Plan"
             has_partner_profile = True
             has_ai_wingman = True
-        elif subscription_tier == "basic" or key_type == "basic":
-            tier = "basic"
+        elif subscription_tier == "winning" or key_type == "winning":
+            tier = "winning"
+            tier_display = "Winning Game Plan"
             has_partner_profile = False
             has_ai_wingman = False
-        else:  # free_trial or trial
-            tier = "free_trial"
+        elif subscription_tier == "free_training" or key_type == "free_training" or is_trial:
+            tier = "free_training"
+            tier_display = "Free Training"
             has_partner_profile = False
             has_ai_wingman = False
+        else:  # Legacy: free_trial, basic, premium mapping
+            if subscription_tier in ["premium", "elite"]:
+                tier = "elite"
+                tier_display = "Elite Game Plan"
+                has_partner_profile = True
+                has_ai_wingman = True
+            elif subscription_tier in ["basic", "winning"]:
+                tier = "winning"
+                tier_display = "Winning Game Plan"
+                has_partner_profile = False
+                has_ai_wingman = False
+            else:
+                tier = "free_training"
+                tier_display = "Free Training"
+                has_partner_profile = False
+                has_ai_wingman = False
         
         return {
             "valid": True,
             "message": "License key is valid",
             "tier": tier,
+            "tier_display": tier_display,
             "has_partner_profile": has_partner_profile,
             "has_ai_wingman": has_ai_wingman,
             "expires_at": expires_at,
-            "email": license_record.get("customer_email")
+            "email": license_record.get("customer_email"),
+            "is_trial": is_trial,
+            "created_at": created_at
         }
     
     # Also check hardcoded keys for backward compatibility (grandfathered with full access)
@@ -1826,10 +1853,12 @@ async def validate_license(request: LicenseValidationRequest):
             "valid": True,
             "message": "License key is valid",
             "tier": "grandfathered",
+            "tier_display": "Elite Game Plan (Lifetime)",
             "has_partner_profile": True,
             "has_ai_wingman": True,
             "expires_at": None,
-            "email": None
+            "email": None,
+            "is_trial": False
         }
     
     return {
