@@ -587,7 +587,7 @@ const Dashboard = () => {
     return subscriptionTier.has_ai_wingman === true;
   };
 
-  const handleUpgradeToPremium = async () => {
+  const handleUpgradeToElite = async () => {
     setIsUpgrading(true);
     try {
       const license = LocalStorage.getLicenseKey();
@@ -604,7 +604,7 @@ const Dashboard = () => {
         body: JSON.stringify({
           email: tier.email,
           current_license_key: license.key,
-          new_tier: 'premium'
+          new_tier: 'elite'
         })
       });
       
@@ -625,8 +625,11 @@ const Dashboard = () => {
 
   // Get tier name for banner
   const getTierDisplayName = () => {
-    if (!subscriptionTier) return 'Free Trial';
-    return subscriptionTier.tier === 'basic' ? 'Basic' : 'Free Trial';
+    if (!subscriptionTier) return 'Free Training';
+    const tier = subscriptionTier.tier;
+    if (tier === 'winning' || tier === 'basic') return 'Winning Game Plan';
+    if (tier === 'free_training' || tier === 'free_trial') return 'Free Training';
+    return subscriptionTier.tier_display || 'Free Training';
   };
 
   const getPhaseColor = (phase) => {
