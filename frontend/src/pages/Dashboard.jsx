@@ -966,7 +966,7 @@ const Dashboard = () => {
         {!hasPremiumFeatures() && (
           <UpgradeBanner 
             tierName={getTierDisplayName()} 
-            onUpgrade={handleUpgradeToPremium} 
+            onUpgrade={handleUpgradeToElite} 
             isUpgrading={isUpgrading} 
           />
         )}
