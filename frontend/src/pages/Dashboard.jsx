@@ -1365,6 +1365,15 @@ const Dashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        feedbackType={feedbackType}
+        email={subscriptionTier?.email}
+        subscriptionTier={subscriptionTier?.tier}
+      />
     </div>
   );
 };
