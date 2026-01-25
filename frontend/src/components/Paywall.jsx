@@ -126,36 +126,9 @@ const Paywall = ({ onUnlock }) => {
       return;
     }
 
-    setIsStartingTrial(true);
-
-    try {
-      const response = await fetch(`${API}/api/trial/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trialEmail.trim().toLowerCase() })
-      });
-      
-      const result = await response.json();
-      
-      if (result.status === 'checkout_required' && result.checkout_url) {
-        // Redirect to Stripe checkout for payment info
-        toast.info('Redirecting to secure checkout...');
-        window.location.href = result.checkout_url;
-      } else if (result.status === 'already_licensed') {
-        toast.info('You already have access! Enter your license key below.');
-        setActiveView('login');
-      } else if (result.status === 'already_approved') {
-        toast.success('Your Free Training is active! Check your email for the license key.');
-        setActiveView('login');
-      } else if (result.status === 'error') {
-        toast.error(result.message || 'Something went wrong');
-      }
-    } catch (error) {
-      console.error('Trial request error:', error);
-      toast.error('Unable to start Free Training. Please try again.');
-    } finally {
-      setIsStartingTrial(false);
-    }
+    // Redirect to Stripe payment link with prefilled email
+    const email = encodeURIComponent(trialEmail.trim().toLowerCase());
+    window.location.href = `${STRIPE_LINKS.free_training}?prefilled_email=${email}`;
   };
 
   const handleSubscribe = async (tier) => {
@@ -164,30 +137,13 @@ const Paywall = ({ onUnlock }) => {
       return;
     }
 
-    setIsCreatingCheckout(tier);
-
-    try {
-      const response = await fetch(`${API}/api/subscription/create-checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: trialEmail.trim().toLowerCase(),
-          tier: tier
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.status === 'success' && result.checkout_url) {
-        window.location.href = result.checkout_url;
-      } else {
-        toast.error('Failed to create checkout. Please try again.');
-      }
-    } catch (error) {
-      console.error('Checkout error:', error);
-      toast.error('Unable to create checkout. Please try again.');
-    } finally {
-      setIsCreatingCheckout(null);
+    const email = encodeURIComponent(trialEmail.trim().toLowerCase());
+    const link = STRIPE_LINKS[tier];
+    
+    if (link) {
+      window.location.href = `${link}?prefilled_email=${email}`;
+    } else {
+      toast.error('Invalid plan selected');
     }
   };
 
