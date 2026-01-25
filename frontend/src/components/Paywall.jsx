@@ -21,9 +21,7 @@ const Paywall = ({ onUnlock }) => {
   const [trialEmail, setTrialEmail] = useState('');
   const [returningEmail, setReturningEmail] = useState('');
   const [isValidating, setIsValidating] = useState(false);
-  const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [isCreatingCheckout, setIsCreatingCheckout] = useState(null);
   const [keySent, setKeySent] = useState(false);
 
   // Check URL params for subscription success
