@@ -285,12 +285,12 @@ const Paywall = ({ onUnlock }) => {
                   </ul>
                   <Button
                     onClick={() => handleSubscribe('winning')}
-                    disabled={isCreatingCheckout === 'winning' || !trialEmail.trim()}
+                    disabled={!trialEmail.trim()}
                     variant="outline"
                     className="w-full border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white"
                     data-testid="subscribe-winning-btn"
                   >
-                    {isCreatingCheckout === 'winning' ? 'Loading...' : 'Choose Winning'}
+                    Choose Winning
                   </Button>
                 </CardContent>
               </Card>
