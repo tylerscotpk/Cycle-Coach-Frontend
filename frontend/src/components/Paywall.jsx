@@ -241,11 +241,11 @@ const Paywall = ({ onUnlock }) => {
                   </ul>
                   <Button
                     onClick={handleStartFreeTrial}
-                    disabled={isStartingTrial || !trialEmail.trim()}
+                    disabled={!trialEmail.trim()}
                     className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
                     data-testid="start-training-btn"
                   >
-                    {isStartingTrial ? 'Loading...' : 'Start Free Training'}
+                    Start Free Training
                   </Button>
                 </CardContent>
               </Card>
