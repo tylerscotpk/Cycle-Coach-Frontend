@@ -86,6 +86,10 @@ const Dashboard = () => {
   // Subscription tier state
   const [subscriptionTier, setSubscriptionTier] = useState(null);
   const [isUpgrading, setIsUpgrading] = useState(false);
+  
+  // Feedback modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackType, setFeedbackType] = useState(null);
 
   // Setup form
   const [partnerName, setPartnerName] = useState('');
@@ -104,7 +108,29 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadData();
+    checkForFeedbackPrompt();
   }, []);
+  
+  // Check if we should show a feedback prompt
+  const checkForFeedbackPrompt = async () => {
+    const tier = LocalStorage.getSubscriptionTier();
+    if (!tier?.email) return;
+    
+    try {
+      const response = await fetch(`${API}/feedback/check/${encodeURIComponent(tier.email)}`);
+      const result = await response.json();
+      
+      if (result.should_prompt && result.prompt_type) {
+        // Small delay so dashboard loads first
+        setTimeout(() => {
+          setFeedbackType(result.prompt_type);
+          setShowFeedbackModal(true);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error checking feedback status:', error);
+    }
+  };
 
   // Aggressive scroll to top to prevent Radix Tabs auto-scroll
   useEffect(() => {
