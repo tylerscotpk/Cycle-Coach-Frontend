@@ -333,11 +333,11 @@ const Paywall = ({ onUnlock }) => {
                   </ul>
                   <Button
                     onClick={() => handleSubscribe('elite')}
-                    disabled={isCreatingCheckout === 'elite' || !trialEmail.trim()}
+                    disabled={!trialEmail.trim()}
                     className="w-full bg-purple-500 hover:bg-purple-600 text-white"
                     data-testid="subscribe-elite-btn"
                   >
-                    {isCreatingCheckout === 'elite' ? 'Loading...' : 'Go Elite'}
+                    Go Elite
                   </Button>
                 </CardContent>
               </Card>
