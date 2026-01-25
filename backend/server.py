@@ -2331,7 +2331,7 @@ async def submit_feedback(request: FeedbackInput):
 
 @api_router.get("/feedback/check/{email}")
 async def check_feedback_status(email: str):
-    """Check if user should be prompted for feedback based on their trial status"""
+    """Check if user should be prompted for feedback based on their subscription status"""
     email = email.lower().strip()
     
     # Get user's license info
@@ -2351,33 +2351,41 @@ async def check_feedback_status(email: str):
     
     feedback_types_given = [f["feedback_type"] for f in existing_feedback]
     
-    # Calculate days since trial started
+    # Calculate days since subscription started
     created_at = license.get("created_at")
     if created_at:
         start_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-        days_in_trial = (datetime.now(timezone.utc) - start_date).days
+        days_active = (datetime.now(timezone.utc) - start_date).days
     else:
-        days_in_trial = 0
+        days_active = 0
+    
+    is_trial = license.get("is_trial", False)
+    tier = license.get("subscription_tier", "free_training")
     
     # Determine if we should prompt
     prompts_needed = []
     
-    # Day 7 feedback
-    if days_in_trial >= 7 and "trial_day7" not in feedback_types_given:
+    # Day 7 feedback (only for trial users)
+    if is_trial and days_active >= 7 and "trial_day7" not in feedback_types_given:
         prompts_needed.append("trial_day7")
     
-    # Day 14 feedback
-    if days_in_trial >= 14 and "trial_day14" not in feedback_types_given:
-        prompts_needed.append("trial_day14")
-    
-    # Day 25+ (near end of trial)
-    if days_in_trial >= 25 and "trial_end" not in feedback_types_given:
-        prompts_needed.append("trial_end")
+    # Conversion feedback (when user converted from trial to paid)
+    # Check if they had a trial before and now have a paid subscription
+    if not is_trial and tier in ["winning", "elite"]:
+        # Check if they already gave conversion feedback
+        if "conversion" not in feedback_types_given:
+            # Check if this is a recent conversion (within last 2 days)
+            converted_at = license.get("converted_at") or license.get("created_at")
+            if converted_at:
+                convert_date = datetime.fromisoformat(converted_at.replace('Z', '+00:00'))
+                days_since_conversion = (datetime.now(timezone.utc) - convert_date).days
+                if days_since_conversion <= 2:
+                    prompts_needed.append("conversion")
     
     return {
         "should_prompt": len(prompts_needed) > 0,
         "prompt_type": prompts_needed[0] if prompts_needed else None,
-        "days_in_trial": days_in_trial,
+        "days_active": days_active,
         "is_trial": license.get("is_trial", False),
         "tier": license.get("subscription_tier", "unknown")
     }
