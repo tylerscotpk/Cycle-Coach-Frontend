@@ -8,6 +8,13 @@ import { LocalStorage } from '../utils/localStorageManager';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+// Stripe Payment Links
+const STRIPE_LINKS = {
+  free_training: 'https://buy.stripe.com/3cI14o2dj3rGgbE7nd53O00',
+  winning: 'https://buy.stripe.com/3cI4gA3hn6DS6B4azp53O01',
+  elite: 'https://buy.stripe.com/8x26oI19ffao9Ng4b153O02'
+};
+
 const Paywall = ({ onUnlock }) => {
   const [activeView, setActiveView] = useState('plans'); // 'plans' or 'login'
   const [licenseKey, setLicenseKey] = useState('');
