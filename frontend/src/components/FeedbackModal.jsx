@@ -19,27 +19,21 @@ const FeedbackModal = ({ isOpen, onClose, feedbackType, email, subscriptionTier 
     switch (feedbackType) {
       case 'trial_day7':
         return {
-          title: "How's your first week going?",
-          subtitle: "We'd love to hear about your experience so far",
+          title: "How's your first week going? 🏆",
+          subtitle: "We'd love to hear about your training experience",
           placeholder: "What's been most helpful? What could be better?"
         };
-      case 'trial_day14':
+      case 'conversion':
         return {
-          title: "Two weeks in! 🎉",
-          subtitle: "Your feedback helps us improve Cycle Coach",
-          placeholder: "How has Cycle Coach helped your relationship?"
-        };
-      case 'trial_end':
-        return {
-          title: "Your Free Training is ending soon",
-          subtitle: "Before you continue, we'd love your thoughts",
-          placeholder: "What would make you upgrade to Elite? Any suggestions?"
+          title: "Welcome to the team! 🎉",
+          subtitle: "Thanks for upgrading - we'd love your thoughts",
+          placeholder: "What made you decide to upgrade? Any features you're excited about?"
         };
       case 'cancellation':
         return {
-          title: "We're sorry to see you go",
+          title: "We're sorry to see you go 😔",
           subtitle: "Help us understand what we could do better",
-          placeholder: "What was the main reason for cancelling?"
+          placeholder: "What was the main reason for cancelling? How can we improve?"
         };
       default:
         return {
