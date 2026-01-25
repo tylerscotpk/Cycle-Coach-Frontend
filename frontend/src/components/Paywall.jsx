@@ -190,7 +190,7 @@ const Paywall = ({ onUnlock }) => {
         {/* Logo/Brand */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Cycle Coach</h1>
-          <p className="text-slate-400 text-sm sm:text-base">Your personal trainer for peak relationship performance</p>
+          <p className="text-slate-400 text-sm sm:text-base">The relationship game-changer</p>
         </div>
 
         {/* View Switcher */}
