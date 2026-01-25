@@ -286,9 +286,6 @@ const Paywall = ({ onUnlock }) => {
                   >
                     {isStartingTrial ? 'Loading...' : 'Start Free Training'}
                   </Button>
-                  <p className="text-xs text-slate-500 text-center">
-                    💳 Payment info required • Won&apos;t be charged today
-                  </p>
                 </CardContent>
               </Card>
 
