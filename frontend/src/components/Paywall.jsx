@@ -8,17 +8,60 @@ import { LocalStorage } from '../utils/localStorageManager';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-// Stripe Payment Links
-const STRIPE_LINKS = {
-  free_training: 'https://buy.stripe.com/4gMaEYdW1e6kbVo36X53O03',
-  winning: 'https://buy.stripe.com/3cI4gA3hn6DS6B4azp53O01',
-  elite: 'https://buy.stripe.com/8x26oI19ffao9Ng4b153O02'
+// Subscription Plans (cached locally - no API fetch needed)
+const SUBSCRIPTION_PLANS = {
+  monthly: {
+    id: 'monthly',
+    name: 'Monthly Training Plan',
+    price: 3.99,
+    priceDisplay: '$3.99',
+    billing: 'Monthly',
+    billingPeriod: '/month',
+    hasTrial: true,
+    trialDays: 7,
+    description: 'Start strong with guided training and personalized insights. Free 7-day trial.',
+    paymentLink: 'https://buy.stripe.com/7sYbJ219f3rG7F86j953O04',
+    features: ['Cycle tracking & predictions', 'Research-backed insights', 'Educational resources', 'Partner Profile', 'AI Wingman'],
+    badge: '7-DAY FREE TRIAL',
+    badgeColor: 'bg-emerald-500'
+  },
+  quarterly: {
+    id: 'quarterly',
+    name: 'Quarter by Quarter',
+    price: 10.49,
+    priceDisplay: '$10.49',
+    billing: 'Every 3 months',
+    billingPeriod: '/3 months',
+    hasTrial: false,
+    description: 'Stay consistent with a 90-day cycle designed for real relationship progress. Save compared to monthly.',
+    paymentLink: 'https://buy.stripe.com/4gM3cw05b5zO7F86j953O07',
+    features: ['Cycle tracking & predictions', 'Research-backed insights', 'Educational resources', 'Partner Profile', 'AI Wingman'],
+    savings: 'Save 12%',
+    badge: 'SAVE 12%',
+    badgeColor: 'bg-cyan-500'
+  },
+  annual: {
+    id: 'annual',
+    name: 'Full Season Strategy',
+    price: 35.91,
+    priceDisplay: '$35.91',
+    billing: 'Annual',
+    billingPeriod: '/year',
+    hasTrial: false,
+    description: 'Commit to long-term growth. Best value — includes 3 free months compared to monthly.',
+    paymentLink: 'https://buy.stripe.com/aFa7sMg491jy8Jc36X53O06',
+    features: ['Cycle tracking & predictions', 'Research-backed insights', 'Educational resources', 'Partner Profile', 'AI Wingman'],
+    savings: '3 months free',
+    badge: 'BEST VALUE',
+    badgeColor: 'bg-purple-500',
+    recommended: true
+  }
 };
 
 const Paywall = ({ onUnlock }) => {
   const [activeView, setActiveView] = useState('plans'); // 'plans' or 'login'
   const [licenseKey, setLicenseKey] = useState('');
-  const [trialEmail, setTrialEmail] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [returningEmail, setReturningEmail] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -27,21 +70,14 @@ const Paywall = ({ onUnlock }) => {
   // Check URL params for subscription success
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const trialStatus = urlParams.get('trial');
     const subscriptionStatus = urlParams.get('subscription');
-    const upgradeStatus = urlParams.get('upgrade');
-    const tier = urlParams.get('tier');
+    const trialStatus = urlParams.get('trial');
     
-    if (trialStatus === 'success') {
-      toast.success('🏆 Free Training activated! Check your email for your license key.');
+    if (subscriptionStatus === 'success' || trialStatus === 'success') {
+      toast.success('🎉 Subscription activated! Check your email for your license key.');
       window.history.replaceState({}, document.title, window.location.pathname);
       setActiveView('login');
-    } else if (subscriptionStatus === 'success' || upgradeStatus === 'success') {
-      const tierName = tier === 'elite' ? 'Elite Game Plan' : 'Winning Game Plan';
-      toast.success(`🎉 ${tierName} activated! Check your email for your license key.`);
-      window.history.replaceState({}, document.title, window.location.pathname);
-      setActiveView('login');
-    } else if (trialStatus === 'cancelled' || subscriptionStatus === 'cancelled' || upgradeStatus === 'cancelled') {
+    } else if (subscriptionStatus === 'cancelled' || trialStatus === 'cancelled') {
       toast.info('No worries! Come back when you\'re ready.');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -63,7 +99,6 @@ const Paywall = ({ onUnlock }) => {
       const result = await response.json();
       
       if (result.valid) {
-        // Save license key and tier info
         LocalStorage.saveLicenseKey(normalizedKey);
         LocalStorage.saveSubscriptionTier({
           tier: result.tier,
@@ -76,7 +111,7 @@ const Paywall = ({ onUnlock }) => {
           created_at: result.created_at
         });
         
-        toast.success(`Welcome to Cycle Coach ${result.tier_display || result.tier}!`);
+        toast.success(`Welcome to Cycle Coach!`);
         onUnlock();
       } else {
         toast.error(result.message || 'Invalid license key. Please check and try again.');
@@ -106,7 +141,7 @@ const Paywall = ({ onUnlock }) => {
         setKeySent(true);
         toast.success('License key sent to your email!');
       } else if (result.status === 'not_found') {
-        toast.error('No license found for this email. Try starting Free Training!');
+        toast.error('No license found for this email. Choose a plan to get started!');
       } else {
         toast.error(result.message || 'Unable to resend. Please try again.');
       }
@@ -118,36 +153,22 @@ const Paywall = ({ onUnlock }) => {
     }
   };
 
-  const handleStartFreeTrial = async () => {
-    if (!trialEmail.trim()) {
+  const handleSelectPlan = (planId) => {
+    if (!userEmail.trim()) {
       toast.error('Please enter your email first');
       return;
     }
 
-    // Redirect to Stripe payment link with prefilled email
-    const email = encodeURIComponent(trialEmail.trim().toLowerCase());
-    window.location.href = `${STRIPE_LINKS.free_training}?prefilled_email=${email}`;
-  };
-
-  const handleSubscribe = async (tier) => {
-    if (!trialEmail.trim()) {
-      toast.error('Please enter your email first');
-      return;
-    }
-
-    const email = encodeURIComponent(trialEmail.trim().toLowerCase());
-    const link = STRIPE_LINKS[tier];
-    
-    if (link) {
-      window.location.href = `${link}?prefilled_email=${email}`;
-    } else {
-      toast.error('Invalid plan selected');
+    const plan = SUBSCRIPTION_PLANS[planId];
+    if (plan && plan.paymentLink) {
+      const email = encodeURIComponent(userEmail.trim().toLowerCase());
+      window.location.href = `${plan.paymentLink}?prefilled_email=${email}`;
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 sm:p-6">
-      <div className="max-w-4xl w-full space-y-6">
+      <div className="max-w-5xl w-full space-y-6">
         {/* Logo/Brand */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Cycle Coach</h1>
@@ -193,9 +214,9 @@ const Paywall = ({ onUnlock }) => {
                   <Input
                     id="email-input"
                     type="email"
-                    data-testid="trial-email-input"
-                    value={trialEmail}
-                    onChange={(e) => setTrialEmail(e.target.value)}
+                    data-testid="user-email-input"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
                     placeholder="your@email.com"
                     className="bg-slate-700/50 border-slate-600 text-white mt-2"
                   />
@@ -205,139 +226,108 @@ const Paywall = ({ onUnlock }) => {
 
             {/* Pricing Cards */}
             <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
-              {/* Free Training */}
-              <Card className="bg-slate-800/90 border-slate-700 hover:border-emerald-500/50 transition-all" data-testid="free-training-card">
-                <CardHeader className="text-center pb-2">
-                  <div className="text-emerald-400 text-sm font-semibold mb-2">START HERE</div>
-                  <CardTitle className="text-xl text-white">Free Training</CardTitle>
+              {/* Monthly Training Plan */}
+              <Card className="bg-slate-800/90 border-slate-700 hover:border-emerald-500/50 transition-all relative overflow-hidden" data-testid="monthly-plan-card">
+                <div className="absolute top-0 left-0 right-0 bg-emerald-500 text-white text-xs font-bold py-1 text-center">
+                  7-DAY FREE TRIAL
+                </div>
+                <CardHeader className="text-center pb-2 pt-8">
+                  <CardTitle className="text-xl text-white">{SUBSCRIPTION_PLANS.monthly.name}</CardTitle>
                   <div className="mt-2">
-                    <span className="text-3xl font-bold text-white">$0</span>
-                    <span className="text-slate-400 text-sm ml-1">/ 30 days</span>
+                    <span className="text-3xl font-bold text-white">{SUBSCRIPTION_PLANS.monthly.priceDisplay}</span>
+                    <span className="text-slate-400 text-sm ml-1">{SUBSCRIPTION_PLANS.monthly.billingPeriod}</span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Then $1.99/mo • Cancel anytime</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <p className="text-slate-400 text-sm text-center">
+                    {SUBSCRIPTION_PLANS.monthly.description}
+                  </p>
                   <ul className="space-y-2 text-sm text-slate-300">
-                    <li className="flex items-center gap-2">
-                      <span className="text-emerald-400">✓</span>
-                      Cycle tracking &amp; predictions
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-emerald-400">✓</span>
-                      Research-backed insights
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-emerald-400">✓</span>
-                      Educational resources
-                    </li>
-                    <li className="flex items-center gap-2 text-slate-500">
-                      <span>✗</span>
-                      Partner Profile
-                    </li>
-                    <li className="flex items-center gap-2 text-slate-500">
-                      <span>✗</span>
-                      AI Wingman
-                    </li>
+                    {SUBSCRIPTION_PLANS.monthly.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <span className="text-emerald-400">✓</span>
+                        {feature}
+                      </li>
+                    ))}
                   </ul>
                   <Button
-                    onClick={handleStartFreeTrial}
-                    disabled={!trialEmail.trim()}
+                    onClick={() => handleSelectPlan('monthly')}
+                    disabled={!userEmail.trim()}
                     className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
-                    data-testid="start-training-btn"
+                    data-testid="select-monthly-btn"
                   >
-                    Start Free Training
+                    Start Free Trial
                   </Button>
                 </CardContent>
               </Card>
 
-              {/* Winning Game Plan */}
-              <Card className="bg-slate-800/90 border-slate-700 hover:border-cyan-500/50 transition-all" data-testid="winning-plan-card">
-                <CardHeader className="text-center pb-2">
-                  <div className="text-cyan-400 text-sm font-semibold mb-2">WINNING</div>
-                  <CardTitle className="text-xl text-white">Winning Game Plan</CardTitle>
+              {/* Quarter by Quarter */}
+              <Card className="bg-slate-800/90 border-slate-700 hover:border-cyan-500/50 transition-all relative overflow-hidden" data-testid="quarterly-plan-card">
+                <div className="absolute top-0 left-0 right-0 bg-cyan-500 text-white text-xs font-bold py-1 text-center">
+                  SAVE 12%
+                </div>
+                <CardHeader className="text-center pb-2 pt-8">
+                  <CardTitle className="text-xl text-white">{SUBSCRIPTION_PLANS.quarterly.name}</CardTitle>
                   <div className="mt-2">
-                    <span className="text-3xl font-bold text-white">$1.99</span>
-                    <span className="text-slate-400 text-sm ml-1">/ month</span>
+                    <span className="text-3xl font-bold text-white">{SUBSCRIPTION_PLANS.quarterly.priceDisplay}</span>
+                    <span className="text-slate-400 text-sm ml-1">{SUBSCRIPTION_PLANS.quarterly.billingPeriod}</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <p className="text-slate-400 text-sm text-center">
+                    {SUBSCRIPTION_PLANS.quarterly.description}
+                  </p>
                   <ul className="space-y-2 text-sm text-slate-300">
-                    <li className="flex items-center gap-2">
-                      <span className="text-cyan-400">✓</span>
-                      Cycle tracking &amp; predictions
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-cyan-400">✓</span>
-                      Research-backed insights
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-cyan-400">✓</span>
-                      Educational resources
-                    </li>
-                    <li className="flex items-center gap-2 text-slate-500">
-                      <span>✗</span>
-                      Partner Profile
-                    </li>
-                    <li className="flex items-center gap-2 text-slate-500">
-                      <span>✗</span>
-                      AI Wingman
-                    </li>
+                    {SUBSCRIPTION_PLANS.quarterly.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <span className="text-cyan-400">✓</span>
+                        {feature}
+                      </li>
+                    ))}
                   </ul>
                   <Button
-                    onClick={() => handleSubscribe('winning')}
-                    disabled={!trialEmail.trim()}
+                    onClick={() => handleSelectPlan('quarterly')}
+                    disabled={!userEmail.trim()}
                     variant="outline"
                     className="w-full border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white"
-                    data-testid="subscribe-winning-btn"
+                    data-testid="select-quarterly-btn"
                   >
-                    Choose Winning
+                    Choose Quarterly
                   </Button>
                 </CardContent>
               </Card>
 
-              {/* Elite Game Plan */}
-              <Card className="bg-gradient-to-b from-purple-900/50 to-slate-800/90 border-purple-500/50 relative overflow-hidden" data-testid="elite-plan-card">
-                <div className="absolute top-0 right-0 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-bl">
-                  RECOMMENDED
+              {/* Full Season Strategy */}
+              <Card className="bg-gradient-to-b from-purple-900/50 to-slate-800/90 border-purple-500/50 relative overflow-hidden" data-testid="annual-plan-card">
+                <div className="absolute top-0 left-0 right-0 bg-purple-500 text-white text-xs font-bold py-1 text-center">
+                  BEST VALUE
                 </div>
-                <CardHeader className="text-center pb-2 pt-6">
-                  <div className="text-purple-400 text-sm font-semibold mb-2">ELITE</div>
-                  <CardTitle className="text-xl text-white">Elite Game Plan</CardTitle>
+                <CardHeader className="text-center pb-2 pt-8">
+                  <CardTitle className="text-xl text-white">{SUBSCRIPTION_PLANS.annual.name}</CardTitle>
                   <div className="mt-2">
-                    <span className="text-3xl font-bold text-white">$2.99</span>
-                    <span className="text-slate-400 text-sm ml-1">/ month</span>
+                    <span className="text-3xl font-bold text-white">{SUBSCRIPTION_PLANS.annual.priceDisplay}</span>
+                    <span className="text-slate-400 text-sm ml-1">{SUBSCRIPTION_PLANS.annual.billingPeriod}</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <p className="text-slate-400 text-sm text-center">
+                    {SUBSCRIPTION_PLANS.annual.description}
+                  </p>
                   <ul className="space-y-2 text-sm text-slate-300">
-                    <li className="flex items-center gap-2">
-                      <span className="text-purple-400">✓</span>
-                      Cycle tracking &amp; predictions
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-purple-400">✓</span>
-                      Research-backed insights
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-purple-400">✓</span>
-                      Educational resources
-                    </li>
-                    <li className="flex items-center gap-2 font-semibold">
-                      <span className="text-purple-400">✓</span>
-                      Partner Profile
-                    </li>
-                    <li className="flex items-center gap-2 font-semibold">
-                      <span className="text-purple-400">✓</span>
-                      AI Wingman - 24/7 advice
-                    </li>
+                    {SUBSCRIPTION_PLANS.annual.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <span className="text-purple-400">✓</span>
+                        {feature}
+                      </li>
+                    ))}
                   </ul>
                   <Button
-                    onClick={() => handleSubscribe('elite')}
-                    disabled={!trialEmail.trim()}
+                    onClick={() => handleSelectPlan('annual')}
+                    disabled={!userEmail.trim()}
                     className="w-full bg-purple-500 hover:bg-purple-600 text-white"
-                    data-testid="subscribe-elite-btn"
+                    data-testid="select-annual-btn"
                   >
-                    Go Elite
+                    Go Annual
                   </Button>
                 </CardContent>
               </Card>
@@ -345,7 +335,7 @@ const Paywall = ({ onUnlock }) => {
 
             {/* Feature Comparison Note */}
             <div className="text-center text-slate-400 text-sm max-w-lg mx-auto">
-              <p>🔒 All plans: Your data stays on your device. No account required.</p>
+              <p>🔒 All plans include full access. Your data stays on your device.</p>
               <p className="mt-1 text-slate-500">Cancel anytime. Secure payment via Stripe.</p>
             </div>
           </div>
