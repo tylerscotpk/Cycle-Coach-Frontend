@@ -2070,42 +2070,50 @@ class TrialRequest(BaseModel):
 # ============================================
 # SUBSCRIPTION TIERS CONFIGURATION
 # ============================================
-# Tiers: free_training (30 days trial with payment), winning (Basic $1.99/mo), elite (Premium $2.99/mo), grandfathered (existing lifetime/yearly users)
-# Features:
-#   - free_training/winning: Cycle tracking, tips, research insights (NO Partner Profile, NO AI Wingman)
-#   - elite/grandfathered: ALL features including Partner Profile and AI Wingman
+# All plans include full features (Partner Profile + AI Wingman)
+# Plans: monthly (7-day trial), quarterly, annual
 
 SUBSCRIPTION_TIERS = {
-    "free_training": {
-        "name": "Free Training",
-        "display_name": "Free Training",
-        "price": 0,
-        "price_cents": 0,
-        "trial_days": 30,
-        "converts_to": "winning",
-        "features": ["cycle_tracking", "tips", "research_insights", "resources"],
-        "has_partner_profile": False,
-        "has_ai_wingman": False
+    "monthly": {
+        "name": "Monthly Training Plan",
+        "display_name": "Monthly Training Plan",
+        "price": 3.99,
+        "price_cents": 399,
+        "billing": "monthly",
+        "has_trial": True,
+        "trial_days": 7,
+        "description": "Start strong with guided training and personalized insights. Free 7-day trial.",
+        "features": ["cycle_tracking", "tips", "research_insights", "resources", "partner_profile", "ai_wingman"],
+        "has_partner_profile": True,
+        "has_ai_wingman": True
     },
-    "winning": {
-        "name": "Winning Game Plan",
-        "display_name": "Winning Game Plan",
-        "price_cents": 199,  # $1.99
-        "features": ["cycle_tracking", "tips", "research_insights", "resources"],
-        "has_partner_profile": False,
-        "has_ai_wingman": False
+    "quarterly": {
+        "name": "Quarter by Quarter",
+        "display_name": "Quarter by Quarter",
+        "price": 10.49,
+        "price_cents": 1049,
+        "billing": "every_3_months",
+        "has_trial": False,
+        "description": "Stay consistent with a 90-day cycle designed for real relationship progress. Save compared to monthly.",
+        "features": ["cycle_tracking", "tips", "research_insights", "resources", "partner_profile", "ai_wingman"],
+        "has_partner_profile": True,
+        "has_ai_wingman": True
     },
-    "elite": {
-        "name": "Elite Game Plan",
-        "display_name": "Elite Game Plan",
-        "price_cents": 299,  # $2.99
+    "annual": {
+        "name": "Full Season Strategy",
+        "display_name": "Full Season Strategy",
+        "price": 35.91,
+        "price_cents": 3591,
+        "billing": "annual",
+        "has_trial": False,
+        "description": "Commit to long-term growth. Best value — includes 3 free months compared to monthly.",
         "features": ["cycle_tracking", "tips", "research_insights", "resources", "partner_profile", "ai_wingman"],
         "has_partner_profile": True,
         "has_ai_wingman": True
     },
     "grandfathered": {
         "name": "Grandfathered (Lifetime)",
-        "display_name": "Elite Game Plan (Lifetime)",
+        "display_name": "Lifetime Access",
         "price": 0,
         "features": ["cycle_tracking", "tips", "research_insights", "resources", "partner_profile", "ai_wingman"],
         "has_partner_profile": True,
