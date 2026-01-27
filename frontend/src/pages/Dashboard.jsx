@@ -928,9 +928,6 @@ const Dashboard = () => {
                   </form>
                 </CardContent>
               </Card>
-            ) : (
-              <UpgradePrompt feature="AI Wingman" onUpgrade={handleUpgradeToElite} isUpgrading={isUpgrading} />
-            )}
           </TabsContent>
 
           {/* Partner Profile Tab */}
