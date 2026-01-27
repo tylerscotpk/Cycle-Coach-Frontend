@@ -871,6 +871,7 @@ const Dashboard = () => {
 
           {/* AI Wingman Tab */}
           <TabsContent value="chat" data-testid="ai-coach-content">
+            {hasAIWingman() ? (
             <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
                 <CardHeader>
                   <CardTitle className="text-white">Your AI Wingman</CardTitle>
