@@ -1844,7 +1844,7 @@ async def validate_license(request: LicenseValidationRequest):
             "valid": True,
             "message": "License key is valid",
             "tier": "grandfathered",
-            "tier_display": "Elite Game Plan (Lifetime)",
+            "tier_display": "Lifetime Access",
             "has_partner_profile": True,
             "has_ai_wingman": True,
             "expires_at": None,
