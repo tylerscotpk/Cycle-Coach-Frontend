@@ -1778,50 +1778,41 @@ async def validate_license(request: LicenseValidationRequest):
             )
         
         # Determine tier and features
-        key_type = license_record.get("key_type", "free_training")
+        key_type = license_record.get("key_type", "monthly")
         subscription_tier = license_record.get("subscription_tier", key_type)
         is_trial = license_record.get("is_trial", False)
         
         # Get trial start date for feedback prompts
         created_at = license_record.get("created_at")
         
+        # All new plans have full access (Partner Profile + AI Wingman)
         # Grandfathered users: existing lifetime/yearly keys get full access
         if key_type in ["lifetime", "yearly"] or subscription_tier == "grandfathered":
             tier = "grandfathered"
-            tier_display = "Elite Game Plan (Lifetime)"
+            tier_display = "Lifetime Access"
             has_partner_profile = True
             has_ai_wingman = True
-        elif subscription_tier == "elite" or key_type == "elite":
-            tier = "elite"
-            tier_display = "Elite Game Plan"
+        elif subscription_tier == "annual" or key_type == "annual":
+            tier = "annual"
+            tier_display = "Full Season Strategy"
             has_partner_profile = True
             has_ai_wingman = True
-        elif subscription_tier == "winning" or key_type == "winning":
-            tier = "winning"
-            tier_display = "Winning Game Plan"
-            has_partner_profile = False
-            has_ai_wingman = False
-        elif subscription_tier == "free_training" or key_type == "free_training" or is_trial:
-            tier = "free_training"
-            tier_display = "Free Training"
-            has_partner_profile = False
-            has_ai_wingman = False
-        else:  # Legacy: free_trial, basic, premium mapping
-            if subscription_tier in ["premium", "elite"]:
-                tier = "elite"
-                tier_display = "Elite Game Plan"
-                has_partner_profile = True
-                has_ai_wingman = True
-            elif subscription_tier in ["basic", "winning"]:
-                tier = "winning"
-                tier_display = "Winning Game Plan"
-                has_partner_profile = False
-                has_ai_wingman = False
-            else:
-                tier = "free_training"
-                tier_display = "Free Training"
-                has_partner_profile = False
-                has_ai_wingman = False
+        elif subscription_tier == "quarterly" or key_type == "quarterly":
+            tier = "quarterly"
+            tier_display = "Quarter by Quarter"
+            has_partner_profile = True
+            has_ai_wingman = True
+        elif subscription_tier == "monthly" or key_type == "monthly":
+            tier = "monthly"
+            tier_display = "Monthly Training Plan"
+            has_partner_profile = True
+            has_ai_wingman = True
+        else:
+            # Legacy tiers - all get full access now
+            tier = subscription_tier or key_type or "monthly"
+            tier_display = SUBSCRIPTION_TIERS.get(tier, {}).get("display_name", "Cycle Coach")
+            has_partner_profile = True
+            has_ai_wingman = True
         
         return {
             "valid": True,
