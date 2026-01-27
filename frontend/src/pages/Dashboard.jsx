@@ -523,13 +523,7 @@ const Dashboard = () => {
     }
   };
 
-  // Check if user has premium features
-  const hasPremiumFeatures = () => {
-    if (!subscriptionTier) return false;
-    return subscriptionTier.has_partner_profile === true && subscriptionTier.has_ai_wingman === true;
-  };
-
-  // All plans now include full features
+  // All plans now include full features - no feature gating needed
   const hasPartnerProfile = () => true;
   const hasAIWingman = () => true;
 
