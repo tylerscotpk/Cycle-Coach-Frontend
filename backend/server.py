@@ -1868,59 +1868,66 @@ async def validate_license(request: LicenseValidationRequest):
 
 @api_router.get("/subscription/tiers")
 async def get_subscription_tiers():
-    """Get available subscription tiers and pricing"""
+    """Get available subscription tiers and pricing (cached in frontend, minimal API calls)"""
     return {
         "tiers": [
             {
-                "id": "free_training",
-                "name": "Free Training",
-                "price": 0,
-                "price_display": "Free",
-                "duration": "30 days",
-                "converts_to": "Winning Game Plan ($1.99/mo)",
+                "id": "monthly",
+                "name": "Monthly Training Plan",
+                "price": 3.99,
+                "price_display": "$3.99/month",
+                "billing": "Monthly",
+                "has_trial": True,
+                "trial_days": 7,
+                "description": "Start strong with guided training and personalized insights. Free 7-day trial.",
                 "features": [
-                    "Cycle tracking & phase predictions",
-                    "Research-backed insights & tips",
+                    "Cycle tracking & predictions",
+                    "Research-backed insights",
                     "Educational resources",
-                    "100% privacy - data stays on your device"
-                ],
-                "has_partner_profile": False,
-                "has_ai_wingman": False,
-                "cta": "Start Free Training",
-                "requires_payment": True,
-                "cancel_anytime": True
-            },
-            {
-                "id": "winning",
-                "name": "Winning Game Plan",
-                "price": 1.99,
-                "price_display": "$1.99/mo",
-                "duration": "Monthly",
-                "features": [
-                    "Cycle tracking & phase predictions",
-                    "Research-backed insights & tips",
-                    "Educational resources",
-                    "100% privacy - data stays on your device"
-                ],
-                "has_partner_profile": False,
-                "has_ai_wingman": False,
-                "cta": "Choose Winning"
-            },
-            {
-                "id": "elite",
-                "name": "Elite Game Plan",
-                "price": 2.99,
-                "price_display": "$2.99/mo",
-                "duration": "Monthly",
-                "features": [
-                    "Everything in Winning, plus:",
-                    "Partner Profile - save her preferences",
-                    "AI Wingman - 24/7 personalized advice",
-                    "Priority support"
+                    "Partner Profile",
+                    "AI Wingman"
                 ],
                 "has_partner_profile": True,
                 "has_ai_wingman": True,
-                "cta": "Go Elite",
+                "badge": "7-DAY FREE TRIAL"
+            },
+            {
+                "id": "quarterly",
+                "name": "Quarter by Quarter",
+                "price": 10.49,
+                "price_display": "$10.49/3 months",
+                "billing": "Every 3 months",
+                "has_trial": False,
+                "description": "Stay consistent with a 90-day cycle designed for real relationship progress. Save compared to monthly.",
+                "features": [
+                    "Cycle tracking & predictions",
+                    "Research-backed insights",
+                    "Educational resources",
+                    "Partner Profile",
+                    "AI Wingman"
+                ],
+                "has_partner_profile": True,
+                "has_ai_wingman": True,
+                "badge": "SAVE 12%"
+            },
+            {
+                "id": "annual",
+                "name": "Full Season Strategy",
+                "price": 35.91,
+                "price_display": "$35.91/year",
+                "billing": "Annual",
+                "has_trial": False,
+                "description": "Commit to long-term growth. Best value — includes 3 free months compared to monthly.",
+                "features": [
+                    "Cycle tracking & predictions",
+                    "Research-backed insights",
+                    "Educational resources",
+                    "Partner Profile",
+                    "AI Wingman"
+                ],
+                "has_partner_profile": True,
+                "has_ai_wingman": True,
+                "badge": "BEST VALUE",
                 "recommended": True
             }
         ]
