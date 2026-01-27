@@ -529,60 +529,9 @@ const Dashboard = () => {
     return subscriptionTier.has_partner_profile === true && subscriptionTier.has_ai_wingman === true;
   };
 
-  const hasPartnerProfile = () => {
-    if (!subscriptionTier) return false;
-    return subscriptionTier.has_partner_profile === true;
-  };
-
-  const hasAIWingman = () => {
-    if (!subscriptionTier) return false;
-    return subscriptionTier.has_ai_wingman === true;
-  };
-
-  const handleUpgradeToElite = async () => {
-    setIsUpgrading(true);
-    try {
-      const license = LocalStorage.getLicenseKey();
-      const tier = LocalStorage.getSubscriptionTier();
-      
-      if (!license || !tier?.email) {
-        toast.error('Please log in first');
-        return;
-      }
-
-      const response = await fetch(`${API}/subscription/upgrade`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: tier.email,
-          current_license_key: license.key,
-          new_tier: 'elite'
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.status === 'success' && result.checkout_url) {
-        window.location.href = result.checkout_url;
-      } else {
-        toast.error(result.detail || 'Failed to create upgrade checkout');
-      }
-    } catch (error) {
-      console.error('Upgrade error:', error);
-      toast.error('Unable to upgrade. Please try again.');
-    } finally {
-      setIsUpgrading(false);
-    }
-  };
-
-  // Get tier name for banner
-  const getTierDisplayName = () => {
-    if (!subscriptionTier) return 'Free Training';
-    const tier = subscriptionTier.tier;
-    if (tier === 'winning' || tier === 'basic') return 'Winning Game Plan';
-    if (tier === 'free_training' || tier === 'free_trial') return 'Free Training';
-    return subscriptionTier.tier_display || 'Free Training';
-  };
+  // All plans now include full features
+  const hasPartnerProfile = () => true;
+  const hasAIWingman = () => true;
 
   const getPhaseColor = (phase) => {
     switch (phase) {
