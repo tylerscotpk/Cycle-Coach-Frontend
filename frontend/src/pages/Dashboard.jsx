@@ -857,33 +857,21 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Upgrade Banner for non-premium users */}
-        {!hasPremiumFeatures() && (
-          <UpgradeBanner 
-            tierName={getTierDisplayName()} 
-            onUpgrade={handleUpgradeToElite} 
-            isUpgrading={isUpgrading} 
-          />
-        )}
-
         {/* Tabs Section */}
         <Tabs defaultValue="resources" className="space-y-6">
           <TabsList className="bg-slate-800 border border-slate-700" tabIndex={-1}>
             <TabsTrigger value="resources" data-testid="tab-resources">Resources</TabsTrigger>
-            <TabsTrigger value="chat" data-testid="tab-ai-coach" className="relative">
+            <TabsTrigger value="chat" data-testid="tab-ai-coach">
               AI Wingman
-              {!hasAIWingman() && <span className="ml-1 text-purple-400 text-xs">⭐</span>}
             </TabsTrigger>
-            <TabsTrigger value="profile" data-testid="tab-partner-profile" className="relative">
+            <TabsTrigger value="profile" data-testid="tab-partner-profile">
               Partner Profile
-              {!hasPartnerProfile() && <span className="ml-1 text-purple-400 text-xs">⭐</span>}
             </TabsTrigger>
           </TabsList>
 
           {/* AI Wingman Tab */}
           <TabsContent value="chat" data-testid="ai-coach-content">
-            {hasAIWingman() ? (
-              <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+            <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
                 <CardHeader>
                   <CardTitle className="text-white">Your AI Wingman</CardTitle>
                   <CardDescription className="text-slate-400">Ask questions, get real advice, learn what actually works</CardDescription>
