@@ -928,21 +928,17 @@ const Dashboard = () => {
                   </form>
                 </CardContent>
               </Card>
-            ) : (
-              <UpgradePrompt feature="AI Wingman" onUpgrade={handleUpgradeToElite} isUpgrading={isUpgrading} />
-            )}
           </TabsContent>
 
           {/* Partner Profile Tab */}
           <TabsContent value="profile" data-testid="partner-profile-content">
-            {hasPartnerProfile() ? (
-              <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-white">Partner Profile</CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Track her preferences so you never forget what she likes
-                  </CardDescription>
-                </CardHeader>
+            <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white">Partner Profile</CardTitle>
+                <CardDescription className="text-slate-400">
+                  Track her preferences so you never forget what she likes
+                </CardDescription>
+              </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Left Column - Preferences */}
