@@ -36,9 +36,8 @@ const Dashboard = () => {
   const [cycleHistory, setCycleHistory] = useState(null);
   const [logPeriodDate, setLogPeriodDate] = useState('');
   
-  // Subscription tier state
+  // Subscription tier state (for feedback prompts)
   const [subscriptionTier, setSubscriptionTier] = useState(null);
-  const [isUpgrading, setIsUpgrading] = useState(false);
   
   // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
