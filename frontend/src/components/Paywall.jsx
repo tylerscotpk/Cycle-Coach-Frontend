@@ -288,8 +288,7 @@ const Paywall = ({ onUnlock }) => {
                   <Button
                     onClick={() => handleSelectPlan('quarterly')}
                     disabled={!userEmail.trim()}
-                    variant="outline"
-                    className="w-full border-cyan-500 text-cyan-400 hover:bg-cyan-500 hover:text-white"
+                    className="w-full bg-cyan-400 hover:bg-cyan-500 text-white"
                     data-testid="select-quarterly-btn"
                   >
                     Choose Quarterly
