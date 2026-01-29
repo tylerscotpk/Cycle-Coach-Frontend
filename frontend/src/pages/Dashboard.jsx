@@ -705,7 +705,7 @@ const Dashboard = () => {
               </div>
 
               <div>
-                <div className="text-sm text-slate-400 mb-3">Today's Tips</div>
+                <div className="text-sm text-slate-400 mb-3">Today&apos;s Tips</div>
                 <ul className="space-y-2">
                   {cycleInfo.tips.slice(0, 4).map((tip, idx) => (
                     <li key={idx} className="flex gap-2 text-slate-200" data-testid={`tip-${idx}`}>
