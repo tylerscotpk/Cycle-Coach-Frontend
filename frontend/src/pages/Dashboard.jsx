@@ -19,6 +19,7 @@ import { LocalStorage } from '../utils/localStorageManager';
 import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod } from '../utils/cycleCalculations';
 import { RESOURCES, getRelevantResources, getNextPhase } from '../utils/resourcesData';
 import { getUnseenFact } from '../utils/cycleFacts';
+import { initializeNotifications, runNotificationChecks } from '../utils/notificationService';
 
 const Dashboard = () => {
   // LOCAL-ONLY MODE: No user prop needed
