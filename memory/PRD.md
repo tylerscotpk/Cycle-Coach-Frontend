@@ -9,114 +9,116 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - **Primary:** Men in relationships who want to better understand their partner's menstrual cycle
 - **Use Case:** Track partner's cycle (with consent), get phase-based tips, access AI coaching
 
-## Subscription Tiers (Game Plans)
+## Subscription Tiers (Current Model)
 
-| Tier | Name | Price | Trial | Features |
-|------|------|-------|-------|----------|
-| **free_training** | Free Training | $0 | 30 days | Cycle tracking, tips, research insights, resources |
-| **winning** | Winning Game Plan | $1.99/mo | - | Same as trial (ongoing access) |
-| **elite** | Elite Game Plan | $2.99/mo | - | All features + Partner Profile + AI Wingman |
-| **grandfathered** | Elite (Lifetime) | Free | - | All features (existing lifetime/yearly users) |
+| Tier | Name | Price | Features |
+|------|------|-------|----------|
+| **monthly** | Monthly Training Plan | $3.99/mo (7-day trial) | All features |
+| **quarterly** | Quarter by Quarter | $10.49/3 months | All features |
+| **annual** | Full Season Strategy | $35.91/year | All features |
+| **grandfathered** | Elite (Lifetime) | Free | All features (existing users) |
 
-### Trial Flow (Payment Required)
-1. User enters email and clicks "Start Free Training"
-2. Redirects to Stripe Checkout to enter payment info
-3. 30-day free trial begins (card not charged)
-4. After 30 days, auto-converts to Winning Game Plan ($1.99/mo)
-5. User can cancel anytime during or after trial
+**Note:** All subscription plans grant full access to all features (no feature gating).
 
-### Feature Gating
-- **Free Training / Winning:** Cycle tracking, tips, research insights, resources
-- **Elite / Grandfathered:** All features + Partner Profile + AI Wingman
-- Non-elite users see upgrade prompts and locked feature indicators
-
-### Feedback System
-Feedback prompts (rating 1-5 stars + text) appear:
-- **Day 7** of trial
-- **On cancellation**
-- **On conversion** to paid plan
+### Payment Flow
+1. User selects a subscription plan on the Paywall
+2. Redirected to Stripe Payment Link
+3. Upon successful payment, Stripe webhook generates license key
+4. License key emailed via Resend
+5. User enters license key to access the app
 
 ## Tech Stack
 - **Frontend:** React, Tailwind CSS, Shadcn/UI, Capacitor
 - **Backend:** FastAPI (AI proxy + subscription management)
 - **Data Storage:** Browser localStorage (user data), MongoDB (subscription data)
 - **AI:** OpenAI GPT-5 via Emergent LLM Key
-- **Payments:** Stripe (subscriptions with trial periods)
+- **Payments:** Stripe (Payment Links + Webhooks)
 - **Email:** Resend (license key delivery)
 
 ## Key Files
-- `/app/frontend/src/components/Paywall.jsx` - Tiered pricing UI
-- `/app/frontend/src/components/FeedbackModal.jsx` - Feedback collection
-- `/app/frontend/src/pages/Dashboard.jsx` - Main app with feature gating
+- `/app/frontend/src/components/Paywall.jsx` - Subscription plans UI
+- `/app/frontend/src/components/StatePrivacyWaiver.jsx` - US state privacy flow
+- `/app/frontend/src/components/NotificationSettings.jsx` - Notification preferences
+- `/app/frontend/src/pages/Dashboard.jsx` - Main app dashboard
+- `/app/frontend/src/pages/PrivacySettings.jsx` - Privacy & data management
 - `/app/frontend/src/pages/AdminDashboard.jsx` - Admin management
 - `/app/frontend/src/utils/localStorageManager.js` - Data persistence
+- `/app/frontend/src/utils/notificationService.js` - Push notification logic
 - `/app/backend/server.py` - API server
 
 ## API Endpoints
 
-### Subscription
-- `GET /api/subscription/tiers` - Get tier info and pricing
-- `POST /api/trial/request` - Create Stripe checkout for Free Training
-- `POST /api/subscription/create-checkout` - Create checkout for paid plans
-- `POST /api/subscription/upgrade` - Upgrade to Elite
-- `POST /api/license/validate` - Validate key, returns tier info
-- `POST /api/license/resend` - Resend license key
-- `POST /api/webhook/stripe` - Handle Stripe events
+### License & Subscription
+- `POST /api/license/validate` - Validate license key, returns tier info
+- `POST /api/webhook/stripe` - Handle Stripe payment events
+
+### AI Wingman
+- `POST /api/chat/anonymous` - Anonymous AI chat with partner profile context
+  - Accepts: `message`, `cycle_day`, `phase`, `partner_profile` (with name, preferences, cycle_length)
+  - AI uses partner profile for personalized responses
 
 ### Feedback
-- `POST /api/feedback/submit` - Submit rating + text feedback
-- `GET /api/feedback/check/{email}` - Check if user should see feedback prompt
-- `GET /api/admin/feedback` - Get all feedback (admin)
+- `POST /api/feedback` - Submit user feedback
 
 ### Admin
+- `GET /api/admin/stats` - Dashboard statistics
 - `GET /api/admin/users` - List all users/licenses
-- `POST /api/admin/grant-key` - Grant manual license key
-- `POST /api/admin/archive-user` - Archive user
-- `POST /api/admin/cancel-user` - Cancel subscription
+- `GET /api/admin/requests` - Trial request history
 
 ## Completed Tasks
+
+### Core Features
 - [x] Privacy-first architecture (localStorage for user data)
-- [x] Cycle tracking with phase detection
-- [x] MoodMap visualizer
-- [x] AI Wingman (anonymous proxy)
-- [x] Partner Profile tab
-- [x] Resources tab (static data)
-- [x] Research-backed insights
+- [x] Cycle tracking with phase detection (5 phases)
+- [x] MoodMap visualizer (interactive wheel)
+- [x] Partner Profile tab with preferences storage
+- [x] Resources tab with external links disclaimer
+- [x] Research-backed insights with source citations
 - [x] Paywall with license key validation
 - [x] Stripe webhook integration
 - [x] Resend email integration
 - [x] Admin Dashboard
 - [x] Capacitor setup for app stores
-- [x] **Tiered Subscription System (January 2025)**
-  - [x] "Choose Game Plan" UI with 3 tiers
-  - [x] Free Training → Winning → Elite naming
-  - [x] Payment info required for trial (Stripe trial period)
-  - [x] Auto-conversion to Winning after 30 days
-  - [x] Feature gating (Partner Profile, AI Wingman)
-  - [x] Upgrade prompts for non-elite users
-  - [x] Grandfathered access for existing users
-- [x] **Feedback System (January 2025)**
-  - [x] Rating + text feedback modal
-  - [x] Day 7 trial prompt
-  - [x] Conversion prompt
-  - [x] Cancellation prompt
-  - [x] Admin feedback view
+
+### January 2025 Updates
+- [x] Subscription model overhaul (3 plans via Payment Links)
+- [x] Feedback system with rating + text collection
+- [x] State Privacy Waiver flow for US users
+- [x] Partner consent acknowledgment flow
+
+### January 29, 2025 Updates
+- [x] **AI Wingman Personalization Enhancement**
+  - Enhanced partner profile context (all preferences now sent to AI)
+  - Improved AI system prompt for better personalization
+  - AI now references partner name, preferences, entertainment choices
+- [x] **Push Notification System**
+  - Full notification service (`notificationService.js`)
+  - Phase transition reminders (1 day before phase change)
+  - Reflection prompts (periodic check-ins)
+  - Permission handling with enable/test buttons
+- [x] **Notification Settings UI**
+  - Permission status display
+  - Toggle controls for each notification type
+  - Test notification button
+  - Privacy-focused messaging
+- [x] **Resources Tab Cleanup**
+  - External links disclaimer at top
+  - Verified resource links
 
 ## Upcoming Tasks
 
-### P0 - High Priority
-- [ ] Configure valid Stripe API keys for production
-- [ ] Test full trial → conversion flow with real Stripe
-- [ ] Create Privacy Policy page
+### P1 - High Priority
+- [ ] App Store submission (iOS/Android) using Capacitor
+- [ ] Test push notifications on mobile devices (Capacitor)
 
-### P1 - Medium Priority
-- [ ] App Store submission (iOS/Android)
+### P2 - Medium Priority
 - [ ] Refactor Dashboard.jsx into smaller components
 - [ ] Clean up deprecated code in server.py
+- [ ] Service worker for background notification scheduling
 
-### P2 - Low Priority
-- [ ] PWA Push Notifications
+### P3 - Low Priority
 - [ ] Email templates for subscription reminders
+- [ ] A/B testing for paywall copy
 
 ## Admin Access
 - **URL:** `/admin`
