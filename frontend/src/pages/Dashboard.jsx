@@ -1134,7 +1134,7 @@ const Dashboard = () => {
                 <div className="mt-6 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
                   <p className="text-cyan-400 text-sm">
                     💡 <strong>Pro Tip:</strong> The AI Wingman uses this info to give you personalized recommendations. 
-                    Ask things like "What movie should we watch tonight?" or "Any new albums she'd like?"
+                    Ask things like &quot;What movie should we watch tonight?&quot; or &quot;Any new albums she&apos;d like?&quot;
                   </p>
                 </div>
               </CardContent>
