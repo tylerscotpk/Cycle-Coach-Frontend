@@ -105,6 +105,57 @@ export const LocalStorage = {
     localStorage.removeItem('cyclecoach_consent');
     localStorage.removeItem('cyclecoach_chat_history');
     localStorage.removeItem('cyclecoach_license');
+    localStorage.removeItem('cyclecoach_subscription');
+    localStorage.removeItem('cyclecoach_location');
+    localStorage.removeItem('cyclecoach_notification_settings');
+  },
+  
+  // User Location (for privacy waiver)
+  saveUserLocation: (locationData) => {
+    const encrypted = encrypt({
+      location: locationData.location,
+      state: locationData.state,
+      savedAt: new Date().toISOString()
+    });
+    if (encrypted) {
+      localStorage.setItem('cyclecoach_location', encrypted);
+    }
+  },
+  
+  getUserLocation: () => {
+    const data = localStorage.getItem('cyclecoach_location');
+    return data ? decrypt(data) : null;
+  },
+  
+  hasCompletedLocationSetup: () => {
+    const location = localStorage.getItem('cyclecoach_location');
+    return location !== null;
+  },
+  
+  // Notification Settings
+  saveNotificationSettings: (settings) => {
+    const encrypted = encrypt({
+      phaseReminders: settings.phaseReminders ?? true,
+      reflectionPrompts: settings.reflectionPrompts ?? true,
+      ratingPrompts: settings.ratingPrompts ?? true,
+      savedAt: new Date().toISOString()
+    });
+    if (encrypted) {
+      localStorage.setItem('cyclecoach_notification_settings', encrypted);
+    }
+  },
+  
+  getNotificationSettings: () => {
+    const data = localStorage.getItem('cyclecoach_notification_settings');
+    if (data) {
+      return decrypt(data);
+    }
+    // Default: all notifications ON
+    return {
+      phaseReminders: true,
+      reflectionPrompts: true,
+      ratingPrompts: true
+    };
   },
   
   // License Key Management
