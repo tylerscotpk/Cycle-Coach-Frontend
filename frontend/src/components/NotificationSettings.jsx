@@ -13,20 +13,19 @@ import {
 } from '../utils/notificationService';
 
 const NotificationSettings = () => {
-  const [settings, setSettings] = useState({
-    phaseReminders: true,
-    reflectionPrompts: true,
-    ratingPrompts: true
+  const [settings, setSettings] = useState(() => {
+    // Initialize state from localStorage
+    const saved = LocalStorage.getNotificationSettings();
+    return saved || {
+      phaseReminders: true,
+      reflectionPrompts: true,
+      ratingPrompts: true
+    };
   });
   const [permissionStatus, setPermissionStatus] = useState('loading');
   const [isEnabling, setIsEnabling] = useState(false);
 
   useEffect(() => {
-    const savedSettings = LocalStorage.getNotificationSettings();
-    if (savedSettings) {
-      setSettings(savedSettings);
-    }
-    
     // Check notification support and permission
     if (isNotificationsSupported()) {
       setPermissionStatus(getNotificationPermission());
