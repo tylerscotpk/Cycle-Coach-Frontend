@@ -599,7 +599,7 @@ const Dashboard = () => {
           <div className="max-w-2xl mx-auto">
             <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700" data-testid="setup-partner-card">
               <CardHeader>
-                <CardTitle className="text-2xl text-white">Alright, Let's Set This Up</CardTitle>
+                <CardTitle className="text-2xl text-white">Alright, Let&apos;s Set This Up</CardTitle>
                 <CardDescription className="text-slate-400">Tell us about your girl so we can help you not screw this up</CardDescription>
               </CardHeader>
               <CardContent>
