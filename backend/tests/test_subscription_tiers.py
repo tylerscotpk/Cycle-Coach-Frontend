@@ -7,7 +7,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://mentrack.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://partner-sync-6.preview.emergentagent.com')
 
 class TestSubscriptionTiers:
     """Test /api/subscription/tiers endpoint"""

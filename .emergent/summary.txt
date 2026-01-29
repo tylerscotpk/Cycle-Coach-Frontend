@@ -1,172 +1,155 @@
 <analysis>**original_problem_statement:**
-The user wants to create a mobile-friendly web app called Cycle Coach (originally Do Her Better) to help men understand their partners' menstrual cycles. The app tracks cycles, provides phase-based tips and research-backed insights, and features an AI Wingman (using GPT-5) for personalized advice.
-
-The project has evolved through several major phases:
-1.  **Initial Concept:** A full-stack app with user accounts and server-side data storage.
-2.  **Privacy Pivot:** Redesigned as a local-only Progressive Web App (PWA) with no server-side user data to address privacy concerns.
-3.  **Monetization & Admin:** Implemented a sophisticated server-side licensing system (paywall, trial requests, Stripe/Resend integration) and a full admin dashboard to manage users and keys, re-introducing a backend component for these specific tasks.
-4.  **App Store Prep:** Set up the project with Capacitor to enable future deployment to the iOS App Store and Google Play Store.
+The user wants to create a mobile-friendly web app called Cycle Coach to help men understand their partners' menstrual cycles. The app tracks cycles, provides phase-based tips and research-backed insights, and features an AI Wingman for personalized advice.
 
 **PRODUCT REQUIREMENTS:**
--   **Core Functionality:** Track cycles, provide phase-based tips, and display research-backed facts.
--   **AI Wingman:** Anonymously provide AI-driven advice via a stateless proxy.
--   **UI/UX:** MoodMap, Partner Profile, Dynamic Resources, Cycle Tracking, Research Insights.
--   **Privacy:** All personal cycle data remains on the user's device (). The backend only stores anonymized license key and trial request data.
--   **Monetization:**
-    -   **Phase 1 (Implemented):** A paywall with a free trial system. Users can request a trial key, which an admin must approve via a dashboard. Keys are single-use and can be time-limited (trial, yearly, lifetime).
-    -   **Phase 2 (Pending):** Transition to a monthly subscription model for new users after the initial tester phase.
--   **Deployment:** Must be deployable to iOS and Android app stores.
+-   **Core Functionality:** Track cycles, provide phase-based tips, display research-backed facts, and link to reputable resources. All personal cycle data remains on the user's device ().
+-   **AI Wingman:** Anonymously provide AI-driven advice, personalized using the user's Partner Profile.
+-   **Monetization:** A subscription model using Stripe Payment Links. Webhooks handle license key generation and email delivery.
+    -   Monthly Training Plan: .99/mo (7-day free trial)
+    -   Quarter by Quarter: 0.49/3 months
+    -   Full Season Strategy: 5.91/year
+-   **Admin Dashboard:** A password-protected portal () for the app owner to manage users and view stats.
+-   **Legal/Compliance:** Prompt US users for their state to display a state-specific privacy waiver.
+-   **Push Notifications:** Enable opt-out notifications for phase reminders and reflection prompts.
+-   **Deployment:** Must be deployable to iOS and Android app stores (project is set up with Capacitor).
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a feature-rich PWA built with React and a FastAPI backend.
--   **Frontend:** A client-side React app that stores all user cycle data in . It features a  component that gates access, a full  for the core app functionality, and an  for managing users and licenses. The project is configured with Capacitor for native app builds.
--   **Backend:** A FastAPI server with two main responsibilities:
-    1.  A stateless, anonymous proxy for the AI Wingman chat feature ().
-    2.  A stateful licensing and user management system. It connects to a MongoDB database to handle license keys and trial requests. It integrates with Stripe (for payment webhooks) and Resend (for sending license keys via email).
--   **Admin System:** A password-protected admin dashboard at  allows the app owner to view pending trial requests, approve/reject them (which automatically emails the user a key), and manage existing users (view their key status, grant lifetime/yearly keys, cancel, or archive).
--   **Monetization Flow:**
-    1.  New users see a paywall and can request a free trial.
-    2.  An admin approves the request in the  dashboard.
-    3.  A unique, one-time-use, 30-day trial key is emailed to the user via Resend.
-    4.  The user enters the key to unlock the app.
-    5.  The backend also has a Stripe webhook to automatically generate and email paid keys.
+The application is a PWA built with React and a FastAPI backend.
+-   **Frontend:** A client-side React app that stores all user cycle data in . It features a  component that redirects to Stripe Payment Links, a full , an , and a Capacitor setup for native builds.
+-   **Backend:** A FastAPI server that handles:
+    1.  An anonymous proxy for the AI Wingman chat feature (), now enhanced to accept partner profile context.
+    2.  A licensing system using MongoDB to store license keys.
+    3.  A Stripe webhook () to process purchases and an integration with Resend to email license keys.
+    4.  APIs for the admin dashboard.
+    5.  A feedback submission endpoint.
+-   **Monetization Flow:** The paywall displays three subscription plans. Clicking a plan redirects the user to a pre-configured Stripe Payment Link. Upon successful payment, a Stripe webhook notifies the backend to generate a license key and email it to the user.
 
 **Last working item**:
--   Last item agent was working: The user requested to move the license key entry field from a separate Returning User tab to the main New User tab on the paywall for a more streamlined UX. The agent implemented this change by overwriting .
+-   Last item agent was working: The agent was in the process of implementing a large, multi-part feature request from the user. This included updating UI button colors, revamping the resources tab, ensuring the AI Wingman uses the partner profile, adding a US state-based privacy waiver flow, and adding UI for push notification settings. The last action was adding the  component to the  page.
 -   Status: **IN PROGRESS**
 -   Agent Testing Done: N
--   Which testing method agent to use? screenshot tool
+-   Which testing method agent to use? both (The changes touch both frontend and backend logic extensively).
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1 (P0):** Verify the latest Paywall UI change.
-    -   **Description:** The agent just updated  to move the license key input field. This change has not been tested to confirm the UI looks and functions as expected.
-    -   **Next debug checklist:** Take a screenshot of the main application URL to view the updated paywall. Verify that the New User view now contains the license key input field and the Returning User tab has been removed or repurposed.
-    -   **Why fix this issue:** To complete the user's explicit UI/UX request for the login flow.
-    -   **Status:** NOT STARTED
+-   **Issue 1 (P0): Complete and Verify Multi-Part Feature Implementation**
+    -   **Description:** The agent has started but not finished a large set of requirements given by the user in a single prompt. This includes UI changes, AI context integration, resource updates, a new privacy waiver flow, and push notification settings. The work is spread across multiple files and needs to be completed and thoroughly tested.
+    -   **Next debug checklist:**
+        1.  Review all files modified in the last session to understand the current state of implementation.
+        2.  Implement the actual push notification logic (requesting permission, scheduling local notifications), as only the settings UI has been created.
+        3.  Thoroughly test the entire application flow, especially the new state waiver prompt, the AI chat context, and the updated resources tab.
+    -   **Why fix this issue:** To fulfill the user's latest and most comprehensive set of requirements.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** both
 
 **In progress Task List**:
-None.
+-   **Task 1 (P0): Implement User's Multi-Part Request**
+    -   **Where to resume:** The agent has already created several components and modified existing files (, , , , , ). The immediate next step is to implement the core logic for push notifications, as the UI is just a placeholder. Then, a full end-to-end test of all new features is required.
+    -   **What will be achieved with this?** The app will have a more polished UI, a smarter AI, better resources, a state-based privacy flow, and push notification capabilities, addressing all of the user's recent requests.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** both
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **P1: Implement Monthly Subscriptions (Phase 2 Monetization):**
-        -   **Description:** The user wants to switch from the current trial/manual key system to a recurring monthly subscription model for new users. Initial testers who were granted access should be grandfathered in with free access.
-        -   **Where to resume:** This will require significant changes to the backend () to handle Stripe Subscriptions, webhooks for recurring payments (), and logic to check for active subscription status instead of just a valid key. The frontend  will also need UI updates.
-        -   **Blocked on:** User confirmation to proceed.
+    -   **P1: Implement Push Notification Logic:** The settings UI is in place (), but the core functionality to request permissions and schedule local notifications for phase reminders and reflection prompts is not implemented. This is part of the current user request.
 -   **Future Tasks:**
-    -   **P2: Complete App Store Deployment:**
-        -   **Description:** The agent has set up Capacitor and created a guide (). The next steps involve the user creating Apple/Google Developer accounts, and then the agent can assist with building the final app binaries (/) and guiding the user through the submission process.
-    -   **P3: Refactor Backend ():**
-        -   **Description:** The file contains a mix of new, functional license/webhook code and a large amount of deprecated code from the old architecture (DB models, old endpoints, auth logic). This technical debt should be cleaned up to improve maintainability.
-    -   **P4: Refactor Frontend ():**
-        -   **Description:** This component is over 1000 lines long. It should be broken down into smaller, more manageable child components (e.g., , , ) to improve readability and maintainability.
+    -   **P2: Complete App Store Deployment:** Use the existing Capacitor setup and the  to build the final app binaries (/) and guide the user through the submission process.
+    -   **P3: Refactor Backend ():** The file still contains a mix of new, functional code and deprecated code from the old architecture that should be cleaned up.
+    -   **P4: Refactor Frontend ():** This component was simplified by removing feature gating but remains large. It could be broken down into smaller child components for better maintainability.
 
 **Completed work in this session**
--   **Branding:** Renamed the app from Do Her Better to Cycle Coach across the entire codebase.
--   **Resources Tab:** Re-enabled the Resources tab, converting it from a non-functional API-based feature to a fully client-side feature using a static data file ().
--   **Research Insights:** Replaced the generic Phase Fun Fact with a Research Insight feature, backed by a new database of 45+ sourced, research-backed facts ().
--   **Monetization System (Full Implementation):**
-    -   Built a paywall with server-side license key validation.
-    -   Integrated Stripe webhooks to automatically generate license keys upon payment.
-    -   Integrated Resend to automatically email license keys to customers.
--   **Trial & Admin System (Full Implementation):**
-    -   Created a Request Free Trial flow for new users.
-    -   Built a comprehensive, password-protected **Admin Dashboard** () for the user to manage trial requests (approve/reject) and users (grant lifetime/yearly keys, cancel, archive).
-    -   Implemented logic for different key types (Trial, Yearly, Lifetime, Cancelled) with expiration dates.
-    -   Secured license keys by making them **one-time use**.
--   **Bug Fix: Deleting Current Cycle:** Fixed a critical bug where the user could not delete the most recently logged cycle from the Cycle History modal.
--   **App Store Preparation:** Set up **Capacitor** in the project, configured it, and created a detailed  to prepare for iOS and Android deployment.
--   **Paywall UX:** Refactored the paywall to include New User and Returning User flows, including a Forgot your key? feature that resends the key via email.
+-   **Subscription Overhaul (Multiple Iterations):**
+    -   Implemented a tiered subscription system (Free Trial, Basic, Premium) with feature gating.
+    -   Refactored plans and naming multiple times based on user feedback (e.g., Winning Game Plan, Elite Game Plan).
+    -   Finalized a new three-tier model (Monthly Training Plan, Quarter by Quarter, Full Season Strategy) and removed all feature gating, granting all subscribers full access.
+-   **Stripe Integration:**
+    -   Updated backend with user's Stripe secret key.
+    -   Switched from server-side Stripe Checkout Session creation to using direct Stripe Payment Links provided by the user.
+-   **Admin Dashboard Fix:** Resolved Failed to Fetch errors reported by the user, confirming the dashboard is functional.
+-   **UI/Branding Updates:**
+    -   Generated a logo for the app (though not yet integrated).
+    -   Updated the paywall tagline to The relationship game-changer.
+    -   Updated paywall button colors as requested.
+-   **Feedback System:** Implemented a user feedback system with a  and backend endpoints to collect ratings and text feedback at specific triggers.
+-   **Began Multi-Part Feature Request:** Started implementing a large set of new requirements, including resource updates, AI context improvements, and new privacy/notification components.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1:  code quality:** This file contains significant deprecated code from the pre-privacy-pivot architecture. It needs to be refactored to remove unused routes, models, and logic.
--   **Issue 2:  complexity:** The main dashboard component is extremely large and handles too much state and logic, making it difficult to maintain.
+-   **Issue 2:  complexity:** The main dashboard component, while simplified, is still large and could benefit from being broken into smaller components.
 
 **Known issue recurrence from previous fork**
-None.
+-   None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
 -   **Architecture:** Hybrid - Local-First PWA with a server-side component for monetization/admin.
--   **Frontend:** React, Tailwind CSS, Shadcn/UI, **Capacitor**.
--   **Data Storage:** Browser  (for user cycle data), **MongoDB** (for license/trial data).
+-   **Frontend:** React, Tailwind CSS, Shadcn/UI, Capacitor.
+-   **Data Storage:** Browser  (user cycle data, consent, state), MongoDB (license/trial/feedback data).
 -   **Backend:** FastAPI.
--   **Monetization:** **Stripe** (Webhooks), **Resend** (Transactional Emails).
--   **AI Integration:** OpenAI GPT-5 (via anonymous backend proxy).
+-   **Monetization:** Stripe (Payment Links + Webhooks), Resend (Transactional Emails).
+-   **AI Integration:** OpenAI (via anonymous backend proxy).
 
 **key DB schema**
--   ** collection:**
-    -    (string, unique)
-    -    (string)
-    -    (string: trial, yearly, lifetime, cancelled)
-    -    (datetime, null for lifetime)
-    -    (boolean)
-    -    (integer, used to enforce one-time use)
-    -    (datetime)
--   ** collection:**
-    -    (string, unique)
-    -    (string: pending, approved, rejected)
-    -    (datetime)
+-   ** collection:** 
+-   ** collection:**  (Largely deprecated by new trial flow, but still used for admin history).
+-   ** collection:** 
 
 **changes in tech stack**
--   **Re-introduction of MongoDB:** Used exclusively for the licensing/admin backend system.
--   **Addition of Stripe:** For processing payments via webhooks.
--   **Addition of Resend:** For sending transactional emails (license keys).
--   **Addition of Capacitor:** For wrapping the React PWA into native iOS/Android apps.
+-   None since the previous handoff.
 
 **All files of reference**
--   : Contains all new server-side logic for webhooks, license validation, and the admin dashboard APIs.
--   : The entry point for new users, handling trial requests and license key activation.
--   : The UI for the admin panel.
--   : Contains the top-level routing logic for the paywall, admin, and main dashboard.
--   : The new database for research-backed insights.
--   : The guide for building and submitting the app to stores.
--   : Configuration for the native app builds.
+-   : Major changes to subscription logic, AI chat context, and new feedback endpoints.
+-   : Completely overhauled multiple times to reflect new subscription plans and UI requirements.
+-   : Simplified to remove feature gating but modified to add resource disclaimer and prepare for AI context.
+-   : Updated to include the new  flow.
+-   : Updated to store user's state.
+-   : Updated with verified, high-quality links.
+-   : New component for state selection.
+-   : New component for notification preferences.
+-   : Updated to include the new  component.
 
 **Areas that need refactoring**:
--   **:** Still contains significant technical debt from the old architecture alongside the new license management code. It should be cleaned up.
--   **:** Remains a monolithic component over 1000 lines long and should be broken into smaller, reusable components.
+-   **:** Still contains significant technical debt and deprecated code alongside the new logic.
+-   **:** Remains a large, monolithic component.
 
 **key api endpoints**
--   : (POST) Handles Stripe payment events.
--   : (POST) Validates a user-provided license key against the database.
--   : (POST) Resends a license key to a user's email.
--   : (POST) Submits a new trial request.
--   : (GET) Fetches trial requests for the admin dashboard.
--   : (POST) Approves a trial request, generates a key, and emails it.
--   : (GET) Fetches all users/keys for the admin dashboard.
--   : (POST) Grants a new (e.g., lifetime) key to an existing user.
--   : (POST) Archives a user.
--   : (POST) Cancels a user's key.
+-   : (POST) Handles Stripe purchase events from Payment Links.
+-   : (POST) Validates a user's license key.
+-   : (POST) Now accepts  in the request body to provide context to the AI.
+-   : (POST) Submits user feedback.
+-   : (GET) Fetches statistics for the admin dashboard.
+-   : (GET) Fetches all users for the admin dashboard.
+-   : (GET) Fetches all trial requests for the admin dashboard.
 
 **Critical Info for New Agent**
--   **Admin Access:** The admin dashboard is at  with the password . This is essential for managing the trial system.
--   **Two Data Stores:** Be aware that user cycle data is in  (client-side), while license/user management data is in MongoDB (server-side). Do not mix them.
--   **Monetization is complex:** The system has multiple key types (trial, yearly, lifetime), expiration logic, and a one-time activation limit. Understand the logic in  before making changes.
--   **Capacitor is set up:** The project is ready for the next stage of app store deployment. Refer to . The user will need developer accounts to proceed.
--   **Environment Variables:** The backend now relies on , , and  in .
+-   **Admin Access:** The admin dashboard is at  with the password .
+-   **Monetization Model:** The app now uses direct **Stripe Payment Links**. The backend does not create checkout sessions. The webhook at  is critical for license fulfillment after a purchase.
+-   **Current Task is Large:** The user has issued a comprehensive set of requirements that are partially implemented. The next agent must carefully review the recent changes and continue the work, starting with the push notification logic.
+-   **No More Feature Gating:** All current subscription plans grant access to all features. The Dashboard and related logic have been simplified to reflect this.
 
 **documents and test reports created in this job**
--    (created and updated)
--    (created)
--   
+-    (updated multiple times)
 -   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks how to get the app into the app stores.
-2.  **Agent:** Explains PWA vs. native options and recommends Capacitor.
-3.  **User:** Agrees to use Capacitor for both iOS and Android and provides app store details.
-4.  **Agent:** Sets up Capacitor, builds the project, and creates .
-5.  **User:** Requests that the login/paywall page have a spot for returning users to log in.
-6.  **Agent:** Implements a Returning User tab on the paywall with a license key input and a Forgot Key feature.
-7.  **User:** Requests that the license key entry field be moved back to the main New User tab.
-8.  **Agent:** Acknowledges and overwrites  to implement the change.
-9.  **<NO RESPONSE YET>** Agent has just finished overwriting the file and has not yet tested the final UI change.
+1.  **User:** Asks for the direct link to the Admin page.
+2.  **Agent:** Provides the link and password.
+3.  **User:** Asks to see the logo.
+4.  **Agent:** Generates a couple of logo variations.
+5.  **User:** Provides new tagline text: The relationship game-changer.
+6.  **Agent:** Implements the tagline change.
+7.  **User:** Provides new Stripe API keys.
+8.  **Agent:** Updates the backend  file with the new secret key.
+9.  **User:** Provides direct Stripe Payment Links for three plans, asks agent to use them.
+10. **Agent:** Implements the switch to direct Stripe links.
+11. **User:** Provides a new set of three plans with different names, pricing, and details.
+12. **Agent:** Implements the new plans.
+13. **User:** Provides a large, multi-part request detailing requirements for AI context, resources, legal disclaimers, privacy waivers, UI changes, and push notifications.
+14. **Agent:** Acknowledges and begins implementing the changes. (This is the current state).
 
 **Project Health Check:**
 -   **Broken:** None.
@@ -174,22 +157,21 @@ None.
 
 **3rd Party Integrations**
 -   **OpenAI GPT-5** — Uses Emergent LLM Key via a stateless, anonymous backend proxy.
--   **Stripe** — Integrated for payment processing via webhooks. Requires User API Key and Webhook Secret.
+-   **Stripe** — Integrated for processing payments via Payment Links and Webhooks. Requires User API Key and Webhook Secret.
 -   **Resend** — Integrated for sending license key emails. Requires User API Key.
 
 **Testing status**
--   Testing agent used after significant changes: YES, used twice for initial branding/resources changes and the first monetization implementation.
+-   Testing agent used after significant changes: YES, used to test the first implementation of the tiered subscription system ().
 -   Troubleshoot agent used after agent stuck in loop: NO.
 -   Test files created: None.
 -   Known regressions: None.
--   **Note:** Many recent complex features (Admin Dashboard, Trial System, Key Expiration) and bug fixes were tested manually with screenshots and curl commands, not the testing agent. The last change is untested.
+-   **Note:** The most recent, large, multi-part feature request has not been tested.
 
 **Credentials to test flow:**
--   **App:** No user login required. Access is gated by a license key.
+-   **App:** No user login required. Access is gated by a license key obtained via a Stripe purchase.
 -   **Admin Dashboard:**
     -   URL: 
     -   Password: 
 
 **What agent forgot to execute**
--   The agent has not yet tested the most recent change to  after moving the license key input field.
--   The major refactoring tasks for  and  have been carried over from the previous session and not yet addressed.</analysis>
+-   The core logic for **push notifications** (requesting permissions, scheduling, and handling interactions) has not been implemented. Only the UI for the opt-out setting has been created. This is a key part of the user's latest request.</analysis>
