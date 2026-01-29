@@ -7,12 +7,14 @@ import PrivacySettings from "@/pages/PrivacySettings";
 import AdminDashboard from "@/pages/AdminDashboard";
 import PartnerConsent from "@/components/PartnerConsent";
 import Paywall from "@/components/Paywall";
+import StatePrivacyWaiver from "@/components/StatePrivacyWaiver";
 import { Toaster } from "@/components/ui/sonner";
 import { LocalStorage } from "@/utils/localStorageManager";
 
 function App() {
   // LOCAL-ONLY MODE: No server authentication
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [hasLocationSetup, setHasLocationSetup] = useState(false);
   const [hasConsent, setHasConsent] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -21,13 +23,18 @@ function App() {
   }, []);
 
   const checkAppState = () => {
-    // Check license first, then consent
+    // Check license first, then location, then consent
     const unlocked = LocalStorage.isUnlocked();
     setIsUnlocked(unlocked);
     
     if (unlocked) {
-      const consent = LocalStorage.getConsent();
-      setHasConsent(consent?.granted === true);
+      const locationSetup = LocalStorage.hasCompletedLocationSetup();
+      setHasLocationSetup(locationSetup);
+      
+      if (locationSetup) {
+        const consent = LocalStorage.getConsent();
+        setHasConsent(consent?.granted === true);
+      }
     }
     
     setLoading(false);
@@ -35,6 +42,10 @@ function App() {
 
   const handleUnlock = () => {
     setIsUnlocked(true);
+  };
+
+  const handleLocationComplete = () => {
+    setHasLocationSetup(true);
   };
 
   const handleConsentGranted = () => {
@@ -70,6 +81,16 @@ function App() {
     return (
       <>
         <Paywall onUnlock={handleUnlock} />
+        <Toaster />
+      </>
+    );
+  }
+
+  // Show state privacy waiver if not completed (after paywall, before consent)
+  if (!hasLocationSetup) {
+    return (
+      <>
+        <StatePrivacyWaiver onComplete={handleLocationComplete} />
         <Toaster />
       </>
     );
