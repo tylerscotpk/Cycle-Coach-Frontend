@@ -1233,7 +1233,7 @@ const Dashboard = () => {
                 <CardContent className="p-12 text-center">
                   <div className="text-6xl mb-4">🎉</div>
                   <h3 className="text-2xl font-bold text-white mb-3">All Caught Up!</h3>
-                  <p className="text-slate-400">You've viewed all available resources. Check back later for more!</p>
+                  <p className="text-slate-400">You&apos;ve viewed all available resources. Check back later for more!</p>
                 </CardContent>
               </Card>
             ) : null}
