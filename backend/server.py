@@ -2748,10 +2748,16 @@ async def send_upgrade_email(customer_email: str, license_key: str, key_type: st
 # ANONYMOUS CHAT ENDPOINT (Privacy-First)
 # ============================================
 
+class PartnerProfileContext(BaseModel):
+    partner_name: Optional[str] = None
+    preferences: Optional[dict] = None
+    cycle_length: Optional[int] = None
+
 class AnonymousChatRequest(BaseModel):
     message: str
     cycle_day: Optional[int] = None
     phase: Optional[str] = None
+    partner_profile: Optional[PartnerProfileContext] = None
 
 @api_router.post("/chat/anonymous")
 async def anonymous_chat(request: AnonymousChatRequest):
@@ -2761,6 +2767,7 @@ async def anonymous_chat(request: AnonymousChatRequest):
     - No conversation persistence
     - Truly anonymous session IDs
     - No logging of user data
+    - Uses Partner Profile for personalization (passed from client, not stored)
     """
     
     try:
@@ -2773,16 +2780,42 @@ async def anonymous_chat(request: AnonymousChatRequest):
         if request.cycle_day and request.phase:
             context = f"Current cycle context: Day {request.cycle_day} - {request.phase} phase\n\n"
         
+        # Build Partner Profile context for personalization
+        partner_context = ""
+        if request.partner_profile:
+            pp = request.partner_profile
+            if pp.partner_name:
+                partner_context += f"Partner's name: {pp.partner_name}\n"
+            if pp.preferences:
+                prefs = pp.preferences
+                if prefs.get('coffee_order'):
+                    partner_context += f"Her coffee order: {prefs['coffee_order']}\n"
+                if prefs.get('comfort_food'):
+                    partner_context += f"Her comfort food: {prefs['comfort_food']}\n"
+                if prefs.get('love_language'):
+                    partner_context += f"Her love language: {prefs['love_language']}\n"
+                if prefs.get('stress_relief'):
+                    partner_context += f"How she destresses: {prefs['stress_relief']}\n"
+                if prefs.get('favorite_flowers'):
+                    partner_context += f"Favorite flowers: {prefs['favorite_flowers']}\n"
+                if prefs.get('movie_genres'):
+                    partner_context += f"Movie preferences: {prefs['movie_genres']}\n"
+                if prefs.get('music_artists'):
+                    partner_context += f"Music she likes: {prefs['music_artists']}\n"
+            if partner_context:
+                partner_context = f"\nPartner Profile (use this to personalize advice):\n{partner_context}\n"
+        
         # Create ephemeral AI chat (no history persistence)
         system_prompt = f"""You're the ultimate relationship wingman - like texting your wise older bro at 2am.
 
-{context}Keep advice:
+{context}{partner_context}Keep advice:
 - Short and direct (3-5 sentences max)
 - Actionable and specific
 - Humorous and relatable
 - Bold key points
+- ALWAYS reference partner profile details when relevant (use her name, preferences, etc.)
 
-NO identifying details. Just give straight-up advice."""
+NO identifying details about the user. Just give straight-up personalized advice using the partner profile."""
 
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
