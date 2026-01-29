@@ -2786,24 +2786,43 @@ async def anonymous_chat(request: AnonymousChatRequest):
             pp = request.partner_profile
             if pp.partner_name:
                 partner_context += f"Partner's name: {pp.partner_name}\n"
+            if pp.cycle_length:
+                partner_context += f"Her typical cycle length: {pp.cycle_length} days\n"
             if pp.preferences:
                 prefs = pp.preferences
+                # Food & Drinks
                 if prefs.get('coffee_order'):
                     partner_context += f"Her coffee order: {prefs['coffee_order']}\n"
                 if prefs.get('comfort_food'):
                     partner_context += f"Her comfort food: {prefs['comfort_food']}\n"
+                if prefs.get('ice_cream'):
+                    partner_context += f"Favorite ice cream: {prefs['ice_cream']}\n"
+                # Emotional Preferences
                 if prefs.get('love_language'):
                     partner_context += f"Her love language: {prefs['love_language']}\n"
-                if prefs.get('stress_relief'):
-                    partner_context += f"How she destresses: {prefs['stress_relief']}\n"
-                if prefs.get('favorite_flowers'):
-                    partner_context += f"Favorite flowers: {prefs['favorite_flowers']}\n"
-                if prefs.get('movie_genres'):
-                    partner_context += f"Movie preferences: {prefs['movie_genres']}\n"
+                if prefs.get('stressed_preference'):
+                    partner_context += f"When stressed, she wants: {prefs['stressed_preference']}\n"
+                # Gifts & Activities
+                if prefs.get('gift_ideas'):
+                    partner_context += f"Gift ideas that work: {prefs['gift_ideas']}\n"
+                if prefs.get('date_ideas'):
+                    partner_context += f"Favorite date activities: {prefs['date_ideas']}\n"
+                # Entertainment - Movies & TV
+                if prefs.get('movie_genre'):
+                    partner_context += f"Movie genres she likes: {prefs['movie_genre']}\n"
+                if prefs.get('favorite_movies'):
+                    partner_context += f"Her favorite movies: {prefs['favorite_movies']}\n"
+                if prefs.get('tv_series'):
+                    partner_context += f"TV series she loves: {prefs['tv_series']}\n"
+                # Entertainment - Music & Podcasts
                 if prefs.get('music_artists'):
-                    partner_context += f"Music she likes: {prefs['music_artists']}\n"
+                    partner_context += f"Music artists she likes: {prefs['music_artists']}\n"
+                if prefs.get('music_genres'):
+                    partner_context += f"Music genres: {prefs['music_genres']}\n"
+                if prefs.get('podcast_shows'):
+                    partner_context += f"Podcasts she listens to: {prefs['podcast_shows']}\n"
             if partner_context:
-                partner_context = f"\nPartner Profile (use this to personalize advice):\n{partner_context}\n"
+                partner_context = f"\nPartner Profile (ALWAYS reference these details in your advice - use her name, specific preferences, etc.):\n{partner_context}\n"
         
         # Create ephemeral AI chat (no history persistence)
         system_prompt = f"""You're the ultimate relationship wingman - like texting your wise older bro at 2am.
