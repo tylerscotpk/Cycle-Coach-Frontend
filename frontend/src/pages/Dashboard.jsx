@@ -654,7 +654,7 @@ const Dashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white" data-testid="dashboard-title">Cycle Coach</h1>
-            {partner && <p className="text-slate-400 mt-1">Tracking {partner.partnerName}'s cycle</p>}
+            {partner && <p className="text-slate-400 mt-1">Tracking {partner.partnerName}&apos;s cycle</p>}
           </div>
           <div className="flex items-center gap-4">
             <Button
