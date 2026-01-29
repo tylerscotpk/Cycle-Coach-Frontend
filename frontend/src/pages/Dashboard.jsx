@@ -906,7 +906,7 @@ const Dashboard = () => {
                   <ScrollArea className="h-96 mb-4 p-4 bg-slate-900/50 rounded-lg" data-testid="chat-history">
                     {chatHistory.length === 0 ? (
                       <div className="text-slate-400 text-center py-8" data-testid="empty-chat-message">
-                        What's up? Ask me anything about your girl. "What should I do when she's mad?" "How does she like her coffee?" I got you.
+                        What&apos;s up? Ask me anything about your girl. &quot;What should I do when she&apos;s mad?&quot; &quot;How does she like her coffee?&quot; I got you.
                       </div>
                     ) : (
                       <div className="space-y-4">
