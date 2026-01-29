@@ -1117,6 +1117,13 @@ const Dashboard = () => {
 
           {/* Resources Tab */}
           <TabsContent value="resources" data-testid="resources-content">
+            {/* External Links Disclaimer */}
+            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 mb-4 text-center">
+              <p className="text-slate-400 text-xs">
+                External links are provided for informational purposes only. Cycle Coach does not endorse or partner with these sources.
+              </p>
+            </div>
+            
             <div className="flex justify-end mb-4">
               <Button
                 onClick={() => setShowBookmarks(!showBookmarks)}
