@@ -62,6 +62,23 @@ const Dashboard = () => {
   useEffect(() => {
     loadData();
     checkForFeedbackPrompt();
+    
+    // Initialize push notifications
+    initializeNotifications().then(enabled => {
+      if (enabled) {
+        // Run notification checks on load
+        runNotificationChecks();
+        
+        // Also run when app comes back to focus
+        const handleVisibilityChange = () => {
+          if (!document.hidden) {
+            runNotificationChecks();
+          }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    });
   }, []);
   
   // Check if we should show a feedback prompt
