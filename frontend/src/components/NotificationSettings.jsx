@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { LocalStorage } from '../utils/localStorageManager';
+import {
+  isNotificationsSupported,
+  getNotificationPermission,
+  enableNotifications,
+  sendTestNotification
+} from '../utils/notificationService';
 
 const NotificationSettings = () => {
   const [settings, setSettings] = useState({
@@ -11,11 +18,20 @@ const NotificationSettings = () => {
     reflectionPrompts: true,
     ratingPrompts: true
   });
+  const [permissionStatus, setPermissionStatus] = useState('loading');
+  const [isEnabling, setIsEnabling] = useState(false);
 
   useEffect(() => {
     const savedSettings = LocalStorage.getNotificationSettings();
     if (savedSettings) {
       setSettings(savedSettings);
+    }
+    
+    // Check notification support and permission
+    if (isNotificationsSupported()) {
+      setPermissionStatus(getNotificationPermission());
+    } else {
+      setPermissionStatus('unsupported');
     }
   }, []);
 
@@ -29,6 +45,29 @@ const NotificationSettings = () => {
     toast.success('Notification settings updated');
   };
 
+  const handleEnableNotifications = async () => {
+    setIsEnabling(true);
+    const result = await enableNotifications();
+    setIsEnabling(false);
+    
+    if (result.success) {
+      setPermissionStatus('granted');
+      toast.success(result.message);
+    } else {
+      toast.error(result.message);
+      setPermissionStatus(getNotificationPermission());
+    }
+  };
+
+  const handleTestNotification = () => {
+    const sent = sendTestNotification();
+    if (sent) {
+      toast.success('Test notification sent!');
+    } else {
+      toast.error('Unable to send test notification. Enable notifications first.');
+    }
+  };
+
   return (
     <Card className="bg-slate-800/50 border-slate-700">
       <CardHeader>
@@ -38,6 +77,56 @@ const NotificationSettings = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Permission Status Banner */}
+        {permissionStatus === 'unsupported' && (
+          <div className="bg-orange-500/10 border border-orange-500/30 p-3 rounded-lg">
+            <p className="text-orange-300 text-sm">
+              ⚠️ Notifications are not supported on this browser/device.
+            </p>
+          </div>
+        )}
+        
+        {permissionStatus === 'denied' && (
+          <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg">
+            <p className="text-red-300 text-sm">
+              🚫 Notifications are blocked. Enable them in your browser settings to receive reminders.
+            </p>
+          </div>
+        )}
+        
+        {permissionStatus === 'default' && (
+          <div className="bg-cyan-500/10 border border-cyan-500/30 p-3 rounded-lg space-y-3">
+            <p className="text-cyan-300 text-sm">
+              📱 Enable notifications to get reminders before phase changes and helpful prompts.
+            </p>
+            <Button
+              onClick={handleEnableNotifications}
+              disabled={isEnabling}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              data-testid="enable-notifications-btn"
+            >
+              {isEnabling ? 'Enabling...' : 'Enable Notifications'}
+            </Button>
+          </div>
+        )}
+        
+        {permissionStatus === 'granted' && (
+          <div className="bg-green-500/10 border border-green-500/30 p-3 rounded-lg flex items-center justify-between">
+            <p className="text-green-300 text-sm">
+              ✅ Notifications enabled
+            </p>
+            <Button
+              onClick={handleTestNotification}
+              variant="outline"
+              size="sm"
+              className="border-green-500/30 text-green-300 hover:bg-green-500/20"
+              data-testid="test-notification-btn"
+            >
+              Send Test
+            </Button>
+          </div>
+        )}
+
         {/* Phase Reminders */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
@@ -88,7 +177,7 @@ const NotificationSettings = () => {
 
         <div className="pt-4 border-t border-slate-700">
           <p className="text-slate-500 text-xs">
-            Note: All notifications are generated locally based on your cycle data. 
+            All notifications are generated locally based on your cycle data. 
             No data is sent to external servers for notifications.
           </p>
         </div>
