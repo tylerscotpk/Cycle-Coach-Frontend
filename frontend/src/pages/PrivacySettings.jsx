@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LocalStorage } from '../utils/localStorageManager';
+import NotificationSettings from '../components/NotificationSettings';
 import { toast } from 'sonner';
 
 const PrivacySettings = () => {
@@ -59,12 +60,13 @@ const PrivacySettings = () => {
   const profile = LocalStorage.getPartnerProfile();
   const history = LocalStorage.getCycleHistory();
   const consent = LocalStorage.getConsent();
+  const location = LocalStorage.getUserLocation();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Privacy & Data</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">Privacy &amp; Data</h1>
           <p className="text-slate-400">Complete control over your data</p>
         </div>
 
@@ -86,6 +88,9 @@ const PrivacySettings = () => {
           </CardContent>
         </Card>
 
+        {/* Notification Settings */}
+        <NotificationSettings />
+
         {/* Data Summary */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
@@ -103,6 +108,13 @@ const PrivacySettings = () => {
             <div className="flex justify-between">
               <span>Partner Consent:</span>
               <span className="font-semibold">{consent?.granted ? '✅ Granted' : '❌ Not granted'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Location:</span>
+              <span className="font-semibold">
+                {location?.location === 'us' ? `U.S. - ${location.state}` : 
+                 location?.location === 'outside_us' ? 'Outside U.S.' : 'Not set'}
+              </span>
             </div>
             {consent?.timestamp && (
               <div className="text-xs text-slate-400 pt-2">
