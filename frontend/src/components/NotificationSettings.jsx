@@ -22,17 +22,12 @@ const NotificationSettings = () => {
       ratingPrompts: true
     };
   });
-  const [permissionStatus, setPermissionStatus] = useState('loading');
+  const [permissionStatus, setPermissionStatus] = useState(() => {
+    // Initialize permission status
+    if (!isNotificationsSupported()) return 'unsupported';
+    return getNotificationPermission();
+  });
   const [isEnabling, setIsEnabling] = useState(false);
-
-  useEffect(() => {
-    // Check notification support and permission
-    if (isNotificationsSupported()) {
-      setPermissionStatus(getNotificationPermission());
-    } else {
-      setPermissionStatus('unsupported');
-    }
-  }, []);
 
   const handleToggle = (key) => {
     const newSettings = {
