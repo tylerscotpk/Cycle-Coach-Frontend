@@ -276,13 +276,21 @@ const Dashboard = () => {
     setChatHistory(prev => [...prev, { message: userMsg, response: '...' }]);
 
     try {
-      // ANONYMOUS CHAT: No user ID, ephemeral only
+      // ANONYMOUS CHAT: Include Partner Profile for personalization
+      // Partner Profile is cached locally - no external API calls
+      const partnerContext = partner ? {
+        partner_name: partner.partnerName,
+        preferences: partner.preferences || {},
+        cycle_length: partner.cycleLength
+      } : null;
+
       const response = await axios.post(
         `${API}/chat/anonymous`,
         {
           message: userMsg,
           cycle_day: cycleInfo?.cycle_day,
-          phase: cycleInfo?.phase
+          phase: cycleInfo?.phase,
+          partner_profile: partnerContext
         }
       );
 
