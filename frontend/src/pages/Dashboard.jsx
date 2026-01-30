@@ -630,7 +630,15 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold text-white" data-testid="dashboard-title">Cycle Coach</h1>
             {partner && <p className="text-slate-400 mt-1">Tracking {partner.partnerName}&apos;s cycle</p>}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => window.location.href = '/account'}
+              variant="outline"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              data-testid="account-settings-btn"
+            >
+              ⚙️ Account
+            </Button>
             <Button
               onClick={() => window.location.href = '/privacy'}
               variant="outline"
