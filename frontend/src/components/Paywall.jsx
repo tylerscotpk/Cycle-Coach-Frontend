@@ -108,7 +108,11 @@ const Paywall = ({ onUnlock }) => {
           expires_at: result.expires_at,
           email: result.email,
           is_trial: result.is_trial,
-          created_at: result.created_at
+          created_at: result.created_at,
+          customer_id: result.customer_id,
+          subscription_id: result.subscription_id,
+          cancels_at: result.cancels_at,
+          is_cancelled: result.is_cancelled
         });
         
         toast.success(`Welcome to Cycle Coach!`);
