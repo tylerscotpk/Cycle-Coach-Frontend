@@ -552,13 +552,22 @@ const AdminDashboard = () => {
                               </Button>
                             ) : (
                               <>
-                                {user.key_type !== 'lifetime' && (
+                                {user.key_type !== 'monthly' && (
                                   <Button
                                     size="sm"
-                                    className="bg-purple-600 hover:bg-purple-700"
-                                    onClick={() => handleGrantKey(user.customer_email, 'lifetime')}
+                                    className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => handleGrantKey(user.customer_email, 'monthly')}
                                   >
-                                    Lifetime
+                                    Monthly
+                                  </Button>
+                                )}
+                                {user.key_type !== 'quarterly' && (
+                                  <Button
+                                    size="sm"
+                                    className="bg-cyan-600 hover:bg-cyan-700"
+                                    onClick={() => handleGrantKey(user.customer_email, 'quarterly')}
+                                  >
+                                    Quarterly
                                   </Button>
                                 )}
                                 {user.key_type !== 'yearly' && user.key_type !== 'lifetime' && (
@@ -568,6 +577,15 @@ const AdminDashboard = () => {
                                     onClick={() => handleGrantKey(user.customer_email, 'yearly')}
                                   >
                                     Yearly
+                                  </Button>
+                                )}
+                                {user.key_type !== 'lifetime' && (
+                                  <Button
+                                    size="sm"
+                                    className="bg-purple-600 hover:bg-purple-700"
+                                    onClick={() => handleGrantKey(user.customer_email, 'lifetime')}
+                                  >
+                                    Lifetime
                                   </Button>
                                 )}
                                 <Button
