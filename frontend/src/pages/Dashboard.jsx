@@ -17,7 +17,7 @@ const API = `${BACKEND_URL}/api`;
 
 import { LocalStorage } from '../utils/localStorageManager';
 import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod } from '../utils/cycleCalculations';
-import { RESOURCES, getRelevantResources, getNextPhase } from '../utils/resourcesData';
+import { RESOURCES, getRelevantResources, getNextPhase, getPhasePrioritizedResources, getUnarchivedResources, archiveResource, getPhaseEmoji, getPhaseColor } from '../utils/resourcesData';
 import { getUnseenFact } from '../utils/cycleFacts';
 import { initializeNotifications, runNotificationChecks } from '../utils/notificationService';
 
