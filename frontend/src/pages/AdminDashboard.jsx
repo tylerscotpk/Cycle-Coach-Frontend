@@ -15,7 +15,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({ requests: {}, users: {} });
   const [loading, setLoading] = useState(false);
   const [requestFilter, setRequestFilter] = useState('pending');
-  const [userFilter, setUserFilter] = useState('trial');
+  const [userFilter, setUserFilter] = useState('monthly');
   const [activeTab, setActiveTab] = useState('requests');
 
   useEffect(() => {
