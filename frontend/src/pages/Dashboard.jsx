@@ -1139,15 +1139,11 @@ const Dashboard = () => {
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {currentResources.map((resource, idx) => (
                   <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-cyan-500/50 transition-all flex flex-col" data-testid={`current-resource-${idx}`}>
-                    {resource.thumbnail && (
-                      <div className="h-48 overflow-hidden rounded-t-lg">
-                        <img src={resource.thumbnail} alt={resource.title} className="w-full h-full object-cover" />
-                      </div>
-                    )}
                     <CardHeader className="flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="text-xs text-cyan-400 uppercase px-3 py-1 bg-cyan-500/20 rounded-full">
-                          {resource.type}
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        {/* Phase badge with emoji */}
+                        <div className={`text-xs px-3 py-1 rounded-full border ${getPhaseColor(resource.phase)}`}>
+                          {getPhaseEmoji(resource.phase)} {resource.phase}
                         </div>
                         {resource.is_phase_match && (
                           <div className="text-xs text-white px-3 py-1 bg-cyan-500 rounded-full">
@@ -1155,18 +1151,16 @@ const Dashboard = () => {
                           </div>
                         )}
                         {resource.is_upcoming && (
-                          <div className="text-xs text-orange-400 px-3 py-1 bg-orange-500/20 rounded-full">
-                            ⏭️ Coming Up: {resource.upcoming_phase}
-                          </div>
-                        )}
-                        {!resource.is_phase_match && !resource.is_upcoming && resource.phase && (
-                          <div className="text-xs text-slate-400 px-3 py-1 bg-slate-700/50 rounded-full">
-                            {resource.phase}
+                          <div className="text-xs text-orange-400 px-3 py-1 bg-orange-500/20 rounded-full border border-orange-500/30">
+                            ⏭️ Coming Up
                           </div>
                         )}
                       </div>
                       <CardTitle className="text-white text-lg">{resource.title}</CardTitle>
                       <CardDescription className="text-slate-400">{resource.description}</CardDescription>
+                      {resource.source && (
+                        <p className="text-xs text-slate-500 mt-2">Source: {resource.source}</p>
+                      )}
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <Button
@@ -1175,7 +1169,7 @@ const Dashboard = () => {
                         data-testid={`view-resource-${idx}`}
                       >
                         <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                          Read/Watch
+                          Read Article
                         </a>
                       </Button>
                       <div className="flex gap-2">
@@ -1186,7 +1180,7 @@ const Dashboard = () => {
                           className="flex-1 border-slate-600 text-slate-300 hover:bg-cyan-500/20 hover:border-cyan-500"
                           data-testid={`bookmark-${idx}`}
                         >
-                          📌
+                          📌 Save
                         </Button>
                         <Button
                           onClick={() => handleArchiveResource(resource.id)}
