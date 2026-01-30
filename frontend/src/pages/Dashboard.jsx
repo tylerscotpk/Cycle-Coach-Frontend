@@ -186,26 +186,16 @@ const Dashboard = () => {
     try {
       const cycleDay = calculateCycleDay(profile.cycleStartDate, profile.cycleLength || 28);
       const phaseInfo = getPhaseInfo(cycleDay);
-      const nextPhase = getNextPhase(phaseInfo.phase);
       
-      const relevantResources = getRelevantResources(phaseInfo.phase, nextPhase);
+      // Get unarchived resources prioritized by current phase
+      const unarchivedResources = getUnarchivedResources(phaseInfo.phase);
       
-      // Combine current phase resources + some upcoming + general
-      const allResources = [
-        ...relevantResources.current,
-        ...relevantResources.upcoming.slice(0, 2),
-        ...relevantResources.general.slice(0, 2)
-      ];
-      
-      // Shuffle slightly for variety but keep phase-matched at top
-      const phaseMatched = allResources.filter(r => r.is_phase_match);
-      const others = allResources.filter(r => !r.is_phase_match);
-      
-      setCurrentResources([...phaseMatched, ...others].slice(0, 6));
+      // Display up to 6 resources, prioritized by phase relevance
+      setCurrentResources(unarchivedResources.slice(0, 6));
     } catch (error) {
       console.error('Error loading resources:', error);
-      // Fallback to general resources
-      setCurrentResources(RESOURCES.filter(r => r.phase === 'General').slice(0, 3));
+      // Fallback to first 3 resources
+      setCurrentResources(RESOURCES.slice(0, 3));
     }
   };
 
