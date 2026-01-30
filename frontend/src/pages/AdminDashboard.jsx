@@ -287,8 +287,8 @@ const AdminDashboard = () => {
   }
 
   const userFilters = [
-    { key: 'trial', label: 'Trial', color: 'yellow', count: stats.users?.trial || 0 },
     { key: 'monthly', label: 'Monthly', color: 'green', count: stats.users?.monthly || 0 },
+    { key: 'quarterly', label: 'Quarterly', color: 'cyan', count: stats.users?.quarterly || 0 },
     { key: 'yearly', label: 'Yearly', color: 'blue', count: stats.users?.yearly || 0 },
     { key: 'lifetime', label: 'Lifetime', color: 'purple', count: stats.users?.lifetime || 0 },
     { key: 'cancelled', label: 'Cancelled', color: 'red', count: stats.users?.cancelled || 0 },
