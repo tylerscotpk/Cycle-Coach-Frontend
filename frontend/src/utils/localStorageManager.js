@@ -191,6 +191,10 @@ export const LocalStorage = {
       has_ai_wingman: tierData.has_ai_wingman,
       expires_at: tierData.expires_at,
       email: tierData.email,
+      customer_id: tierData.customer_id,
+      subscription_id: tierData.subscription_id,
+      cancels_at: tierData.cancels_at,
+      is_cancelled: tierData.is_cancelled,
       savedAt: new Date().toISOString()
     });
     if (encrypted) {
