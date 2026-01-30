@@ -342,17 +342,19 @@ const Dashboard = () => {
   };
 
   const handleArchiveResource = (resourceId) => {
-    if (!partner) return;
+    if (!partner || !cycleInfo) return;
     
     try {
-      // LOCAL-ONLY: Archive by removing from current resources
-      setCurrentResources(prev => prev.filter(r => r.id !== resourceId));
-      toast.success('Resource archived!');
+      // Archive the resource in localStorage
+      archiveResource(resourceId);
       
-      // If we're running low on resources, load more
-      if (currentResources.length <= 2) {
-        loadMoreResources();
-      }
+      // Get remaining unarchived resources prioritized by phase
+      const unarchivedResources = getUnarchivedResources(cycleInfo.phase);
+      
+      // Update current resources with next valid ones
+      setCurrentResources(unarchivedResources.slice(0, 6));
+      
+      toast.success('Resource archived! Loading next article...');
     } catch (error) {
       console.error('Error archiving resource:', error);
       toast.error('Failed to archive');
@@ -360,7 +362,7 @@ const Dashboard = () => {
   };
 
   const handleBookmarkResource = (resourceId) => {
-    if (!partner) return;
+    if (!partner || !cycleInfo) return;
     
     try {
       const bookmarkedResource = currentResources.find(r => r.id === resourceId);
@@ -373,13 +375,11 @@ const Dashboard = () => {
           toast.info('Already bookmarked!');
         }
       }
-      // Remove from current resources
-      setCurrentResources(prev => prev.filter(r => r.id !== resourceId));
       
-      // If we're running low on resources, load more
-      if (currentResources.length <= 2) {
-        loadMoreResources();
-      }
+      // Archive the resource and load next
+      archiveResource(resourceId);
+      const unarchivedResources = getUnarchivedResources(cycleInfo.phase);
+      setCurrentResources(unarchivedResources.slice(0, 6));
     } catch (error) {
       console.error('Error bookmarking resource:', error);
       toast.error('Failed to bookmark');
@@ -390,25 +390,9 @@ const Dashboard = () => {
     if (!cycleInfo) return;
     
     try {
-      const nextPhase = getNextPhase(cycleInfo.phase);
-      const relevantResources = getRelevantResources(cycleInfo.phase, nextPhase);
-      
-      // Get IDs of resources already shown or bookmarked
-      const usedIds = new Set([
-        ...currentResources.map(r => r.id),
-        ...bookmarkedResources.map(r => r.id)
-      ]);
-      
-      // Find resources not yet shown
-      const allAvailable = [
-        ...relevantResources.current,
-        ...relevantResources.upcoming,
-        ...relevantResources.general
-      ].filter(r => !usedIds.has(r.id));
-      
-      if (allAvailable.length > 0) {
-        setCurrentResources(prev => [...prev, ...allAvailable.slice(0, 3)]);
-      }
+      // Get unarchived resources prioritized by current phase
+      const unarchivedResources = getUnarchivedResources(cycleInfo.phase);
+      setCurrentResources(unarchivedResources.slice(0, 6));
     } catch (error) {
       console.error('Error loading more resources:', error);
     }
