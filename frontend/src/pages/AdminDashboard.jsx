@@ -508,7 +508,7 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <p className="text-white font-medium">{user.customer_email}</p>
                               <span className={`px-2 py-0.5 rounded text-xs border ${getKeyTypeColor(user.key_type)}`}>
-                                {user.key_type || 'trial'}
+                                {user.key_type || 'unknown'}
                               </span>
                               {isExpired(user.expires_at) && (
                                 <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30">
