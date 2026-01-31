@@ -301,7 +301,7 @@ const Paywall = ({ onUnlock }) => {
               </Card>
 
               {/* Full Season Strategy */}
-              <Card className="bg-gradient-to-b from-purple-900/50 to-slate-800/90 border-purple-500/50 relative overflow-hidden flex flex-col" data-testid="annual-plan-card">
+              <Card className="bg-gradient-to-b from-purple-900/50 to-slate-800/90 border-purple-500/50 relative overflow-hidden flex flex-col h-full" data-testid="annual-plan-card">
                 <div className="absolute top-0 left-0 right-0 bg-purple-500 text-white text-xs font-bold py-1 text-center">
                   BEST VALUE
                 </div>
@@ -312,11 +312,11 @@ const Paywall = ({ onUnlock }) => {
                     <span className="text-slate-400 text-sm ml-1">{SUBSCRIPTION_PLANS.annual.billingPeriod}</span>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4 flex-1 flex flex-col">
-                  <p className="text-slate-400 text-sm text-center">
+                <CardContent className="flex-1 flex flex-col">
+                  <p className="text-slate-400 text-sm text-center mb-4">
                     {SUBSCRIPTION_PLANS.annual.description}
                   </p>
-                  <ul className="space-y-2 text-sm text-slate-300">
+                  <ul className="space-y-2 text-sm text-slate-300 flex-1">
                     {SUBSCRIPTION_PLANS.annual.features.map((feature, idx) => (
                       <li key={idx} className="flex items-center gap-2">
                         <span className="text-purple-400">✓</span>
@@ -324,16 +324,14 @@ const Paywall = ({ onUnlock }) => {
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-auto pt-4">
-                    <Button
-                      onClick={() => handleSelectPlan('annual')}
-                      disabled={!userEmail.trim()}
-                      className="w-full bg-purple-500 hover:bg-purple-600 text-white"
-                      data-testid="select-annual-btn"
-                    >
-                      Go Annual
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => handleSelectPlan('annual')}
+                    disabled={!userEmail.trim()}
+                    className="w-full bg-purple-500 hover:bg-purple-600 text-white mt-4"
+                    data-testid="select-annual-btn"
+                  >
+                    Go Annual
+                  </Button>
                 </CardContent>
               </Card>
             </div>
