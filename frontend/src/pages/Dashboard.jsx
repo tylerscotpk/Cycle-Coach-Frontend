@@ -527,6 +527,79 @@ const Dashboard = () => {
     }
   };
 
+  // Phase prediction calculation
+  const PHASE_DATA = {
+    'Menstrual': { emoji: '🩸', description: 'Low energy; needs rest.' },
+    'Follicular': { emoji: '🌸', description: 'Rising energy and clarity.' },
+    'Ovulation': { emoji: '🔥', description: 'Peak confidence and libido.' },
+    'Early Luteal': { emoji: '🏠', description: 'Calm, nesting energy.' },
+    'Late Luteal/PMS': { emoji: '⚠️', description: 'Sensitive; needs patience.' }
+  };
+
+  const calculatePrediction = (selectedDate) => {
+    if (!partner?.cycleStartDate) {
+      return null;
+    }
+
+    // Get average cycle length from history or use default
+    const history = LocalStorage.getCycleHistory();
+    const recalculated = recalculateCycleLengths(history);
+    const stats = calculateStatistics(recalculated);
+    const avgCycleLength = stats.average_length || partner.cycleLength || 28;
+
+    // Calculate days since last Day 1
+    const lastDay1 = new Date(partner.cycleStartDate);
+    const selected = new Date(selectedDate);
+    lastDay1.setHours(0, 0, 0, 0);
+    selected.setHours(0, 0, 0, 0);
+
+    const daysSinceStart = Math.floor((selected - lastDay1) / (1000 * 60 * 60 * 24));
+
+    // Convert to cycle day (handle future and past cycles)
+    let cycleDay;
+    if (daysSinceStart >= 0) {
+      cycleDay = (daysSinceStart % avgCycleLength) + 1;
+    } else {
+      // For dates before last Day 1, calculate backwards
+      const daysBack = Math.abs(daysSinceStart);
+      cycleDay = avgCycleLength - ((daysBack - 1) % avgCycleLength);
+    }
+
+    // Determine phase based on cycle day
+    let phaseName;
+    if (cycleDay >= 1 && cycleDay <= 5) {
+      phaseName = 'Menstrual';
+    } else if (cycleDay >= 6 && cycleDay <= 13) {
+      phaseName = 'Follicular';
+    } else if (cycleDay >= 14 && cycleDay <= 16) {
+      phaseName = 'Ovulation';
+    } else if (cycleDay >= 17 && cycleDay <= 23) {
+      phaseName = 'Early Luteal';
+    } else {
+      phaseName = 'Late Luteal/PMS';
+    }
+
+    const phaseInfo = PHASE_DATA[phaseName];
+
+    return {
+      cycleDay,
+      phaseName,
+      phaseEmoji: phaseInfo.emoji,
+      phaseDescription: phaseInfo.description,
+      avgCycleLength
+    };
+  };
+
+  const handlePredictionDateChange = (date) => {
+    setPredictionDate(date);
+    if (date) {
+      const result = calculatePrediction(date);
+      setPrediction(result);
+    } else {
+      setPrediction(null);
+    }
+  };
+
   // All plans now include full features - no feature gating needed
   const hasPartnerProfile = () => true;
   const hasAIWingman = () => true;
