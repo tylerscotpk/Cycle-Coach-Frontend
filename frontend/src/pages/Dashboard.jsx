@@ -37,6 +37,10 @@ const Dashboard = () => {
   const [cycleHistory, setCycleHistory] = useState(null);
   const [logPeriodDate, setLogPeriodDate] = useState('');
   
+  // Date Prediction state
+  const [predictionDate, setPredictionDate] = useState('');
+  const [prediction, setPrediction] = useState(null);
+  
   // Subscription tier state (for feedback prompts)
   const [subscriptionTier, setSubscriptionTier] = useState(null);
   
