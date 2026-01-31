@@ -2862,6 +2862,64 @@ NO identifying details about the user. Give straight-up personalized advice."""
         logging.error(f"Anonymous chat error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process chat message")
 
+# ============================================================
+# CONTACT FORM ENDPOINT
+# ============================================================
+
+class ContactRequest(BaseModel):
+    name: str = "Anonymous"
+    email: str
+    message: str
+
+# Internal contact email - not exposed to frontend
+CONTACT_EMAIL = "cyclecoach4men@gmail.com"
+
+@api_router.post("/contact")
+async def submit_contact(request: ContactRequest):
+    """
+    Contact form submission endpoint
+    - Sends message to internal support email
+    - Destination email is kept private
+    """
+    if not request.email or not request.message:
+        raise HTTPException(status_code=400, detail="Email and message are required")
+    
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured - cannot send contact form")
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    try:
+        # Send email to internal support address
+        params = {
+            "from": "Cycle Coach <noreply@updates.emergent.sh>",
+            "to": [CONTACT_EMAIL],
+            "subject": f"Cycle Coach Contact Form - {request.name}",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #0891b2;">New Contact Form Submission</h2>
+                <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>From:</strong> {request.name}</p>
+                    <p><strong>Email:</strong> {request.email}</p>
+                    <p><strong>Message:</strong></p>
+                    <p style="white-space: pre-wrap; background: white; padding: 15px; border-radius: 4px;">{request.message}</p>
+                </div>
+                <p style="color: #64748b; font-size: 12px;">
+                    Submitted via Cycle Coach contact form
+                </p>
+            </div>
+            """,
+            "reply_to": request.email
+        }
+        
+        email_result = await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Contact form email sent: {email_result}")
+        
+        return {"success": True, "message": "Message sent successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error sending contact form: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send message")
+
 # Include the router in the main app
 app.include_router(api_router)
 
