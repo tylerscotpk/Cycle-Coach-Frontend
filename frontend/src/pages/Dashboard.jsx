@@ -1161,11 +1161,11 @@ const Dashboard = () => {
                       <div className="flex items-center gap-2 mb-3 flex-wrap">
                         {/* Phase badge with emoji */}
                         <div className={`text-xs px-3 py-1 rounded-full border ${getPhaseColor(resource.phase)}`}>
-                          {getPhaseEmoji(resource.phase)} {resource.phase}
+                          {getPhaseEmoji(resource.phase)} {getPhaseLabel(resource.phase)}
                         </div>
-                        {resource.is_phase_match && (
+                        {resource.is_recommended && (
                           <div className="text-xs text-white px-3 py-1 bg-cyan-500 rounded-full">
-                            🎯 For Today
+                            🎯 Recommended
                           </div>
                         )}
                         {resource.is_upcoming && (
@@ -1174,10 +1174,10 @@ const Dashboard = () => {
                           </div>
                         )}
                       </div>
-                      <CardTitle className="text-white text-lg">{resource.title}</CardTitle>
-                      <CardDescription className="text-slate-400">{resource.description}</CardDescription>
+                      <CardTitle className="text-white text-lg leading-tight">{resource.title}</CardTitle>
+                      <CardDescription className="text-slate-400 mt-2">{resource.summary}</CardDescription>
                       {resource.source && (
-                        <p className="text-xs text-slate-500 mt-2">Source: {resource.source}</p>
+                        <p className="text-xs text-cyan-400/70 mt-2">📰 {resource.source}</p>
                       )}
                     </CardHeader>
                     <CardContent className="space-y-2">
