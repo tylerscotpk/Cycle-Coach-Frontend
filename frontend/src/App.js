@@ -116,6 +116,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/privacy" element={<PrivacySettings />} />
           <Route path="/account" element={<AccountSettings />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
