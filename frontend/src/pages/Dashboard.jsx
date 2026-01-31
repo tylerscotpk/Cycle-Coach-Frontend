@@ -661,37 +661,34 @@ const Dashboard = () => {
                   <div>
                     <div className="text-xs text-slate-400">Overall Cycle</div>
                     <div className="text-2xl font-bold text-white" data-testid="cycle-day">Day {cycleInfo.cycle_day}</div>
+                    <Button
+                      onClick={() => {
+                        setShowCycleHistory(!showCycleHistory);
+                        if (!cycleHistory) loadCycleHistory();
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 border-white/30 text-white hover:bg-white/10"
+                      data-testid="toggle-cycle-history-button"
+                    >
+                      📊 Cycle History & Stats
+                    </Button>
                   </div>
                   <div>
                     <div className="text-xs text-slate-400">Phase Progress</div>
                     <div className="text-2xl font-bold text-white" data-testid="phase-day">
                       Phase {cycleInfo.phase_number}: Day {cycleInfo.phase_day}
                     </div>
+                    <Button
+                      onClick={() => window.location.href = '/predictor'}
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 border-white/30 text-white hover:bg-white/10"
+                      data-testid="phase-predictor-button"
+                    >
+                      🔮 Phase Predictor
+                    </Button>
                   </div>
-                </div>
-                
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <Button
-                    onClick={() => {
-                      setShowCycleHistory(!showCycleHistory);
-                      if (!cycleHistory) loadCycleHistory();
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="border-white/30 text-white hover:bg-white/10"
-                    data-testid="toggle-cycle-history-button"
-                  >
-                    📊 Cycle History & Stats
-                  </Button>
-                  <Button
-                    onClick={() => window.location.href = '/predictor'}
-                    variant="outline"
-                    size="sm"
-                    className="border-white/30 text-white hover:bg-white/10"
-                    data-testid="phase-predictor-button"
-                  >
-                    🔮 Phase Predictor
-                  </Button>
                 </div>
               </div>
 
