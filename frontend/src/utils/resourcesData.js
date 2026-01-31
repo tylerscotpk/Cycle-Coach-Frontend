@@ -1,362 +1,250 @@
 /**
- * Custom Resources Data for Cycle Coach
- * Phase-based resources with URL validation
- * Uses only user-provided URLs as source of truth
+ * Custom Resources Database for Cycle Coach
+ * Phase-based articles with summaries
+ * Organized by cycle phase with emoji labels
  */
 
-// Custom resource library with phase-tagged articles
-export const CUSTOM_RESOURCES = [
-  // 🩸 Menstrual Phase: Days 1–5
-  // Low energy, inward focus, emotional sensitivity, need for comfort
+// Phase constants with emojis
+export const PHASE_LABELS = {
+  'Full-Cycle': { emoji: '🔄', label: 'Full-Cycle Education', days: 'All Days' },
+  'Menstrual': { emoji: '🩸', label: 'Menstrual', days: 'Days 1–5' },
+  'Follicular': { emoji: '🌸', label: 'Follicular', days: 'Days 6–13' },
+  'Ovulation': { emoji: '🔥', label: 'Ovulation', days: 'Days 14–16' },
+  'Early Luteal': { emoji: '🏠', label: 'Early Luteal', days: 'Days 17–23' },
+  'Late Luteal/PMS': { emoji: '⚠️', label: 'PMS / Late Luteal', days: 'Days 24–28' }
+};
+
+// Complete Resources Database
+export const RESOURCES = [
+  // 🔄 FULL-CYCLE EDUCATION
+  {
+    id: 'full-cycle-1',
+    title: 'Cleveland Clinic — Menstrual Cycle Overview',
+    url: 'https://my.clevelandclinic.org/health/articles/10132-menstrual-cycle',
+    phase: 'Full-Cycle',
+    summary: 'A medical-grade explanation of all four phases, giving partners a clear understanding of the full hormonal rhythm.',
+    source: 'Cleveland Clinic'
+  },
+  {
+    id: 'full-cycle-2',
+    title: 'How to Explain Each Week of Your Cycle to Men',
+    url: 'https://www.myhormonology.com/how-to-explain-each-week-of-your-cycle-to-the-men-in-your-life/',
+    phase: 'Full-Cycle',
+    summary: 'Translates hormonal shifts into simple, relatable language specifically for men.',
+    source: 'Hormonology'
+  },
+  {
+    id: 'full-cycle-3',
+    title: 'The Menstrual Cycle as a Vital Sign',
+    url: 'https://www.thelancet.com/journals/lanogw/article/PIIS3050-5038(25)00001-9/fulltext',
+    phase: 'Full-Cycle',
+    summary: 'A research-backed look at why the menstrual cycle is a key indicator of overall health.',
+    source: 'The Lancet'
+  },
+  {
+    id: 'full-cycle-4',
+    title: 'Explaining Periods to Men',
+    url: 'https://www.pandiahealth.com/blog/explaining-periods-men/',
+    phase: 'Full-Cycle',
+    summary: 'Addresses common misconceptions and helps men understand the basics without awkwardness.',
+    source: 'Pandia Health'
+  },
+  {
+    id: 'full-cycle-5',
+    title: 'Physiology of the Menstrual Cycle',
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK500020/',
+    phase: 'Full-Cycle',
+    summary: 'A definitive scientific breakdown of hormonal changes across the entire cycle.',
+    source: 'NIH'
+  },
+
+  // 🩸 MENSTRUAL PHASE (Days 1–5)
   {
     id: 'menstrual-1',
-    title: 'Understanding Menstruation',
-    description: 'Complete guide to what happens during menstruation and how to support her.',
-    source: 'Healthline',
-    type: 'Article',
+    title: 'What Guys Need to Know About Periods',
+    url: 'https://www.goodrx.com/health-topic/mens-health/what-guys-need-to-know-about-periods',
     phase: 'Menstrual',
-    url: 'https://www.healthline.com/health/menstruation',
-    phaseDescription: 'Low energy, inward focus, emotional sensitivity, need for comfort'
+    summary: 'Practical guidance on symptoms, mood changes, and how to support during bleeding.',
+    source: 'GoodRx'
   },
   {
     id: 'menstrual-2',
-    title: 'How Menstruation Affects Mood',
-    description: 'The psychology behind mood changes during her period.',
-    source: 'Psychology Today',
-    type: 'Article',
+    title: 'The Manly Guide to Menstruation',
+    url: 'https://helloclue.com/articles/sex/manly-guide-to-menstruation',
     phase: 'Menstrual',
-    url: 'https://www.psychologytoday.com/us/blog/your-brain-food/202002/how-menstruation-affects-your-mood',
-    phaseDescription: 'Low energy, inward focus, emotional sensitivity, need for comfort'
+    summary: 'A straightforward guide for men explaining cramps, bloating, and emotional shifts.',
+    source: 'Clue'
   },
   {
     id: 'menstrual-3',
-    title: 'What Happens During Your Period',
-    description: 'Medical breakdown of the menstrual phase and physical symptoms.',
-    source: 'Verywell Health',
-    type: 'Article',
+    title: '4 Phases of the Menstrual Cycle',
+    url: 'https://www.morelandobgyn.com/blog/4-phases-of-the-menstrual-cycle',
     phase: 'Menstrual',
-    url: 'https://www.verywellhealth.com/what-happens-during-your-period-5198293',
-    phaseDescription: 'Low energy, inward focus, emotional sensitivity, need for comfort'
-  },
-  {
-    id: 'menstrual-4',
-    title: 'Menstrual Cycle and Mood Connection',
-    description: 'Understanding the emotional aspects of her cycle.',
-    source: 'Healthline',
-    type: 'Article',
-    phase: 'Menstrual',
-    url: 'https://www.healthline.com/health/mental-health/menstrual-cycle-and-mood',
-    phaseDescription: 'Low energy, inward focus, emotional sensitivity, need for comfort'
+    summary: "Explains what's normal during menstruation and how the body resets for the next cycle.",
+    source: 'Moreland OB-GYN'
   },
 
-  // 🌸 Follicular Phase: Days 6–13
-  // Rising energy, optimism, creativity, motivation, openness
+  // 🌸 FOLLICULAR PHASE (Days 6–13)
   {
     id: 'follicular-1',
-    title: 'Understanding the Fertile Window',
-    description: 'What happens during her most energetic days.',
-    source: 'Healthline',
-    type: 'Article',
+    title: 'Follicular Phase',
+    url: 'https://www.naturalcycles.com/cyclematters/follicular-phase',
     phase: 'Follicular',
-    url: 'https://www.healthline.com/health/fertility/fertile-window',
-    phaseDescription: 'Rising energy, optimism, creativity, motivation, openness'
+    summary: 'Covers rising estrogen, increased energy, and mental clarity.',
+    source: 'Natural Cycles'
   },
   {
     id: 'follicular-2',
-    title: 'The Follicular Phase Explained',
-    description: 'Why she has more energy and feels more optimistic.',
-    source: 'Verywell Health',
-    type: 'Article',
+    title: 'Follicular Phase Overview',
+    url: 'https://www.healthline.com/health/womens-health/follicular-phase',
     phase: 'Follicular',
-    url: 'https://www.verywellhealth.com/follicular-phase-5198296',
-    phaseDescription: 'Rising energy, optimism, creativity, motivation, openness'
+    summary: 'Breaks down symptoms, hormone changes, and why optimism tends to rise.',
+    source: 'Healthline'
   },
   {
     id: 'follicular-3',
-    title: 'How Hormones Influence Motivation',
-    description: 'The science behind her peak motivation days.',
-    source: 'Psychology Today',
-    type: 'Article',
+    title: 'Follicular Phase 101',
+    url: 'https://progyny.com/education/fertility-101/follicular-phase/',
     phase: 'Follicular',
-    url: 'https://www.psychologytoday.com/us/blog/hormonal/202103/how-your-hormones-influence-your-motivation',
-    phaseDescription: 'Rising energy, optimism, creativity, motivation, openness'
+    summary: 'Explains follicle development and how estrogen prepares the body for ovulation.',
+    source: 'Progyny'
+  },
+  {
+    id: 'follicular-4',
+    title: 'Phases of the Menstrual Cycle',
+    url: 'https://healthy.kaiserpermanente.org/health-wellness/healtharticle.phases-of-the-menstrual-cycle',
+    phase: 'Follicular',
+    summary: 'A simple medical overview of the first half of the cycle.',
+    source: 'Kaiser Permanente'
+  },
+  {
+    id: 'follicular-5',
+    title: 'Phases of the Menstrual Cycle',
+    url: 'https://www.raleighob.com/phases-of-the-menstrual-cycle/',
+    phase: 'Follicular',
+    summary: 'Describes endometrial rebuilding and the emotional lift partners may notice.',
+    source: 'Raleigh OB-GYN'
+  },
+  {
+    id: 'follicular-6',
+    title: 'Cycle Syncing Through Your Menstrual Phases',
+    url: 'https://www.trinityhealthmichigan.org/blog-articles/cycle-syncing-through-your-menstrual-phases',
+    phase: 'Follicular',
+    summary: 'Offers diet and activity suggestions that partners can support.',
+    source: 'Trinity Health'
   },
 
-  // 🔥 Ovulation Phase: Days 14–16
-  // Peak communication, confidence, social connection, libido, emotional clarity
+  // 🔥 OVULATION PHASE (Days 14–16)
   {
     id: 'ovulation-1',
-    title: 'Ovulation Symptoms to Know',
-    description: 'Signs that she\'s in her peak confidence phase.',
-    source: 'Healthline',
-    type: 'Article',
+    title: 'Can Men Smell Ovulation?',
+    url: 'https://www.science.org/content/article/scienceadviser-no-men-probably-can-t-smell-when-women-are-ovulating',
     phase: 'Ovulation',
-    url: 'https://www.healthline.com/health/ovulation-symptoms',
-    phaseDescription: 'Peak communication, confidence, social connection, emotional clarity'
+    summary: 'Debunks myths while explaining subtle behavioral cues around ovulation.',
+    source: 'Science.org'
   },
   {
     id: 'ovulation-2',
-    title: 'Understanding Ovulation',
-    description: 'The biology behind her most social and confident days.',
-    source: 'Verywell Health',
-    type: 'Article',
+    title: 'Attraction Changes Near Ovulation',
+    url: 'https://www.sciencedirect.com/science/article/abs/pii/S0301051113002020',
     phase: 'Ovulation',
-    url: 'https://www.verywellhealth.com/ovulation-5198297',
-    phaseDescription: 'Peak communication, confidence, social connection, emotional clarity'
+    summary: 'Research on how attraction and partner perception shift during peak fertility.',
+    source: 'ScienceDirect'
   },
   {
     id: 'ovulation-3',
-    title: 'How Ovulation Affects Social Behavior',
-    description: 'Why she\'s more outgoing and communicative during this phase.',
-    source: 'Psychology Today',
-    type: 'Article',
+    title: 'Evolutionary Shifts in Attraction',
+    url: 'https://www.medicalnewstoday.com/articles/272697',
     phase: 'Ovulation',
-    url: 'https://www.psychologytoday.com/us/blog/hormonal/202104/how-ovulation-affects-social-behavior',
-    phaseDescription: 'Peak communication, confidence, social connection, emotional clarity'
+    summary: 'Explores the biological drivers behind ovulation-related preference changes.',
+    source: 'Medical News Today'
   },
   {
     id: 'ovulation-4',
-    title: 'Menstrual Cycle and Relationships',
-    description: 'How her cycle affects your relationship dynamics.',
-    source: 'Healthline',
-    type: 'Article',
+    title: 'Ovulation & Sexual Desire',
+    url: 'https://www.psychologytoday.com/us/blog/sex-murder-and-the-meaning-of-life/201906/does-ovulation-change-womens-sexual-desire-after-all',
     phase: 'Ovulation',
-    url: 'https://www.healthline.com/health/womens-health/menstrual-cycle-and-relationships',
-    phaseDescription: 'Peak communication, confidence, social connection, emotional clarity'
+    summary: 'Discusses libido peaks and how they influence relationship dynamics.',
+    source: 'Psychology Today'
+  },
+  {
+    id: 'ovulation-5',
+    title: 'Partner Choice of Women',
+    url: 'https://www.mpib-berlin.mpg.de/press-releases/partner-choice-of-women',
+    phase: 'Ovulation',
+    summary: 'A modern, data-driven look at ovulatory behavior and attraction.',
+    source: 'Max Planck Institute'
   },
 
-  // 🏠 Early Luteal Phase: Days 17–23
-  // Heightened sensitivity begins, need for reassurance, emotional fluctuations
+  // 🏠 EARLY LUTEAL (Days 17–23)
   {
     id: 'early-luteal-1',
-    title: 'Menstrual Cycle and Mood',
-    description: 'Understanding her emotional shifts as sensitivity increases.',
-    source: 'Healthline',
-    type: 'Article',
+    title: 'What Men Need to Know About Menstruation',
+    url: 'https://mycounselor.online/what-men-need-to-know-about-menstruation/',
     phase: 'Early Luteal',
-    url: 'https://www.healthline.com/health/mental-health/menstrual-cycle-and-mood',
-    phaseDescription: 'Heightened sensitivity, need for reassurance, emotional fluctuations'
+    summary: 'Helps men understand the "nesting" phase and how to support emotionally.',
+    source: 'MyCounselor.Online'
   },
   {
     id: 'early-luteal-2',
-    title: 'Why the Luteal Phase Feels So Intense',
-    description: 'The psychology behind her heightened emotional state.',
-    source: 'Psychology Today',
-    type: 'Article',
+    title: "Men's Perceptions of PMS",
+    url: 'https://journals.sagepub.com/doi/10.1177/1557988313497050',
     phase: 'Early Luteal',
-    url: 'https://www.psychologytoday.com/us/blog/hormonal/202105/why-the-luteal-phase-feels-so-intense',
-    phaseDescription: 'Heightened sensitivity, need for reassurance, emotional fluctuations'
-  },
-  {
-    id: 'early-luteal-3',
-    title: 'How Hormones Affect Mood',
-    description: 'Understanding the hormonal changes affecting her emotions.',
-    source: 'Verywell Mind',
-    type: 'Article',
-    phase: 'Early Luteal',
-    url: 'https://www.verywellmind.com/how-hormones-affect-your-mood-5078233',
-    phaseDescription: 'Heightened sensitivity, need for reassurance, emotional fluctuations'
+    summary: 'Research on how men interpret PMS and how understanding improves relationships.',
+    source: 'Journal of Men\'s Health'
   },
 
-  // ⚠️ Late Luteal/PMS Phase: Days 24–28
-  // Irritability, emotional intensity, overwhelm, need for stability and reassurance
+  // ⚠️ PMS / LATE LUTEAL (Days 24–28)
   {
     id: 'pms-1',
-    title: 'PMS Symptoms Guide',
-    description: 'Understanding the full range of premenstrual symptoms.',
-    source: 'Healthline',
-    type: 'Article',
+    title: 'The Menstrual Cycle and Relationships',
+    url: 'https://scholarsarchive.byu.edu/cgi/viewcontent.cgi?article=1140&context=familyperspectives',
     phase: 'Late Luteal/PMS',
-    url: 'https://www.healthline.com/health/pms-symptoms',
-    phaseDescription: 'Irritability, emotional intensity, overwhelm, need for stability'
+    summary: 'Explains why men may take mood shifts personally and how to respond better.',
+    source: 'BYU Scholars'
   },
   {
     id: 'pms-2',
-    title: 'Premenstrual Syndrome (PMS)',
-    description: 'Complete guide to PMS and how to be supportive.',
-    source: 'Verywell Mind',
-    type: 'Article',
+    title: 'Hormonal Changes & Relationship Interdependence',
+    url: 'https://www.sciencedirect.com/science/article/abs/pii/S0301051119302509',
     phase: 'Late Luteal/PMS',
-    url: 'https://www.verywellmind.com/premenstrual-syndrome-pms-5078234',
-    phaseDescription: 'Irritability, emotional intensity, overwhelm, need for stability'
+    summary: "Shows how men's hormones may subtly respond to their partner's luteal phase.",
+    source: 'ScienceDirect'
   },
   {
     id: 'pms-3',
-    title: 'Why the Luteal Phase Feels So Intense',
-    description: 'The psychology behind emotional intensity during PMS.',
-    source: 'Psychology Today',
-    type: 'Article',
+    title: 'Physiology of the Luteal Decline',
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK500020/',
     phase: 'Late Luteal/PMS',
-    url: 'https://www.psychologytoday.com/us/blog/hormonal/202105/why-the-luteal-phase-feels-so-intense',
-    phaseDescription: 'Irritability, emotional intensity, overwhelm, need for stability'
-  },
-  {
-    id: 'pms-4',
-    title: 'How Hormones Affect Your Mood',
-    description: 'Understanding mood fluctuations during PMS.',
-    source: 'Verywell Mind',
-    type: 'Article',
-    phase: 'Late Luteal/PMS',
-    url: 'https://www.verywellmind.com/how-hormones-affect-your-mood-5078233',
-    phaseDescription: 'Irritability, emotional intensity, overwhelm, need for stability'
+    summary: 'Medical explanation of progesterone drop and physical symptoms like bloating.',
+    source: 'NIH'
   }
 ];
 
-// Cache for validated URLs
-const validatedUrlCache = new Map();
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+// Custom Resources (same as RESOURCES for backward compatibility)
+export const CUSTOM_RESOURCES = RESOURCES;
 
 /**
- * Validate a URL with HEAD request
- * @param {string} url - URL to validate
- * @returns {Promise<boolean>} Whether URL is valid
- */
-export const validateUrl = async (url) => {
-  // Check cache first
-  const cached = validatedUrlCache.get(url);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.valid;
-  }
-
-  try {
-    // Use a CORS proxy or direct fetch with no-cors mode
-    // Since we can't do HEAD requests cross-origin, we'll validate on first click
-    // For now, mark all URLs as valid and handle errors on click
-    const isValid = true;
-    
-    validatedUrlCache.set(url, {
-      valid: isValid,
-      timestamp: Date.now()
-    });
-    
-    return isValid;
-  } catch (error) {
-    console.error(`URL validation failed for ${url}:`, error);
-    validatedUrlCache.set(url, {
-      valid: false,
-      timestamp: Date.now()
-    });
-    return false;
-  }
-};
-
-/**
- * Get validated resources for a specific phase
- * @param {string} phase - The cycle phase
- * @returns {Promise<Array>} Validated resources matching the phase
- */
-export const getValidatedResourcesByPhase = async (phase) => {
-  const phaseResources = CUSTOM_RESOURCES.filter(r => r.phase === phase);
-  const validResources = [];
-  
-  for (const resource of phaseResources) {
-    const isValid = await validateUrl(resource.url);
-    if (isValid) {
-      validResources.push(resource);
-    }
-  }
-  
-  return validResources;
-};
-
-/**
- * Get resources for a specific phase (synchronous, for initial render)
- * @param {string} phase - The cycle phase
- * @returns {Array} Resources matching the phase
- */
-export const getResourcesByPhase = (phase) => {
-  return CUSTOM_RESOURCES.filter(r => r.phase === phase);
-};
-
-/**
- * Get resources prioritized by current phase
- * @param {string} currentPhase - Current cycle phase
- * @param {string} upcomingPhase - Next cycle phase
- * @returns {Object} Resources organized by relevance
- */
-export const getRelevantResources = (currentPhase, upcomingPhase) => {
-  const currentResources = CUSTOM_RESOURCES.filter(r => r.phase === currentPhase);
-  const upcomingResources = CUSTOM_RESOURCES.filter(r => r.phase === upcomingPhase)
-    .map(r => ({ ...r, is_upcoming: true, upcoming_phase: upcomingPhase }));
-  
-  // Get resources from other phases for variety
-  const otherPhases = ['Menstrual', 'Follicular', 'Ovulation', 'Early Luteal', 'Late Luteal/PMS']
-    .filter(p => p !== currentPhase && p !== upcomingPhase);
-  const otherResources = CUSTOM_RESOURCES.filter(r => otherPhases.includes(r.phase));
-  
-  return {
-    current: currentResources.map(r => ({ ...r, is_phase_match: true })),
-    upcoming: upcomingResources,
-    other: otherResources.slice(0, 3) // Limit to 3 other resources
-  };
-};
-
-/**
- * Get phase-prioritized resources for display
- * Prioritizes current phase, then upcoming, then others
- * @param {string} currentPhase - Current cycle phase
- * @returns {Array} Sorted resources array
- */
-export const getPhasePrioritizedResources = (currentPhase) => {
-  const phases = ['Menstrual', 'Follicular', 'Ovulation', 'Early Luteal', 'Late Luteal/PMS'];
-  const currentIndex = phases.indexOf(currentPhase);
-  const upcomingPhase = phases[(currentIndex + 1) % phases.length];
-  
-  // Get all resources sorted by priority
-  const currentPhaseResources = CUSTOM_RESOURCES
-    .filter(r => r.phase === currentPhase)
-    .map(r => ({ ...r, priority: 1, is_phase_match: true }));
-  
-  const upcomingPhaseResources = CUSTOM_RESOURCES
-    .filter(r => r.phase === upcomingPhase)
-    .map(r => ({ ...r, priority: 2, is_upcoming: true, upcoming_phase: upcomingPhase }));
-  
-  const otherResources = CUSTOM_RESOURCES
-    .filter(r => r.phase !== currentPhase && r.phase !== upcomingPhase)
-    .map(r => ({ ...r, priority: 3 }));
-  
-  return [
-    ...currentPhaseResources,
-    ...upcomingPhaseResources,
-    ...otherResources
-  ];
-};
-
-/**
- * Get the next phase in the cycle
- * @param {string} currentPhase - Current cycle phase
- * @returns {string} Next phase name
- */
-export const getNextPhase = (currentPhase) => {
-  const phases = ['Menstrual', 'Follicular', 'Ovulation', 'Early Luteal', 'Late Luteal/PMS'];
-  const currentIndex = phases.indexOf(currentPhase);
-  if (currentIndex === -1) return 'Menstrual';
-  return phases[(currentIndex + 1) % phases.length];
-};
-
-/**
- * Get phase emoji
- * @param {string} phase - The cycle phase
- * @returns {string} Emoji for the phase
+ * Get phase emoji and label
  */
 export const getPhaseEmoji = (phase) => {
-  const emojis = {
-    'Menstrual': '🩸',
-    'Follicular': '🌸',
-    'Ovulation': '🔥',
-    'Early Luteal': '🏠',
-    'Late Luteal/PMS': '⚠️'
-  };
-  return emojis[phase] || '📚';
+  return PHASE_LABELS[phase]?.emoji || '📚';
+};
+
+export const getPhaseLabel = (phase) => {
+  return PHASE_LABELS[phase]?.label || phase;
+};
+
+export const getPhaseDays = (phase) => {
+  return PHASE_LABELS[phase]?.days || '';
 };
 
 /**
- * Get phase color class
- * @param {string} phase - The cycle phase
- * @returns {string} Tailwind color class
+ * Get phase color class for styling
  */
 export const getPhaseColor = (phase) => {
   const colors = {
+    'Full-Cycle': 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30',
     'Menstrual': 'text-red-400 bg-red-500/10 border-red-500/30',
     'Follicular': 'text-pink-400 bg-pink-500/10 border-pink-500/30',
     'Ovulation': 'text-orange-400 bg-orange-500/10 border-orange-500/30',
@@ -367,8 +255,96 @@ export const getPhaseColor = (phase) => {
 };
 
 /**
- * Mark a resource as archived/viewed
- * @param {string} resourceId - Resource ID to archive
+ * Get resources for a specific phase
+ */
+export const getResourcesByPhase = (phase) => {
+  return RESOURCES.filter(r => r.phase === phase);
+};
+
+/**
+ * Get resources prioritized by current phase
+ * Shows "Recommended for Her Current Phase" at top
+ */
+export const getPhasePrioritizedResources = (currentPhase) => {
+  const phases = ['Menstrual', 'Follicular', 'Ovulation', 'Early Luteal', 'Late Luteal/PMS'];
+  const currentIndex = phases.indexOf(currentPhase);
+  const upcomingPhase = phases[(currentIndex + 1) % phases.length];
+  
+  // Get current phase resources (highest priority)
+  const currentPhaseResources = RESOURCES
+    .filter(r => r.phase === currentPhase)
+    .map(r => ({ ...r, priority: 1, is_phase_match: true, is_recommended: true }));
+  
+  // Get upcoming phase resources
+  const upcomingPhaseResources = RESOURCES
+    .filter(r => r.phase === upcomingPhase)
+    .map(r => ({ ...r, priority: 2, is_upcoming: true, upcoming_phase: upcomingPhase }));
+  
+  // Get full-cycle education (always useful)
+  const fullCycleResources = RESOURCES
+    .filter(r => r.phase === 'Full-Cycle')
+    .map(r => ({ ...r, priority: 3 }));
+  
+  // Get other phases
+  const otherResources = RESOURCES
+    .filter(r => r.phase !== currentPhase && r.phase !== upcomingPhase && r.phase !== 'Full-Cycle')
+    .map(r => ({ ...r, priority: 4 }));
+  
+  return [
+    ...currentPhaseResources,
+    ...upcomingPhaseResources,
+    ...fullCycleResources,
+    ...otherResources
+  ];
+};
+
+/**
+ * Get resources grouped by phase for display
+ */
+export const getResourcesGroupedByPhase = () => {
+  const grouped = {};
+  const phaseOrder = ['Full-Cycle', 'Menstrual', 'Follicular', 'Ovulation', 'Early Luteal', 'Late Luteal/PMS'];
+  
+  phaseOrder.forEach(phase => {
+    grouped[phase] = RESOURCES.filter(r => r.phase === phase);
+  });
+  
+  return grouped;
+};
+
+/**
+ * Get relevant resources for display
+ */
+export const getRelevantResources = (currentPhase, upcomingPhase) => {
+  const currentResources = RESOURCES.filter(r => r.phase === currentPhase);
+  const upcomingResources = RESOURCES.filter(r => r.phase === upcomingPhase)
+    .map(r => ({ ...r, is_upcoming: true, upcoming_phase: upcomingPhase }));
+  const fullCycleResources = RESOURCES.filter(r => r.phase === 'Full-Cycle');
+  
+  return {
+    current: currentResources.map(r => ({ ...r, is_phase_match: true, is_recommended: true })),
+    upcoming: upcomingResources,
+    fullCycle: fullCycleResources,
+    other: RESOURCES.filter(r => 
+      r.phase !== currentPhase && 
+      r.phase !== upcomingPhase && 
+      r.phase !== 'Full-Cycle'
+    )
+  };
+};
+
+/**
+ * Get the next phase in the cycle
+ */
+export const getNextPhase = (currentPhase) => {
+  const phases = ['Menstrual', 'Follicular', 'Ovulation', 'Early Luteal', 'Late Luteal/PMS'];
+  const currentIndex = phases.indexOf(currentPhase);
+  if (currentIndex === -1) return 'Menstrual';
+  return phases[(currentIndex + 1) % phases.length];
+};
+
+/**
+ * Archive management (localStorage)
  */
 export const archiveResource = (resourceId) => {
   const archived = JSON.parse(localStorage.getItem('cyclecoach_archived_resources') || '[]');
@@ -378,43 +354,16 @@ export const archiveResource = (resourceId) => {
   }
 };
 
-/**
- * Get archived resource IDs
- * @returns {Array} Array of archived resource IDs
- */
 export const getArchivedResources = () => {
   return JSON.parse(localStorage.getItem('cyclecoach_archived_resources') || '[]');
 };
 
-/**
- * Get unarchived resources for current phase
- * @param {string} currentPhase - Current cycle phase
- * @returns {Array} Unarchived resources prioritized by phase
- */
 export const getUnarchivedResources = (currentPhase) => {
   const archived = getArchivedResources();
   const allResources = getPhasePrioritizedResources(currentPhase);
   return allResources.filter(r => !archived.includes(r.id));
 };
 
-/**
- * Get the next valid resource after archiving
- * @param {string} currentPhase - Current cycle phase
- * @param {string} archivedId - ID of the resource just archived
- * @returns {Object|null} Next valid resource or null if none available
- */
-export const getNextValidResource = (currentPhase, archivedId) => {
-  const unarchived = getUnarchivedResources(currentPhase);
-  // Return the first unarchived resource that isn't the one just archived
-  return unarchived.find(r => r.id !== archivedId) || null;
-};
-
-/**
- * Reset archived resources
- */
 export const resetArchivedResources = () => {
   localStorage.removeItem('cyclecoach_archived_resources');
 };
-
-// Legacy export for backward compatibility
-export const RESOURCES = CUSTOM_RESOURCES;
