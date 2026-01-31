@@ -1132,14 +1132,24 @@ const Dashboard = () => {
               </p>
             </div>
             
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between items-center mb-4">
+              {/* Recommended for Current Phase Header */}
+              {cycleInfo && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{getPhaseEmoji(cycleInfo.phase)}</span>
+                  <div>
+                    <h3 className="text-white font-semibold">Recommended for Her Current Phase</h3>
+                    <p className="text-slate-400 text-sm">{getPhaseLabel(cycleInfo.phase)} • {getPhaseDays(cycleInfo.phase)}</p>
+                  </div>
+                </div>
+              )}
               <Button
                 onClick={() => setShowBookmarks(!showBookmarks)}
                 variant="outline"
                 className="border-slate-600 text-slate-300"
                 data-testid="toggle-bookmarks-button"
               >
-                {showBookmarks ? 'Show Current' : `Bookmarks (${bookmarkedResources.length})`}
+                {showBookmarks ? 'Show All' : `Saved (${bookmarkedResources.length})`}
               </Button>
             </div>
 
