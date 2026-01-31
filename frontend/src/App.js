@@ -118,6 +118,7 @@ function App() {
           <Route path="/privacy" element={<PrivacySettings />} />
           <Route path="/account" element={<AccountSettings />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/predictor" element={<PhasePredictor />} />
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
