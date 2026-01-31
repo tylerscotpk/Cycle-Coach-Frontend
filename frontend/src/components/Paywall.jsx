@@ -229,9 +229,9 @@ const Paywall = ({ onUnlock }) => {
             </div>
 
             {/* Pricing Cards */}
-            <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid md:grid-cols-3 gap-4 sm:gap-6 items-stretch">
               {/* Monthly Training Plan */}
-              <Card className="bg-slate-800/90 border-slate-700 hover:border-emerald-500/50 transition-all relative overflow-hidden flex flex-col" data-testid="monthly-plan-card">
+              <Card className="bg-slate-800/90 border-slate-700 hover:border-emerald-500/50 transition-all relative overflow-hidden flex flex-col h-full" data-testid="monthly-plan-card">
                 <div className="absolute top-0 left-0 right-0 bg-emerald-500 text-white text-xs font-bold py-1 text-center">
                   7-DAY FREE TRIAL
                 </div>
@@ -242,11 +242,11 @@ const Paywall = ({ onUnlock }) => {
                     <span className="text-slate-400 text-sm ml-1">{SUBSCRIPTION_PLANS.monthly.billingPeriod}</span>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4 flex-1 flex flex-col">
-                  <p className="text-slate-400 text-sm text-center">
+                <CardContent className="flex-1 flex flex-col">
+                  <p className="text-slate-400 text-sm text-center mb-4">
                     {SUBSCRIPTION_PLANS.monthly.description}
                   </p>
-                  <ul className="space-y-2 text-sm text-slate-300">
+                  <ul className="space-y-2 text-sm text-slate-300 flex-1">
                     {SUBSCRIPTION_PLANS.monthly.features.map((feature, idx) => (
                       <li key={idx} className="flex items-center gap-2">
                         <span className="text-emerald-400">✓</span>
@@ -254,16 +254,14 @@ const Paywall = ({ onUnlock }) => {
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-auto pt-4">
-                    <Button
-                      onClick={() => handleSelectPlan('monthly')}
-                      disabled={!userEmail.trim()}
-                      className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
-                      data-testid="select-monthly-btn"
-                    >
-                      Start Free Trial
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => handleSelectPlan('monthly')}
+                    disabled={!userEmail.trim()}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white mt-4"
+                    data-testid="select-monthly-btn"
+                  >
+                    Start Free Trial
+                  </Button>
                 </CardContent>
               </Card>
 
