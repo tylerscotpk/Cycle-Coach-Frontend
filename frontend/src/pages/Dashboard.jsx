@@ -747,7 +747,7 @@ const Dashboard = () => {
                   </div>
                 </div>
                 
-                <div className="mt-6 space-y-2">
+                <div className="mt-6 flex flex-wrap gap-2">
                   <Button
                     onClick={() => {
                       setShowCycleHistory(!showCycleHistory);
@@ -759,6 +759,15 @@ const Dashboard = () => {
                     data-testid="toggle-cycle-history-button"
                   >
                     📊 Cycle History & Stats
+                  </Button>
+                  <Button
+                    onClick={() => window.location.href = '/predictor'}
+                    variant="outline"
+                    size="sm"
+                    className="border-white/30 text-white hover:bg-white/10"
+                    data-testid="phase-predictor-button"
+                  >
+                    🔮 Phase Predictor
                   </Button>
                 </div>
               </div>
