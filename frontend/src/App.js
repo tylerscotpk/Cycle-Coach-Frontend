@@ -6,6 +6,7 @@ import Dashboard from "@/pages/Dashboard";
 import PrivacySettings from "@/pages/PrivacySettings";
 import AccountSettings from "@/pages/AccountSettings";
 import Contact from "@/pages/Contact";
+import PhasePredictor from "@/pages/PhasePredictor";
 import AdminDashboard from "@/pages/AdminDashboard";
 import PartnerConsent from "@/components/PartnerConsent";
 import Paywall from "@/components/Paywall";
