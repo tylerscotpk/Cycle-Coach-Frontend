@@ -779,6 +779,78 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* Date Prediction Card */}
+        <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700 mb-8" data-testid="prediction-card">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              🔮 Phase Predictor
+            </CardTitle>
+            <CardDescription className="text-slate-400">
+              Select any date to see what cycle day and phase she&apos;ll be in
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {partner?.cycleStartDate ? (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Label className="text-slate-300 text-sm mb-2 block">Select a date</Label>
+                    <Input
+                      type="date"
+                      value={predictionDate}
+                      onChange={(e) => handlePredictionDateChange(e.target.value)}
+                      className="bg-slate-700/50 border-slate-600 text-white"
+                      data-testid="prediction-date-input"
+                    />
+                  </div>
+                  {prediction && (
+                    <div className="flex-1 flex items-end">
+                      <Button
+                        variant="outline"
+                        className="border-slate-600 text-slate-300"
+                        onClick={() => {
+                          setPredictionDate('');
+                          setPrediction(null);
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {prediction && (
+                  <div className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-lg p-4" data-testid="prediction-result">
+                    <div className="flex items-center gap-4">
+                      <div className="text-5xl">{prediction.phaseEmoji}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="text-3xl font-bold text-white">Day {prediction.cycleDay}</span>
+                          <span className="text-lg text-cyan-400 font-medium">{prediction.phaseName}</span>
+                        </div>
+                        <p className="text-slate-300">{prediction.phaseDescription}</p>
+                        <p className="text-slate-500 text-xs mt-2">Based on {prediction.avgCycleLength}-day average cycle</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!prediction && predictionDate === '' && (
+                  <div className="text-slate-500 text-sm text-center py-4">
+                    Pick a date above to see the predicted cycle day and phase
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-6 text-center">
+                <p className="text-slate-400">
+                  📅 Log your last period start date to unlock predictions.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Cycle History Dialog */}
         <Dialog open={showCycleHistory} onOpenChange={setShowCycleHistory}>
           <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
