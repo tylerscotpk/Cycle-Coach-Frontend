@@ -322,6 +322,14 @@ const AccountSettings = () => {
             <Button
               variant="outline"
               className="w-full justify-start border-slate-600 text-slate-300 hover:bg-slate-700"
+              onClick={() => navigate('/contact')}
+              data-testid="contact-link"
+            >
+              ✉️ Contact Support
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start border-slate-600 text-slate-300 hover:bg-slate-700"
               onClick={() => navigate('/')}
               data-testid="dashboard-link"
             >
