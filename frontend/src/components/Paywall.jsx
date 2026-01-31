@@ -231,7 +231,7 @@ const Paywall = ({ onUnlock }) => {
             {/* Pricing Cards */}
             <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
               {/* Monthly Training Plan */}
-              <Card className="bg-slate-800/90 border-slate-700 hover:border-emerald-500/50 transition-all relative overflow-hidden" data-testid="monthly-plan-card">
+              <Card className="bg-slate-800/90 border-slate-700 hover:border-emerald-500/50 transition-all relative overflow-hidden flex flex-col" data-testid="monthly-plan-card">
                 <div className="absolute top-0 left-0 right-0 bg-emerald-500 text-white text-xs font-bold py-1 text-center">
                   7-DAY FREE TRIAL
                 </div>
@@ -242,7 +242,7 @@ const Paywall = ({ onUnlock }) => {
                     <span className="text-slate-400 text-sm ml-1">{SUBSCRIPTION_PLANS.monthly.billingPeriod}</span>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 flex-1 flex flex-col">
                   <p className="text-slate-400 text-sm text-center">
                     {SUBSCRIPTION_PLANS.monthly.description}
                   </p>
@@ -254,19 +254,21 @@ const Paywall = ({ onUnlock }) => {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    onClick={() => handleSelectPlan('monthly')}
-                    disabled={!userEmail.trim()}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
-                    data-testid="select-monthly-btn"
-                  >
-                    Start Free Trial
-                  </Button>
+                  <div className="mt-auto pt-4">
+                    <Button
+                      onClick={() => handleSelectPlan('monthly')}
+                      disabled={!userEmail.trim()}
+                      className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                      data-testid="select-monthly-btn"
+                    >
+                      Start Free Trial
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Quarter by Quarter */}
-              <Card className="bg-slate-800/90 border-slate-700 hover:border-cyan-500/50 transition-all relative overflow-hidden" data-testid="quarterly-plan-card">
+              <Card className="bg-slate-800/90 border-slate-700 hover:border-cyan-500/50 transition-all relative overflow-hidden flex flex-col" data-testid="quarterly-plan-card">
                 <div className="absolute top-0 left-0 right-0 bg-cyan-500 text-white text-xs font-bold py-1 text-center">
                   SAVE 12%
                 </div>
@@ -277,7 +279,7 @@ const Paywall = ({ onUnlock }) => {
                     <span className="text-slate-400 text-sm ml-1">{SUBSCRIPTION_PLANS.quarterly.billingPeriod}</span>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 flex-1 flex flex-col">
                   <p className="text-slate-400 text-sm text-center">
                     {SUBSCRIPTION_PLANS.quarterly.description}
                   </p>
@@ -289,19 +291,21 @@ const Paywall = ({ onUnlock }) => {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    onClick={() => handleSelectPlan('quarterly')}
-                    disabled={!userEmail.trim()}
-                    className="w-full bg-cyan-400 hover:bg-cyan-500 text-white"
-                    data-testid="select-quarterly-btn"
-                  >
-                    Choose Quarterly
-                  </Button>
+                  <div className="mt-auto pt-4">
+                    <Button
+                      onClick={() => handleSelectPlan('quarterly')}
+                      disabled={!userEmail.trim()}
+                      className="w-full bg-cyan-400 hover:bg-cyan-500 text-white"
+                      data-testid="select-quarterly-btn"
+                    >
+                      Choose Quarterly
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
               {/* Full Season Strategy */}
-              <Card className="bg-gradient-to-b from-purple-900/50 to-slate-800/90 border-purple-500/50 relative overflow-hidden" data-testid="annual-plan-card">
+              <Card className="bg-gradient-to-b from-purple-900/50 to-slate-800/90 border-purple-500/50 relative overflow-hidden flex flex-col" data-testid="annual-plan-card">
                 <div className="absolute top-0 left-0 right-0 bg-purple-500 text-white text-xs font-bold py-1 text-center">
                   BEST VALUE
                 </div>
@@ -312,7 +316,7 @@ const Paywall = ({ onUnlock }) => {
                     <span className="text-slate-400 text-sm ml-1">{SUBSCRIPTION_PLANS.annual.billingPeriod}</span>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 flex-1 flex flex-col">
                   <p className="text-slate-400 text-sm text-center">
                     {SUBSCRIPTION_PLANS.annual.description}
                   </p>
@@ -324,14 +328,16 @@ const Paywall = ({ onUnlock }) => {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    onClick={() => handleSelectPlan('annual')}
-                    disabled={!userEmail.trim()}
-                    className="w-full bg-purple-500 hover:bg-purple-600 text-white"
-                    data-testid="select-annual-btn"
-                  >
-                    Go Annual
-                  </Button>
+                  <div className="mt-auto pt-4">
+                    <Button
+                      onClick={() => handleSelectPlan('annual')}
+                      disabled={!userEmail.trim()}
+                      className="w-full bg-purple-500 hover:bg-purple-600 text-white"
+                      data-testid="select-annual-btn"
+                    >
+                      Go Annual
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
