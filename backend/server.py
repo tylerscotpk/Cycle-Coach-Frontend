@@ -2449,6 +2449,84 @@ async def check_feedback_status(email: str):
         "tier": license.get("subscription_tier", "unknown")
     }
 
+# ============ ADMIN AUTHENTICATION ============
+
+# Admin password from environment variable
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+
+class AdminLoginRequest(BaseModel):
+    password: str
+
+class AdminLoginResponse(BaseModel):
+    success: bool
+    message: str
+    token: Optional[str] = None
+
+@api_router.post("/admin/login")
+async def admin_login(request: AdminLoginRequest):
+    """Authenticate admin user"""
+    if not ADMIN_PASSWORD:
+        logger.error("ADMIN_PASSWORD not configured in environment")
+        raise HTTPException(status_code=500, detail="Admin authentication not configured")
+    
+    if request.password == ADMIN_PASSWORD:
+        # Generate a simple admin session token
+        admin_token = secrets.token_urlsafe(32)
+        
+        # Store admin session in database with expiry
+        admin_session = {
+            "token": admin_token,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+        }
+        
+        # Upsert - only one admin session at a time
+        await db.admin_sessions.delete_many({})
+        await db.admin_sessions.insert_one(admin_session)
+        
+        logger.info("Admin login successful")
+        return AdminLoginResponse(
+            success=True,
+            message="Admin access granted",
+            token=admin_token
+        )
+    else:
+        logger.warning("Failed admin login attempt")
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+@api_router.post("/admin/verify")
+async def verify_admin_token(authorization: Optional[str] = Header(None)):
+    """Verify admin token is still valid"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No token provided")
+    
+    token = authorization.replace("Bearer ", "")
+    
+    # Check token in database
+    session = await db.admin_sessions.find_one({"token": token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    # Check expiry
+    expires_at = datetime.fromisoformat(session['expires_at'])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    
+    if expires_at < datetime.now(timezone.utc):
+        await db.admin_sessions.delete_one({"token": token})
+        raise HTTPException(status_code=401, detail="Token expired")
+    
+    return {"valid": True}
+
+@api_router.post("/admin/logout")
+async def admin_logout(authorization: Optional[str] = Header(None)):
+    """Logout admin user"""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+        await db.admin_sessions.delete_one({"token": token})
+    
+    return {"message": "Logged out successfully"}
+
 @api_router.get("/admin/feedback")
 async def get_all_feedback():
     """Get all feedback (admin endpoint)"""
