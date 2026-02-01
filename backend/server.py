@@ -1710,6 +1710,59 @@ async def stripe_webhook(request: Request):
             
             return {"status": "subscription_cancelled"}
         
+        # Handle subscription updated (status changes, plan changes, cancellation scheduled)
+        elif event_type == "customer.subscription.updated":
+            subscription = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
+            subscription_id = subscription.get("id")
+            status = subscription.get("status")  # active, past_due, canceled, unpaid, etc.
+            cancel_at_period_end = subscription.get("cancel_at_period_end", False)
+            cancel_at = subscription.get("cancel_at")  # Unix timestamp when subscription will be cancelled
+            current_period_end = subscription.get("current_period_end")  # Unix timestamp
+            
+            update_fields = {
+                "subscription_status": status,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Handle scheduled cancellation (cancel_at_period_end = true)
+            if cancel_at_period_end and cancel_at:
+                cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
+                update_fields["cancels_at"] = cancels_at_date
+                update_fields["is_cancelled"] = True  # Mark as pending cancellation
+                logger.info(f"Subscription {subscription_id} scheduled to cancel at {cancels_at_date}")
+            elif not cancel_at_period_end:
+                # Cancellation was reversed or subscription renewed
+                update_fields["cancels_at"] = None
+                update_fields["is_cancelled"] = False
+            
+            # Update expiration based on current period end
+            if current_period_end:
+                expires_at_date = datetime.fromtimestamp(current_period_end, tz=timezone.utc).isoformat()
+                update_fields["expires_at"] = expires_at_date
+            
+            # Handle status changes
+            if status == "active":
+                update_fields["is_active"] = True
+                update_fields["payment_status"] = "current"
+            elif status == "past_due":
+                update_fields["payment_status"] = "past_due"
+            elif status == "unpaid":
+                update_fields["is_active"] = False
+                update_fields["payment_status"] = "unpaid"
+            elif status == "canceled":
+                update_fields["is_active"] = False
+                update_fields["is_cancelled"] = True
+            
+            result = await db.license_keys.update_one(
+                {"stripe_subscription_id": subscription_id},
+                {"$set": update_fields}
+            )
+            
+            if result.modified_count > 0:
+                logger.info(f"Updated subscription {subscription_id}: status={status}, cancel_at_period_end={cancel_at_period_end}")
+            
+            return {"status": "subscription_updated", "subscription_status": status}
+        
         # Handle payment failed
         elif event_type == "invoice.payment_failed":
             invoice = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
