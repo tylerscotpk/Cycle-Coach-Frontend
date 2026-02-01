@@ -9,71 +9,69 @@ The user wants to create a mobile-friendly web app called Cycle Coach to help me
     -   Quarter by Quarter: 0.49/3 months
     -   Full Season Strategy: 5.91/year
 -   **Admin Dashboard:** A password-protected portal () for the app owner to manage users and view stats.
--   **Legal/Compliance:** Prompt US users for their state to display a state-specific privacy waiver.
 -   **Push Notifications:** Enable opt-out notifications for phase reminders and reflection prompts.
 -   **Deployment:** Must be deployable to iOS and Android app stores (project is set up with Capacitor).
+-   **Contact Page:** A form for users to send messages to a private admin email.
+-   **Account Page:** A page for users to view their subscription status and cancel their subscription.
+-   **Phase Predictor:** A feature to predict the cycle phase for any given date.
 
 **User's preferred language**: English
 
 **what currently exists?**
 The application is a PWA built with React and a FastAPI backend.
--   **Frontend:** A client-side React app that stores all user cycle data in . It features a  component that redirects to Stripe Payment Links, a full , an , and a Capacitor setup for native builds.
--   **Backend:** A FastAPI server that handles:
-    1.  An anonymous proxy for the AI Wingman chat feature (), now enhanced to accept partner profile context.
-    2.  A licensing system using MongoDB to store license keys.
-    3.  A Stripe webhook () to process purchases and an integration with Resend to email license keys.
-    4.  APIs for the admin dashboard.
-    5.  A feedback submission endpoint.
--   **Monetization Flow:** The paywall displays three subscription plans. Clicking a plan redirects the user to a pre-configured Stripe Payment Link. Upon successful payment, a Stripe webhook notifies the backend to generate a license key and email it to the user.
+-   **Frontend:** A client-side React app storing user data in . It features a , , a  using Stripe Payment Links, and dedicated pages for , , , and a . The app is set up with Capacitor for native builds.
+-   **Backend:** A FastAPI server () that handles:
+    1.  An AI Wingman proxy () that uses partner profile context.
+    2.  A licensing system using MongoDB.
+    3.  A Stripe webhook () to manage the full subscription lifecycle (, , ).
+    4.  An admin dashboard API.
+    5.  A contact form endpoint () that emails submissions via Resend.
+-   **Monetization Flow:** The paywall redirects to Stripe Payment Links. Webhooks notify the backend to create/update licenses. A cancellation flow allows users to cancel via a backend endpoint, which tells Stripe to .
 
 **Last working item**:
--   Last item agent was working: The agent was in the process of implementing a large, multi-part feature request from the user. This included updating UI button colors, revamping the resources tab, ensuring the AI Wingman uses the partner profile, adding a US state-based privacy waiver flow, and adding UI for push notification settings. The last action was adding the  component to the  page.
--   Status: **IN PROGRESS**
--   Agent Testing Done: N
--   Which testing method agent to use? both (The changes touch both frontend and backend logic extensively).
+-   Last item agent was working: The user requested UI color corrections in the Resources section. Specifically, to make the Coming Up badge purple to match the Read Article button, and to ensure the phase title text (e.g., 'Menstrual') is white.
+-   Status: **USER VERIFICATION PENDING**
+-   Agent Testing Done: Y
+-   Which testing method agent to use? screenshot tool
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1 (P0): Complete and Verify Multi-Part Feature Implementation**
-    -   **Description:** The agent has started but not finished a large set of requirements given by the user in a single prompt. This includes UI changes, AI context integration, resource updates, a new privacy waiver flow, and push notification settings. The work is spread across multiple files and needs to be completed and thoroughly tested.
+-   **Issue 1: Critical Deployment Blockers (P0)**
+    -   **Description:** A  health check identified critical issues preventing deployment. The user continued to add features instead of fixing these.
+    -   **Attempted fixes:** None. The agent acknowledged the report but was immediately redirected to other tasks by the user.
     -   **Next debug checklist:**
-        1.  Review all files modified in the last session to understand the current state of implementation.
-        2.  Implement the actual push notification logic (requesting permission, scheduling local notifications), as only the settings UI has been created.
-        3.  Thoroughly test the entire application flow, especially the new state waiver prompt, the AI chat context, and the updated resources tab.
-    -   **Why fix this issue:** To fulfill the user's latest and most comprehensive set of requirements.
-    -   **Status:** IN PROGRESS
+        1.  **Hardcoded Admin Password:** Move the password from  to a backend environment variable and create an auth check.
+        2.  **Hardcoded Stripe Links:** Move the Stripe Payment Links from  to frontend environment variables ().
+        3.  **Missing  files/config:** Ensure  and  are properly configured for deployment (the user requested a hardcoded backend URL, which should be reverted to use ).
+        4.  **Missing Supervisor Config:** Create the necessary  for the production environment.
+    -   **Why fix this issue and what will be achieved with the fix?** The application cannot be deployed until these blockers are resolved. Fixing them is essential for a production-ready state.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** N
     -   **Should Test frontend/backend/both after fix?** both
+    -   **Blocked on other issue:** None
 
 **In progress Task List**:
--   **Task 1 (P0): Implement User's Multi-Part Request**
-    -   **Where to resume:** The agent has already created several components and modified existing files (, , , , , ). The immediate next step is to implement the core logic for push notifications, as the UI is just a placeholder. Then, a full end-to-end test of all new features is required.
-    -   **What will be achieved with this?** The app will have a more polished UI, a smarter AI, better resources, a state-based privacy flow, and push notification capabilities, addressing all of the user's recent requests.
-    -   **Status:** IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?** both
+-   None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **P1: Implement Push Notification Logic:** The settings UI is in place (), but the core functionality to request permissions and schedule local notifications for phase reminders and reflection prompts is not implemented. This is part of the current user request.
+    -   **(P0) Fix Deployment Blockers:** Address all critical issues identified by the deployment health check.
 -   **Future Tasks:**
-    -   **P2: Complete App Store Deployment:** Use the existing Capacitor setup and the  to build the final app binaries (/) and guide the user through the submission process.
-    -   **P3: Refactor Backend ():** The file still contains a mix of new, functional code and deprecated code from the old architecture that should be cleaned up.
-    -   **P4: Refactor Frontend ():** This component was simplified by removing feature gating but remains large. It could be broken down into smaller child components for better maintainability.
+    -   **(P1) Complete App Store Deployment:** Use the existing Capacitor setup to build and guide the user through submitting the app to app stores.
+    -   **(P2) Refactor :** The file contains deprecated code and mixed responsibilities that should be cleaned up.
+    -   **(P3) Refactor :** The main dashboard component is large and complex; it should be broken down into smaller, more manageable components.
 
 **Completed work in this session**
--   **Subscription Overhaul (Multiple Iterations):**
-    -   Implemented a tiered subscription system (Free Trial, Basic, Premium) with feature gating.
-    -   Refactored plans and naming multiple times based on user feedback (e.g., Winning Game Plan, Elite Game Plan).
-    -   Finalized a new three-tier model (Monthly Training Plan, Quarter by Quarter, Full Season Strategy) and removed all feature gating, granting all subscribers full access.
--   **Stripe Integration:**
-    -   Updated backend with user's Stripe secret key.
-    -   Switched from server-side Stripe Checkout Session creation to using direct Stripe Payment Links provided by the user.
--   **Admin Dashboard Fix:** Resolved Failed to Fetch errors reported by the user, confirming the dashboard is functional.
--   **UI/Branding Updates:**
-    -   Generated a logo for the app (though not yet integrated).
-    -   Updated the paywall tagline to The relationship game-changer.
-    -   Updated paywall button colors as requested.
--   **Feedback System:** Implemented a user feedback system with a  and backend endpoints to collect ratings and text feedback at specific triggers.
--   **Began Multi-Part Feature Request:** Started implementing a large set of new requirements, including resource updates, AI context improvements, and new privacy/notification components.
+-   **AI Wingman Enhancement:** The backend now uses the full partner profile context for more personalized AI advice.
+-   **Push Notification System:** Implemented a  for PWA notifications and integrated it with the UI in  and .
+-   **Admin Dashboard Update:** Updated the dashboard to reflect the new subscription plans (monthly, quarterly, yearly, lifetime), removing the old 'trial' plan.
+-   **Resources Overhaul:** Replaced the entire resource library with a new, user-provided list of articles. Implemented phase-tagging, phase-prioritization, and an Upcoming Phase section. Fixed various styling issues with badges and buttons.
+-   **Account Settings Page:** Created a new page at  for users to view subscription status, billing details, and cancel their subscription.
+-   **Subscription Cancellation Flow:** Added frontend logic and a backend webhook handler () to manage  requests.
+-   **Contact Page:** Created a new page at  and a corresponding backend endpoint () that uses Resend to forward messages.
+-   **Phase Predictor Page:** Created a feature to predict cycle phases for any date, initially on the dashboard and then moved to its own dedicated page at .
+-   **UI/Layout Fixes:** Addressed multiple user requests to fix button alignment on the  and  pages.
+-   **Backend URL Update:** Updated the frontend's  to use a specific backend URL () as requested by the user.
 
 **Earlier issues found/mentioned but not fixed**
 -   **Issue 1:  code quality:** This file contains significant deprecated code from the pre-privacy-pivot architecture. It needs to be refactored to remove unused routes, models, and logic.
@@ -88,84 +86,79 @@ The application is a PWA built with React and a FastAPI backend.
 **Key Technical Concepts**
 -   **Architecture:** Hybrid - Local-First PWA with a server-side component for monetization/admin.
 -   **Frontend:** React, Tailwind CSS, Shadcn/UI, Capacitor.
--   **Data Storage:** Browser  (user cycle data, consent, state), MongoDB (license/trial/feedback data).
+-   **Data Storage:** Browser , MongoDB.
 -   **Backend:** FastAPI.
 -   **Monetization:** Stripe (Payment Links + Webhooks), Resend (Transactional Emails).
--   **AI Integration:** OpenAI (via anonymous backend proxy).
+-   **AI Integration:** OpenAI via an anonymous backend proxy.
+-   **Notifications:** Web Push API for PWA notifications.
 
 **key DB schema**
 -   ** collection:** 
--   ** collection:**  (Largely deprecated by new trial flow, but still used for admin history).
--   ** collection:** 
 
 **changes in tech stack**
--   None since the previous handoff.
+-   None.
 
 **All files of reference**
--   : Major changes to subscription logic, AI chat context, and new feedback endpoints.
--   : Completely overhauled multiple times to reflect new subscription plans and UI requirements.
--   : Simplified to remove feature gating but modified to add resource disclaimer and prepare for AI context.
--   : Updated to include the new  flow.
--   : Updated to store user's state.
--   : Updated with verified, high-quality links.
--   : New component for state selection.
--   : New component for notification preferences.
--   : Updated to include the new  component.
+-   **/app/frontend/src/pages/Dashboard.jsx**: Heavily modified to add/remove features and fix layouts.
+-   **/app/frontend/src/pages/AdminDashboard.jsx**: Updated with new subscription tiers.
+-   **/app/frontend/src/components/Paywall.jsx**: Updated layout to align buttons.
+-   **/app/frontend/src/utils/resourcesData.js**: Completely rewritten with user-provided data.
+-   **/app/backend/server.py**: Added contact endpoint and logic to handle  webhook.
+-   **/app/frontend/src/App.js**: Added routes for new pages.
+-   **/app/frontend/src/pages/AccountSettings.jsx**: New file.
+-   **/app/frontend/src/pages/Contact.jsx**: New file.
+-   **/app/frontend/src/pages/PhasePredictor.jsx**: New file.
+-   **/app/frontend/src/utils/notificationService.js**: New file.
 
 **Areas that need refactoring**:
--   **:** Still contains significant technical debt and deprecated code alongside the new logic.
+-   **:** Still contains significant technical debt and deprecated code.
 -   **:** Remains a large, monolithic component.
 
 **key api endpoints**
--   : (POST) Handles Stripe purchase events from Payment Links.
--   : (POST) Validates a user's license key.
--   : (POST) Now accepts  in the request body to provide context to the AI.
--   : (POST) Submits user feedback.
--   : (GET) Fetches statistics for the admin dashboard.
--   : (GET) Fetches all users for the admin dashboard.
--   : (GET) Fetches all trial requests for the admin dashboard.
+-   : (POST) Handles Stripe lifecycle events (, , ).
+-   : (POST) Proxies requests to AI, now with partner profile context.
+-   : (POST) Frontend calls this to initiate a subscription cancellation.
+-   : (POST) Submits the contact form to be emailed via Resend.
+-   : Endpoints for the admin dashboard.
 
 **Critical Info for New Agent**
--   **Admin Access:** The admin dashboard is at  with the password .
--   **Monetization Model:** The app now uses direct **Stripe Payment Links**. The backend does not create checkout sessions. The webhook at  is critical for license fulfillment after a purchase.
--   **Current Task is Large:** The user has issued a comprehensive set of requirements that are partially implemented. The next agent must carefully review the recent changes and continue the work, starting with the push notification logic.
--   **No More Feature Gating:** All current subscription plans grant access to all features. The Dashboard and related logic have been simplified to reflect this.
+-   **Fix Deployment Blockers First:** The highest priority is to resolve the critical deployment blockers identified by the . The user has ignored these in favor of new features, but the app cannot be deployed without fixing them.
+-   **Backend URL:** The user requested to hardcode the backend URL to . This was done, but it is one of the deployment blockers. The next agent should revert this to use the  environment variable for proper deployment.
+-   **Admin Access:** The admin dashboard is at  with the password  (this hardcoded password is a deployment blocker).
 
 **documents and test reports created in this job**
--    (updated multiple times)
--   
+-    (updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks for the direct link to the Admin page.
-2.  **Agent:** Provides the link and password.
-3.  **User:** Asks to see the logo.
-4.  **Agent:** Generates a couple of logo variations.
-5.  **User:** Provides new tagline text: The relationship game-changer.
-6.  **Agent:** Implements the tagline change.
-7.  **User:** Provides new Stripe API keys.
-8.  **Agent:** Updates the backend  file with the new secret key.
-9.  **User:** Provides direct Stripe Payment Links for three plans, asks agent to use them.
-10. **Agent:** Implements the switch to direct Stripe links.
-11. **User:** Provides a new set of three plans with different names, pricing, and details.
-12. **Agent:** Implements the new plans.
-13. **User:** Provides a large, multi-part request detailing requirements for AI context, resources, legal disclaimers, privacy waivers, UI changes, and push notifications.
-14. **Agent:** Acknowledges and begins implementing the changes. (This is the current state).
+1.  **User:** Asks for the link to the live admin dashboard.
+2.  **User:** Provides a very detailed prompt to completely replace the Resources library with a new structured database of articles.
+3.  **User:** Asks to add a prediction feature to calculate cycle day/phase for any selected date.
+4.  **User:** Asks to add a Contact page with a form that sends a private email to the admin.
+5.  **User:** Asks to move the new Phase Predictor feature from the dashboard into its own dedicated page.
+6.  **User:** Asks to adjust the layout of buttons in the Current Phase window on the dashboard.
+7.  **User:** Provides a screenshot indicating the button placement is still wrong and asks for a correction.
+8.  **User:** Asks to align the Start Free Trial button with other plan buttons on the paywall.
+9.  **User:** States that the paywall button alignment is still incorrect based on the screenshot.
+10. **User:** Asks for the correct API endpoints and payload format for handling  and  Stripe webhooks.
+11. **User:** Asks to display Next Billing Date and Next Billing Amount on the Account Settings screen.
+12. **User:** Asks to change the phase label text color to white and restore the Upcoming Phase block in the Resources section.
+13. **User:** Asks to change the color of buttons in the Upcoming Phase section to purple.
+14. **User:** Asks to change the Coming Up badge color to match the purple button and fix the phase title color. (Last working item).
 
 **Project Health Check:**
--   **Broken:** None.
+-   **Broken:** Deployment is broken. The  identified hardcoded secrets/links and missing configuration, which prevents the app from being deployed.
 -   **Mocked:** None.
 
 **3rd Party Integrations**
--   **OpenAI GPT-5** — Uses Emergent LLM Key via a stateless, anonymous backend proxy.
+-   **OpenAI GPT-4** — Uses Emergent LLM Key via a stateless, anonymous backend proxy.
 -   **Stripe** — Integrated for processing payments via Payment Links and Webhooks. Requires User API Key and Webhook Secret.
--   **Resend** — Integrated for sending license key emails. Requires User API Key.
+-   **Resend** — Integrated for sending license key and contact form emails. Requires User API Key.
 
 **Testing status**
--   Testing agent used after significant changes: YES, used to test the first implementation of the tiered subscription system ().
--   Troubleshoot agent used after agent stuck in loop: NO.
--   Test files created: None.
--   Known regressions: None.
--   **Note:** The most recent, large, multi-part feature request has not been tested.
+-   Testing agent used after significant changes: NO (The agent attempted to call it but it did not produce a report. The agent then performed extensive manual testing via screenshots.)
+-   Troubleshoot agent used after agent stuck in loop: NO
+-   Test files created: None
+-   Known regressions: None
 
 **Credentials to test flow:**
 -   **App:** No user login required. Access is gated by a license key obtained via a Stripe purchase.
@@ -174,4 +167,4 @@ The application is a PWA built with React and a FastAPI backend.
     -   Password: 
 
 **What agent forgot to execute**
--   The core logic for **push notifications** (requesting permissions, scheduling, and handling interactions) has not been implemented. Only the UI for the opt-out setting has been created. This is a key part of the user's latest request.</analysis>
+-   The agent completely failed to address the **critical deployment blockers** identified by the . Despite acknowledging the health check failure, the agent immediately pivoted to implementing numerous new user features without resolving the underlying issues that prevent the application from going live. This is the most critical pending task.</analysis>
