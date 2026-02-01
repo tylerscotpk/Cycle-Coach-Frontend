@@ -1259,7 +1259,7 @@ const Dashboard = () => {
                 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {upcomingResources.map((resource, idx) => (
-                    <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-orange-500/50 transition-all flex flex-col" data-testid={`upcoming-resource-${idx}`}>
+                    <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-purple-500/50 transition-all flex flex-col" data-testid={`upcoming-resource-${idx}`}>
                       <CardHeader className="flex-1">
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
                           {/* Phase badge with emoji */}
