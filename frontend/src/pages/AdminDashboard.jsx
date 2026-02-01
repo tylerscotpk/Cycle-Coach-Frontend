@@ -56,14 +56,33 @@ const AdminDashboard = () => {
     }
   }, [isAuthenticated, requestFilter, userFilter, activeTab]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('admin_auth', 'true');
-      toast.success('Admin access granted');
-    } else {
-      toast.error('Invalid password');
+    setAuthLoading(true);
+    
+    try {
+      const response = await fetch(`${API}/api/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        sessionStorage.setItem('admin_token', data.token);
+        setIsAuthenticated(true);
+        toast.success('Admin access granted');
+      } else {
+        toast.error(data.detail || 'Invalid password');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed. Please try again.');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
