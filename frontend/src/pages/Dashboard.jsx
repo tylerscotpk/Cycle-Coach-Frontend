@@ -1266,7 +1266,7 @@ const Dashboard = () => {
                           <div className={`text-xs px-3 py-1 rounded-full border ${getPhaseColor(resource.phase)}`}>
                             {getPhaseEmoji(resource.phase)} {getPhaseLabel(resource.phase)}
                           </div>
-                          <div className="text-xs text-orange-400 px-3 py-1 bg-orange-500/20 rounded-full border border-orange-500/30">
+                          <div className="text-xs text-white px-3 py-1 bg-purple-500 rounded-full border border-purple-500">
                             ⏭️ Coming Up
                           </div>
                         </div>
