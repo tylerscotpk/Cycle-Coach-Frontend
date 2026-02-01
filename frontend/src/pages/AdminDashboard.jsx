@@ -299,6 +299,30 @@ const AdminDashboard = () => {
     return new Date(expiresAt) < new Date();
   };
 
+  const handleLogout = async () => {
+    const token = sessionStorage.getItem('admin_token');
+    try {
+      await fetch(`${API}/api/admin/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    sessionStorage.removeItem('admin_token');
+    setIsAuthenticated(false);
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+        <div className="text-white text-lg">Verifying session...</div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
@@ -314,9 +338,15 @@ const AdminDashboard = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter admin password"
                 className="bg-slate-700 border-slate-600 text-white"
+                data-testid="admin-password-input"
               />
-              <Button type="submit" className="w-full bg-cyan-500 hover:bg-cyan-600">
-                Login
+              <Button 
+                type="submit" 
+                className="w-full bg-cyan-500 hover:bg-cyan-600"
+                disabled={authLoading}
+                data-testid="admin-login-btn"
+              >
+                {authLoading ? 'Logging in...' : 'Login'}
               </Button>
             </form>
           </CardContent>
