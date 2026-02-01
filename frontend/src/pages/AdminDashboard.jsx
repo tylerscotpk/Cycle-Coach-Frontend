@@ -373,10 +373,8 @@ const AdminDashboard = () => {
           <Button 
             variant="outline" 
             className="border-slate-600 text-slate-300"
-            onClick={() => {
-              sessionStorage.removeItem('admin_auth');
-              setIsAuthenticated(false);
-            }}
+            onClick={handleLogout}
+            data-testid="admin-logout-btn"
           >
             Logout
           </Button>
