@@ -31,6 +31,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [funFact, setFunFact] = useState(null);
   const [currentResources, setCurrentResources] = useState([]);
+  const [upcomingResources, setUpcomingResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showCycleHistory, setShowCycleHistory] = useState(false);
