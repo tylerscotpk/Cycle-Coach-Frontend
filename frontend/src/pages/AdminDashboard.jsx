@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL;
-const ADMIN_PASSWORD = 'cyclecoach2024';
 
 const AdminDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -14,15 +13,36 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({ requests: {}, users: {} });
   const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [requestFilter, setRequestFilter] = useState('pending');
   const [userFilter, setUserFilter] = useState('monthly');
   const [activeTab, setActiveTab] = useState('requests');
 
+  // Check for existing admin session on mount
   useEffect(() => {
-    const auth = sessionStorage.getItem('admin_auth');
-    if (auth === 'true') {
-      setIsAuthenticated(true);
-    }
+    const verifySession = async () => {
+      const token = sessionStorage.getItem('admin_token');
+      if (token) {
+        try {
+          const response = await fetch(`${API}/api/admin/verify`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            setIsAuthenticated(true);
+          } else {
+            sessionStorage.removeItem('admin_token');
+          }
+        } catch (error) {
+          console.error('Session verification failed:', error);
+          sessionStorage.removeItem('admin_token');
+        }
+      }
+      setAuthLoading(false);
+    };
+    verifySession();
   }, []);
 
   useEffect(() => {
