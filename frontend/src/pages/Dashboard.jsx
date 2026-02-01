@@ -1279,7 +1279,7 @@ const Dashboard = () => {
                       <CardContent className="space-y-2">
                         <Button
                           asChild
-                          className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                          className="w-full bg-purple-500 hover:bg-purple-600 text-white"
                           data-testid={`view-upcoming-resource-${idx}`}
                         >
                           <a href={resource.url} target="_blank" rel="noopener noreferrer">
@@ -1290,7 +1290,7 @@ const Dashboard = () => {
                           onClick={() => handleBookmarkResource(resource.id)}
                           variant="outline"
                           size="sm"
-                          className="w-full border-slate-600 text-slate-300 hover:bg-orange-500/20 hover:border-orange-500"
+                          className="w-full border-slate-600 text-slate-300 hover:bg-purple-500/20 hover:border-purple-500"
                           data-testid={`bookmark-upcoming-${idx}`}
                         >
                           📌 Save for Later
