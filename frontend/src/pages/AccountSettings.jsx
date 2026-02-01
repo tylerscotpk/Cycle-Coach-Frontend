@@ -127,6 +127,40 @@ const AccountSettings = () => {
     return colors[tier] || 'bg-slate-500/20 text-slate-400 border-slate-500/30';
   };
 
+  const getBillingAmount = (tier) => {
+    const prices = {
+      'monthly': '$3.99',
+      'quarterly': '$10.49',
+      'yearly': '$35.91',
+      'lifetime': 'Paid in full',
+      'grandfathered': 'Free'
+    };
+    return prices[tier] || 'N/A';
+  };
+
+  const getBillingCycle = (tier) => {
+    const cycles = {
+      'monthly': 'per month',
+      'quarterly': 'every 3 months',
+      'yearly': 'per year',
+      'lifetime': '',
+      'grandfathered': ''
+    };
+    return cycles[tier] || '';
+  };
+
+  const getNextBillingDate = () => {
+    // If cancelled, show when access ends
+    if (subscription?.isCancelled && subscription?.cancelsAt) {
+      return subscription.cancelsAt;
+    }
+    // Otherwise show next billing date from expires_at
+    if (subscription?.expiresAt) {
+      return subscription.expiresAt;
+    }
+    return null;
+  };
+
   const canCancel = () => {
     // Can cancel if: has subscription IDs, not already cancelled, and not lifetime/grandfathered
     return (
