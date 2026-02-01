@@ -1191,7 +1191,7 @@ const Dashboard = () => {
                           </div>
                         )}
                         {resource.is_upcoming && (
-                          <div className="text-xs text-orange-400 px-3 py-1 bg-orange-500/20 rounded-full border border-orange-500/30">
+                          <div className="text-xs text-white px-3 py-1 bg-purple-500 rounded-full border border-purple-500">
                             ⏭️ Coming Up
                           </div>
                         )}
