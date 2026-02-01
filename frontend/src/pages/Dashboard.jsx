@@ -1246,6 +1246,62 @@ const Dashboard = () => {
               </Card>
             ) : null}
 
+            {/* Upcoming Phase Section */}
+            {!showBookmarks && upcomingResources.length > 0 && cycleInfo && (
+              <div className="mt-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xl">{getPhaseEmoji(getNextPhase(cycleInfo.phase))}</span>
+                  <div>
+                    <h3 className="text-white font-semibold">Upcoming Phase: {getPhaseLabel(getNextPhase(cycleInfo.phase))}</h3>
+                    <p className="text-slate-400 text-sm">{getPhaseDays(getNextPhase(cycleInfo.phase))} • Prepare for what&apos;s next</p>
+                  </div>
+                </div>
+                
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {upcomingResources.map((resource, idx) => (
+                    <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-orange-500/50 transition-all flex flex-col" data-testid={`upcoming-resource-${idx}`}>
+                      <CardHeader className="flex-1">
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          {/* Phase badge with emoji */}
+                          <div className={`text-xs px-3 py-1 rounded-full border ${getPhaseColor(resource.phase)}`}>
+                            {getPhaseEmoji(resource.phase)} {getPhaseLabel(resource.phase)}
+                          </div>
+                          <div className="text-xs text-orange-400 px-3 py-1 bg-orange-500/20 rounded-full border border-orange-500/30">
+                            ⏭️ Coming Up
+                          </div>
+                        </div>
+                        <CardTitle className="text-white text-lg leading-tight">{resource.title}</CardTitle>
+                        <CardDescription className="text-slate-400 mt-2">{resource.summary}</CardDescription>
+                        {resource.source && (
+                          <p className="text-xs text-cyan-400/70 mt-2">📰 {resource.source}</p>
+                        )}
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <Button
+                          asChild
+                          className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                          data-testid={`view-upcoming-resource-${idx}`}
+                        >
+                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                            Read Article
+                          </a>
+                        </Button>
+                        <Button
+                          onClick={() => handleBookmarkResource(resource.id)}
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-slate-600 text-slate-300 hover:bg-orange-500/20 hover:border-orange-500"
+                          data-testid={`bookmark-upcoming-${idx}`}
+                        >
+                          📌 Save for Later
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {showBookmarks && (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {bookmarkedResources.length === 0 ? (
