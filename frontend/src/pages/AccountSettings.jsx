@@ -239,11 +239,40 @@ const AccountSettings = () => {
                 </div>
               )}
 
-              {subscription?.expiresAt && !subscription?.isCancelled && (
-                <div className="bg-slate-900/50 rounded-lg p-4 col-span-2">
-                  <p className="text-slate-400 text-sm">Next Billing Date</p>
-                  <p className="text-white font-medium mt-1">{formatDate(subscription.expiresAt)}</p>
-                </div>
+              {/* Billing Information - Only show for recurring subscriptions */}
+              {!['lifetime', 'grandfathered'].includes(subscription?.tier) && (
+                <>
+                  <div className="bg-slate-900/50 rounded-lg p-4">
+                    <p className="text-slate-400 text-sm">
+                      {subscription?.isCancelled ? 'Access Ends' : 'Next Billing Date'}
+                    </p>
+                    <p className="text-white font-medium mt-1">
+                      {subscription?.isCancelled ? (
+                        <span className="text-orange-400">{formatDate(getNextBillingDate())}</span>
+                      ) : (
+                        formatDate(getNextBillingDate()) || 'Not available'
+                      )}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-slate-900/50 rounded-lg p-4">
+                    <p className="text-slate-400 text-sm">
+                      {subscription?.isCancelled ? 'Final Amount Paid' : 'Next Billing Amount'}
+                    </p>
+                    <p className="text-white font-medium mt-1">
+                      {subscription?.isCancelled ? (
+                        <span className="text-slate-500">—</span>
+                      ) : (
+                        <>
+                          <span className="text-2xl text-cyan-400">{getBillingAmount(subscription?.tier)}</span>
+                          {getBillingCycle(subscription?.tier) && (
+                            <span className="text-slate-400 text-sm ml-1">{getBillingCycle(subscription?.tier)}</span>
+                          )}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </>
               )}
             </div>
 
