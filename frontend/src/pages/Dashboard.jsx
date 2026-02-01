@@ -187,16 +187,31 @@ const Dashboard = () => {
     try {
       const cycleDay = calculateCycleDay(profile.cycleStartDate, profile.cycleLength || 28);
       const phaseInfo = getPhaseInfo(cycleDay);
+      const nextPhase = getNextPhase(phaseInfo.phase);
       
       // Get unarchived resources prioritized by current phase
       const unarchivedResources = getUnarchivedResources(phaseInfo.phase);
       
-      // Display up to 6 resources, prioritized by phase relevance
-      setCurrentResources(unarchivedResources.slice(0, 6));
+      // Filter current phase resources (recommended for today)
+      const currentPhaseResources = unarchivedResources
+        .filter(r => r.phase === phaseInfo.phase)
+        .map(r => ({ ...r, is_recommended: true }));
+      
+      // Get upcoming phase resources
+      const upcomingPhaseResources = RESOURCES
+        .filter(r => r.phase === nextPhase)
+        .map(r => ({ ...r, is_upcoming: true, upcoming_phase: nextPhase }));
+      
+      // Display up to 6 current phase resources
+      setCurrentResources(currentPhaseResources.slice(0, 6));
+      
+      // Display up to 3 upcoming phase resources
+      setUpcomingResources(upcomingPhaseResources.slice(0, 3));
     } catch (error) {
       console.error('Error loading resources:', error);
       // Fallback to first 3 resources
       setCurrentResources(RESOURCES.slice(0, 3));
+      setUpcomingResources([]);
     }
   };
 
