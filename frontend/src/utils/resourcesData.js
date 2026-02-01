@@ -244,14 +244,14 @@ export const getPhaseDays = (phase) => {
  */
 export const getPhaseColor = (phase) => {
   const colors = {
-    'Full-Cycle': 'text-white bg-indigo-500/20 border-indigo-500/30',
-    'Menstrual': 'text-white bg-red-500/20 border-red-500/30',
-    'Follicular': 'text-white bg-pink-500/20 border-pink-500/30',
-    'Ovulation': 'text-white bg-orange-500/20 border-orange-500/30',
-    'Early Luteal': 'text-white bg-blue-500/20 border-blue-500/30',
-    'Late Luteal/PMS': 'text-white bg-yellow-500/20 border-yellow-500/30'
+    'Full-Cycle': 'text-white bg-indigo-500/50 border-indigo-500/50',
+    'Menstrual': 'text-white bg-red-500/50 border-red-500/50',
+    'Follicular': 'text-white bg-pink-500/50 border-pink-500/50',
+    'Ovulation': 'text-white bg-orange-500/50 border-orange-500/50',
+    'Early Luteal': 'text-white bg-blue-500/50 border-blue-500/50',
+    'Late Luteal/PMS': 'text-white bg-yellow-500/50 border-yellow-500/50'
   };
-  return colors[phase] || 'text-white bg-slate-500/20 border-slate-500/30';
+  return colors[phase] || 'text-white bg-slate-500/50 border-slate-500/50';
 };
 
 /**
