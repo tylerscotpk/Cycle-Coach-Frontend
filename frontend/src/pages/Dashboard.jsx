@@ -372,9 +372,25 @@ const Dashboard = () => {
       
       // Get remaining unarchived resources prioritized by phase
       const unarchivedResources = getUnarchivedResources(cycleInfo.phase);
+      const nextPhase = getNextPhase(cycleInfo.phase);
       
-      // Update current resources with next valid ones
-      setCurrentResources(unarchivedResources.slice(0, 6));
+      // Update current resources - limit to 3
+      const currentPhaseResources = unarchivedResources
+        .filter(r => r.phase === cycleInfo.phase)
+        .map(r => ({ ...r, is_recommended: true }));
+      setCurrentResources(currentPhaseResources.slice(0, 3));
+      
+      // Update upcoming resources - limit to 2
+      const upcomingPhaseResources = RESOURCES
+        .filter(r => r.phase === nextPhase)
+        .map(r => ({ ...r, is_upcoming: true, upcoming_phase: nextPhase }));
+      setUpcomingResources(upcomingPhaseResources.slice(0, 2));
+      
+      // Update general resources - limit to 1
+      const generalPhaseResources = unarchivedResources
+        .filter(r => r.phase === 'Full-Cycle')
+        .map(r => ({ ...r, is_general: true }));
+      setGeneralResources(generalPhaseResources.slice(0, 1));
       
       toast.success('Resource archived! Loading next article...');
     } catch (error) {
@@ -387,7 +403,11 @@ const Dashboard = () => {
     if (!partner || !cycleInfo) return;
     
     try {
-      const bookmarkedResource = currentResources.find(r => r.id === resourceId);
+      // Find the resource from any of the resource lists
+      const bookmarkedResource = currentResources.find(r => r.id === resourceId) 
+        || upcomingResources.find(r => r.id === resourceId)
+        || generalResources.find(r => r.id === resourceId);
+      
       if (bookmarkedResource) {
         // Check if already bookmarked
         if (!bookmarkedResources.find(r => r.id === resourceId)) {
@@ -398,10 +418,28 @@ const Dashboard = () => {
         }
       }
       
-      // Archive the resource and load next
+      // Archive the resource and reload all sections
       archiveResource(resourceId);
       const unarchivedResources = getUnarchivedResources(cycleInfo.phase);
-      setCurrentResources(unarchivedResources.slice(0, 6));
+      const nextPhase = getNextPhase(cycleInfo.phase);
+      
+      // Update current resources - limit to 3
+      const currentPhaseResources = unarchivedResources
+        .filter(r => r.phase === cycleInfo.phase)
+        .map(r => ({ ...r, is_recommended: true }));
+      setCurrentResources(currentPhaseResources.slice(0, 3));
+      
+      // Update upcoming resources - limit to 2
+      const upcomingPhaseResources = RESOURCES
+        .filter(r => r.phase === nextPhase)
+        .map(r => ({ ...r, is_upcoming: true, upcoming_phase: nextPhase }));
+      setUpcomingResources(upcomingPhaseResources.slice(0, 2));
+      
+      // Update general resources - limit to 1
+      const generalPhaseResources = unarchivedResources
+        .filter(r => r.phase === 'Full-Cycle')
+        .map(r => ({ ...r, is_general: true }));
+      setGeneralResources(generalPhaseResources.slice(0, 1));
     } catch (error) {
       console.error('Error bookmarking resource:', error);
       toast.error('Failed to bookmark');
