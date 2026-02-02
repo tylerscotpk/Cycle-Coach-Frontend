@@ -63,6 +63,12 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 
 ## Changelog
 
+### 2025-02-02 - Cancel Subscription Feature
+- **Added:** Backend endpoint `POST /api/cancel-subscription` with Stripe integration
+- **Added:** Confirmation modal in Account Settings page using AlertDialog
+- **Updated:** Subscription cancellation updates both Stripe and local database
+- **Feature:** Users can now cancel subscriptions directly from the app
+
 ### 2025-02-01 - Security Fix
 - **Fixed:** Moved hardcoded admin password from frontend to backend environment variable
 - **Added:** Backend admin authentication endpoints (`/api/admin/login`, `/api/admin/verify`, `/api/admin/logout`)
