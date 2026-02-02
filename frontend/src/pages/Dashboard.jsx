@@ -32,6 +32,7 @@ const Dashboard = () => {
   const [funFact, setFunFact] = useState(null);
   const [currentResources, setCurrentResources] = useState([]);
   const [upcomingResources, setUpcomingResources] = useState([]);
+  const [generalResources, setGeneralResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showCycleHistory, setShowCycleHistory] = useState(false);
