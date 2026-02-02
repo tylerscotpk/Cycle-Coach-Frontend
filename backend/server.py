@@ -1787,6 +1787,97 @@ async def stripe_webhook(request: Request):
         logger.error(f"Webhook error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============================================
+# CANCEL SUBSCRIPTION ENDPOINT
+# ============================================
+
+class CancelSubscriptionRequest(BaseModel):
+    customerId: str
+    subscriptionId: str
+
+@api_router.post("/cancel-subscription")
+async def cancel_subscription(request: CancelSubscriptionRequest):
+    """Cancel a user's subscription at the end of the billing period"""
+    try:
+        customer_id = request.customerId
+        subscription_id = request.subscriptionId
+        
+        logger.info(f"Cancel subscription request: customer={customer_id}, subscription={subscription_id}")
+        
+        # Verify the subscription exists in our database
+        license_record = await db.license_keys.find_one(
+            {
+                "stripe_subscription_id": subscription_id,
+                "stripe_customer_id": customer_id,
+                "is_active": True
+            },
+            {"_id": 0}
+        )
+        
+        if not license_record:
+            logger.warning(f"No active license found for subscription {subscription_id}")
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "message": "Subscription not found or already cancelled"}
+            )
+        
+        # Check if already cancelled
+        if license_record.get("is_cancelled") and license_record.get("cancels_at"):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False, 
+                    "message": "Subscription is already scheduled for cancellation",
+                    "cancels_at": license_record.get("cancels_at")
+                }
+            )
+        
+        # Cancel the subscription at period end using Stripe API
+        try:
+            updated_subscription = stripe.Subscription.modify(
+                subscription_id,
+                cancel_at_period_end=True
+            )
+            
+            # Get the cancellation date
+            cancel_at = updated_subscription.current_period_end
+            cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
+            
+            # Update our database
+            await db.license_keys.update_one(
+                {"stripe_subscription_id": subscription_id},
+                {
+                    "$set": {
+                        "cancels_at": cancels_at_date,
+                        "is_cancelled": True,
+                        "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            )
+            
+            logger.info(f"Successfully cancelled subscription {subscription_id}, cancels at {cancels_at_date}")
+            
+            return {
+                "success": True,
+                "message": "Subscription cancelled successfully",
+                "cancels_at": cancels_at_date
+            }
+            
+        except stripe.StripeError as e:
+            logger.error(f"Stripe error cancelling subscription: {str(e)}")
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": f"Failed to cancel subscription: {str(e)}"}
+            )
+            
+    except Exception as e:
+        logger.error(f"Error cancelling subscription: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "An error occurred while cancelling your subscription"}
+        )
+
 class LicenseValidationResponseExtended(BaseModel):
     valid: bool
     message: str
