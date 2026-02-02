@@ -314,13 +314,13 @@ const AccountSettings = () => {
             {canCancel() && (
               <div className="pt-4 border-t border-slate-700">
                 <Button
-                  onClick={handleCancelSubscription}
+                  onClick={openCancelModal}
                   disabled={cancelling}
                   variant="outline"
                   className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
                   data-testid="cancel-subscription-btn"
                 >
-                  {cancelling ? 'Cancelling...' : 'Cancel Subscription'}
+                  Cancel Subscription
                 </Button>
                 <p className="text-slate-500 text-xs mt-2">
                   You&apos;ll keep access until your current billing period ends.
