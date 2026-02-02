@@ -414,6 +414,46 @@ const AccountSettings = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Cancel Subscription Modal */}
+      <AlertDialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white text-xl">
+              Cancel Your Subscription?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300 space-y-3">
+              <p>
+                Are you sure you want to cancel your <span className="text-cyan-400 font-medium">{getTierDisplayName(subscription?.tier)}</span> subscription?
+              </p>
+              <div className="bg-slate-900/50 rounded-lg p-4 mt-4">
+                <p className="text-slate-400 text-sm mb-2">What happens when you cancel:</p>
+                <ul className="text-slate-300 text-sm space-y-1">
+                  <li>• You&apos;ll keep full access until your billing period ends</li>
+                  <li>• No more charges after your current period</li>
+                  <li>• You can resubscribe anytime</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3">
+            <AlertDialogCancel 
+              className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600"
+              data-testid="cancel-modal-keep-btn"
+            >
+              Keep My Subscription
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelSubscription}
+              disabled={cancelling}
+              className="bg-red-600 text-white hover:bg-red-700"
+              data-testid="cancel-modal-confirm-btn"
+            >
+              {cancelling ? 'Cancelling...' : 'Yes, Cancel Subscription'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
