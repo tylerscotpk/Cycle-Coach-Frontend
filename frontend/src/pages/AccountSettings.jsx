@@ -56,13 +56,6 @@ const AccountSettings = () => {
       return;
     }
 
-    const confirmed = window.confirm(
-      'Are you sure you want to cancel your subscription?\n\n' +
-      'You will keep access to all features until your current billing period ends.'
-    );
-
-    if (!confirmed) return;
-
     setCancelling(true);
     try {
       const response = await fetch(`${API}/api/cancel-subscription`, {
@@ -92,6 +85,7 @@ const AccountSettings = () => {
           isCancelled: true
         }));
 
+        setShowCancelModal(false);
         toast.success('Subscription cancelled. You have access until ' + formatDate(result.cancels_at));
       } else {
         toast.error(result.message || 'Failed to cancel subscription');
@@ -102,6 +96,14 @@ const AccountSettings = () => {
     } finally {
       setCancelling(false);
     }
+  };
+
+  const openCancelModal = () => {
+    if (!subscription?.customerId || !subscription?.subscriptionId) {
+      toast.error('Unable to cancel: Missing subscription information. Please contact support.');
+      return;
+    }
+    setShowCancelModal(true);
   };
 
   const formatDate = (dateString) => {
