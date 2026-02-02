@@ -1364,6 +1364,70 @@ const Dashboard = () => {
               </div>
             )}
 
+            {/* General Resources Section */}
+            {!showBookmarks && generalResources.length > 0 && (
+              <div className="mt-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xl">📚</span>
+                  <div>
+                    <h3 className="text-white font-semibold">General Resources</h3>
+                    <p className="text-slate-400 text-sm">Helpful for any phase of her cycle</p>
+                  </div>
+                </div>
+                
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {generalResources.map((resource, idx) => (
+                    <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-amber-500/50 transition-all flex flex-col" data-testid={`general-resource-${idx}`}>
+                      <CardHeader className="flex-1">
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          {/* Phase badge */}
+                          <div className="text-xs px-3 py-1 rounded-full border bg-amber-500/20 text-amber-400 border-amber-500/30">
+                            📚 Full-Cycle
+                          </div>
+                        </div>
+                        <CardTitle className="text-white text-lg leading-tight">{resource.title}</CardTitle>
+                        <CardDescription className="text-slate-400 mt-2">{resource.summary}</CardDescription>
+                        {resource.source && (
+                          <p className="text-xs text-cyan-400/70 mt-2">📰 {resource.source}</p>
+                        )}
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <Button
+                          asChild
+                          className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                          data-testid={`view-general-resource-${idx}`}
+                        >
+                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                            Read Article
+                          </a>
+                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleBookmarkResource(resource.id)}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-slate-600 text-slate-300 hover:bg-amber-500/20 hover:border-amber-500"
+                            data-testid={`bookmark-general-${idx}`}
+                          >
+                            📌 Save
+                          </Button>
+                          <Button
+                            onClick={() => handleArchiveResource(resource.id)}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                            data-testid={`archive-general-${idx}`}
+                          >
+                            ✓ Done
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {showBookmarks && (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {bookmarkedResources.length === 0 ? (
