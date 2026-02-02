@@ -452,7 +452,25 @@ const Dashboard = () => {
     try {
       // Get unarchived resources prioritized by current phase
       const unarchivedResources = getUnarchivedResources(cycleInfo.phase);
-      setCurrentResources(unarchivedResources.slice(0, 6));
+      const nextPhase = getNextPhase(cycleInfo.phase);
+      
+      // Update current resources - limit to 3
+      const currentPhaseResources = unarchivedResources
+        .filter(r => r.phase === cycleInfo.phase)
+        .map(r => ({ ...r, is_recommended: true }));
+      setCurrentResources(currentPhaseResources.slice(0, 3));
+      
+      // Update upcoming resources - limit to 2
+      const upcomingPhaseResources = RESOURCES
+        .filter(r => r.phase === nextPhase)
+        .map(r => ({ ...r, is_upcoming: true, upcoming_phase: nextPhase }));
+      setUpcomingResources(upcomingPhaseResources.slice(0, 2));
+      
+      // Update general resources - limit to 1
+      const generalPhaseResources = unarchivedResources
+        .filter(r => r.phase === 'Full-Cycle')
+        .map(r => ({ ...r, is_general: true }));
+      setGeneralResources(generalPhaseResources.slice(0, 1));
     } catch (error) {
       console.error('Error loading more resources:', error);
     }
