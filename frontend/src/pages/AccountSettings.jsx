@@ -4,6 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { LocalStorage } from '../utils/localStorageManager';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -12,6 +22,7 @@ const AccountSettings = () => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     loadSubscriptionData();
