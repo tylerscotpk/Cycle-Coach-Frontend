@@ -40,8 +40,62 @@ const PLANS = [
 ];
 
 const InfoPricing = () => {
+  const [licenseKey, setLicenseKey] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+
   const handleSelectPlan = (plan) => {
     window.location.href = plan.paymentLink;
+  };
+
+  const handleValidateKey = async (e) => {
+    e.preventDefault();
+    
+    if (!licenseKey.trim()) {
+      toast.error('Please enter your license key');
+      return;
+    }
+
+    setIsValidating(true);
+
+    try {
+      const normalizedKey = licenseKey.trim().toUpperCase();
+      
+      const response = await fetch(`${API}/api/license/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ license_key: normalizedKey })
+      });
+      
+      const result = await response.json();
+      
+      if (result.valid) {
+        LocalStorage.saveLicenseKey(normalizedKey);
+        LocalStorage.saveSubscriptionTier({
+          tier: result.tier,
+          tier_display: result.tier_display,
+          has_partner_profile: result.has_partner_profile,
+          has_ai_wingman: result.has_ai_wingman,
+          expires_at: result.expires_at,
+          email: result.email,
+          is_trial: result.is_trial,
+          created_at: result.created_at,
+          customer_id: result.customer_id,
+          subscription_id: result.subscription_id,
+          cancels_at: result.cancels_at,
+          is_cancelled: result.is_cancelled
+        });
+        
+        toast.success('Welcome to Cycle Coach!');
+        window.location.href = '/app';
+      } else {
+        toast.error(result.message || 'Invalid license key. Please check and try again.');
+      }
+    } catch (error) {
+      console.error('License validation error:', error);
+      toast.error('Unable to validate license. Please try again.');
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   return (
