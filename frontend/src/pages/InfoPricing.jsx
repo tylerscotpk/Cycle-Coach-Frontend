@@ -118,6 +118,42 @@ const InfoPricing = () => {
         </div>
       </section>
 
+      {/* Already Have a Key Section */}
+      <section className="pt-8 px-6">
+        <div className="max-w-md mx-auto">
+          <Card className="bg-slate-900/60 border-slate-700/50">
+            <CardContent className="py-6">
+              <form onSubmit={handleValidateKey} className="space-y-4">
+                <div className="text-center mb-4">
+                  <p className="text-slate-300 font-medium">Already have a login key?</p>
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-2">
+                    Enter your login key
+                  </label>
+                  <Input
+                    type="text"
+                    value={licenseKey}
+                    onChange={(e) => setLicenseKey(e.target.value)}
+                    placeholder="CC-XXXX-XXXX-XXXX"
+                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 font-mono"
+                    data-testid="pricing-license-key-input"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isValidating}
+                  className="w-full bg-cyan-500 hover:bg-cyan-600 text-white"
+                  data-testid="pricing-validate-key-btn"
+                >
+                  {isValidating ? 'Validating...' : 'Submit'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/* Pricing Cards */}
       <section className="py-16 px-6">
         <div className="max-w-6xl mx-auto">
