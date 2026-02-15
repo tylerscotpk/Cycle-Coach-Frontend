@@ -21,7 +21,7 @@ import InfoPricing from "@/pages/InfoPricing";
 import InfoContact from "@/pages/InfoContact";
 
 // Routes that bypass paywall/consent flow
-const PUBLIC_ROUTES = ['/info', '/about', '/signup', '/info/contact', '/admin'];
+const PUBLIC_ROUTES = ['/', '/info', '/about', '/signup', '/info/contact', '/admin'];
 
 function AppContent() {
   const location = useLocation();
@@ -80,6 +80,7 @@ function AppContent() {
   if (isPublicRoute) {
     return (
       <Routes>
+        <Route path="/" element={<InfoHome />} />
         <Route path="/info" element={<InfoHome />} />
         <Route path="/about" element={<InfoAbout />} />
         <Route path="/signup" element={<InfoPricing />} />
