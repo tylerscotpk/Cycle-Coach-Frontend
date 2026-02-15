@@ -69,6 +69,26 @@ function App() {
     );
   }
 
+  // Check if we're on informational website routes - bypass paywall
+  const infoRoutes = ['/info', '/about', '/signup', '/info/contact'];
+  const isInfoRoute = infoRoutes.some(route => window.location.pathname === route || window.location.pathname.startsWith('/info'));
+  
+  if (isInfoRoute) {
+    return (
+      <>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/info" element={<InfoHome />} />
+            <Route path="/about" element={<InfoAbout />} />
+            <Route path="/signup" element={<InfoPricing />} />
+            <Route path="/info/contact" element={<InfoContact />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster />
+      </>
+    );
+  }
+
   // Check if we're on the admin route - bypass paywall
   const isAdminRoute = window.location.pathname === '/admin';
   
