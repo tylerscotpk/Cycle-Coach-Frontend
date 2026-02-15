@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import PrivacySettings from "@/pages/PrivacySettings";
@@ -20,8 +20,11 @@ import InfoAbout from "@/pages/InfoAbout";
 import InfoPricing from "@/pages/InfoPricing";
 import InfoContact from "@/pages/InfoContact";
 
-function App() {
-  // LOCAL-ONLY MODE: No server authentication
+// Routes that bypass paywall/consent flow
+const PUBLIC_ROUTES = ['/info', '/about', '/signup', '/info/contact', '/admin'];
+
+function AppContent() {
+  const location = useLocation();
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [hasLocationSetup, setHasLocationSetup] = useState(false);
   const [hasConsent, setHasConsent] = useState(false);
@@ -32,7 +35,6 @@ function App() {
   }, []);
 
   const checkAppState = () => {
-    // Check license first, then location, then consent
     const unlocked = LocalStorage.isUnlocked();
     setIsUnlocked(unlocked);
     
@@ -61,6 +63,11 @@ function App() {
     setHasConsent(true);
   };
 
+  // Check if current route is public (bypasses paywall)
+  const isPublicRoute = PUBLIC_ROUTES.some(route => 
+    location.pathname === route || location.pathname.startsWith('/info')
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
@@ -69,88 +76,54 @@ function App() {
     );
   }
 
-  // Check if we're on informational website routes - bypass paywall
-  const infoRoutes = ['/info', '/about', '/signup', '/info/contact'];
-  const isInfoRoute = infoRoutes.some(route => window.location.pathname === route || window.location.pathname.startsWith('/info'));
-  
-  if (isInfoRoute) {
+  // Public routes - render directly without paywall
+  if (isPublicRoute) {
     return (
-      <>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/info" element={<InfoHome />} />
-            <Route path="/about" element={<InfoAbout />} />
-            <Route path="/signup" element={<InfoPricing />} />
-            <Route path="/info/contact" element={<InfoContact />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster />
-      </>
-    );
-  }
-
-  // Check if we're on the admin route - bypass paywall
-  const isAdminRoute = window.location.pathname === '/admin';
-  
-  if (isAdminRoute) {
-    return (
-      <>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Routes>
-        </BrowserRouter>
-        <Toaster />
-      </>
+      <Routes>
+        <Route path="/info" element={<InfoHome />} />
+        <Route path="/about" element={<InfoAbout />} />
+        <Route path="/signup" element={<InfoPricing />} />
+        <Route path="/info/contact" element={<InfoContact />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Routes>
     );
   }
 
   // Show paywall if not unlocked
   if (!isUnlocked) {
-    return (
-      <>
-        <Paywall onUnlock={handleUnlock} />
-        <Toaster />
-      </>
-    );
+    return <Paywall onUnlock={handleUnlock} />;
   }
 
-  // Show state privacy waiver if not completed (after paywall, before consent)
+  // Show state privacy waiver if not completed
   if (!hasLocationSetup) {
-    return (
-      <>
-        <StatePrivacyWaiver onComplete={handleLocationComplete} />
-        <Toaster />
-      </>
-    );
+    return <StatePrivacyWaiver onComplete={handleLocationComplete} />;
   }
 
   // Show consent screen if not granted
   if (!hasConsent) {
-    return (
-      <>
-        <PartnerConsent onConsentGranted={handleConsentGranted} />
-        <Toaster />
-      </>
-    );
+    return <PartnerConsent onConsentGranted={handleConsentGranted} />;
   }
 
-  // LOCAL-ONLY MODE: Simple routing, no auth required
+  // Protected app routes
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/privacy" element={<PrivacySettings />} />
-          <Route path="/account" element={<AccountSettings />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/predictor" element={<PhasePredictor />} />
-          <Route path="/landing" element={<LandingPage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Routes>
-      </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/privacy" element={<PrivacySettings />} />
+      <Route path="/account" element={<AccountSettings />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/predictor" element={<PhasePredictor />} />
+      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/admin" element={<AdminDashboard />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
       <Toaster />
-    </div>
+    </BrowserRouter>
   );
 }
 
