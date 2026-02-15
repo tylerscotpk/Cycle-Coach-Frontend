@@ -105,16 +105,18 @@ function AppContent() {
     return <PartnerConsent onConsentGranted={handleConsentGranted} />;
   }
 
-  // Protected app routes
+  // Protected app routes (for paying users)
   return (
     <Routes>
-      <Route path="/" element={<Dashboard />} />
+      <Route path="/app" element={<Dashboard />} />
       <Route path="/privacy" element={<PrivacySettings />} />
       <Route path="/account" element={<AccountSettings />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/predictor" element={<PhasePredictor />} />
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/admin" element={<AdminDashboard />} />
+      {/* Redirect authenticated users from / to /app */}
+      <Route path="/" element={<Dashboard />} />
     </Routes>
   );
 }
