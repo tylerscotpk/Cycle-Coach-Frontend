@@ -136,7 +136,7 @@ const InfoLogin = () => {
                     type="text"
                     value={licenseKey}
                     onChange={(e) => setLicenseKey(e.target.value)}
-                    placeholder="CC-XXXX-XXXX-XXXX"
+                    placeholder="XXXX-XXXX-XXXX-XXXX"
                     className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 font-mono"
                     data-testid="license-key-input"
                   />
