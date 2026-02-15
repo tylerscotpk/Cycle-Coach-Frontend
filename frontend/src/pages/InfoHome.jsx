@@ -37,7 +37,7 @@ const InfoHome = () => {
       <section className="py-24 px-6 border-t border-slate-800/50">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 tracking-tight">
-            A Smarter Way to Understand Each Other
+            A Better Way to Understand Her
           </h2>
           <p className="text-lg text-slate-400 leading-relaxed">
             Most couples don't struggle because they're incompatible. They struggle because they're unsynced. Cycle Coach gives you a clear, coach-like framework for understanding the emotional rhythm behind the cycle — so you can show up with the right energy at the right time.
