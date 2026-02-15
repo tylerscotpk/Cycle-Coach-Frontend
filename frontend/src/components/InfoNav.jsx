@@ -10,6 +10,7 @@ const InfoNav = () => {
     { path: '/info', label: 'Home' },
     { path: '/about', label: 'About' },
     { path: '/signup', label: 'Sign Up' },
+    { path: '/login', label: 'Login' },
     { path: '/info/contact', label: 'Contact' },
   ];
 
