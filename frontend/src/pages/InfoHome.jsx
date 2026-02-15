@@ -16,7 +16,7 @@ const InfoHome = () => {
         
         <div className="relative z-10 max-w-4xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight mb-6" data-testid="hero-headline">
-            Train Your Relationship<br />Like a Team
+            The Relationship<br />Game-Changer for Men
           </h1>
           <p className="text-xl sm:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed mb-10">
             Cycle Coach gives you the emotional pattern behind the menstrual cycle so you can communicate better, support smarter, and stay in sync.
