@@ -63,6 +63,16 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 
 ## Changelog
 
+### 2025-02-15 - Informational Website Created
+- **Added:** New informational website pages at `/info`, `/about`, `/signup`, `/info/contact`
+- **Created:** `InfoHome.jsx` - Landing page with hero, sections, app previews, and CTA
+- **Created:** `InfoAbout.jsx` - About page explaining Cycle Coach
+- **Created:** `InfoPricing.jsx` - Pricing/Sign Up page with 3 Stripe-linked plans ($35.99/year)
+- **Created:** `InfoContact.jsx` - Contact form (sends to cyclecoach4men@gmail.com internally)
+- **Created:** `InfoNav.jsx` - Navigation component with mobile menu
+- **Updated:** `App.js` to handle info website routes separately from app routes
+- **Feature:** Mobile-responsive design with hamburger menu
+
 ### 2025-02-02 - Cancel Subscription Feature
 - **Added:** Backend endpoint `POST /api/cancel-subscription` with Stripe integration
 - **Added:** Confirmation modal in Account Settings page using AlertDialog
