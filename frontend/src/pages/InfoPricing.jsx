@@ -1,7 +1,13 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { LocalStorage } from '@/utils/localStorageManager';
 import InfoNav from '@/components/InfoNav';
+
+const API = process.env.REACT_APP_BACKEND_URL;
 
 const PLANS = [
   {
