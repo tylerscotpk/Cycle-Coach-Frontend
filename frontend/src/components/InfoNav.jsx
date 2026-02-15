@@ -6,8 +6,9 @@ const InfoNav = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Navigation links - Home, About, Sign Up, Login, Contact
   const navLinks = [
-    { path: '/info', label: 'Home' },
+    { path: '/', label: 'Home' },
     { path: '/about', label: 'About' },
     { path: '/signup', label: 'Sign Up' },
     { path: '/login', label: 'Login' },
@@ -15,7 +16,7 @@ const InfoNav = () => {
   ];
 
   const isActive = (path) => {
-    if (path === '/info') {
+    if (path === '/' || path === '/info') {
       return location.pathname === '/info' || location.pathname === '/';
     }
     return location.pathname === path;
