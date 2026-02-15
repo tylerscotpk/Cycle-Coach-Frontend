@@ -14,6 +14,12 @@ import StatePrivacyWaiver from "@/components/StatePrivacyWaiver";
 import { Toaster } from "@/components/ui/sonner";
 import { LocalStorage } from "@/utils/localStorageManager";
 
+// Informational Website Pages
+import InfoHome from "@/pages/InfoHome";
+import InfoAbout from "@/pages/InfoAbout";
+import InfoPricing from "@/pages/InfoPricing";
+import InfoContact from "@/pages/InfoContact";
+
 function App() {
   // LOCAL-ONLY MODE: No server authentication
   const [isUnlocked, setIsUnlocked] = useState(false);
