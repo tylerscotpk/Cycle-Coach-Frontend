@@ -86,6 +86,18 @@ function AppContent() {
     );
   }
 
+  const handleUnlock = () => {
+    setIsUnlocked(true);
+  };
+
+  const handleLocationComplete = () => {
+    setHasLocationSetup(true);
+  };
+
+  const handleConsentGranted = () => {
+    setHasConsent(true);
+  };
+
   // Show paywall if not unlocked
   if (!isUnlocked) {
     return <Paywall onUnlock={handleUnlock} />;
