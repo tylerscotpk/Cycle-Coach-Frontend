@@ -36,32 +36,26 @@ function AppContent() {
   }, []);
 
   const checkAppState = () => {
-    const unlocked = LocalStorage.isUnlocked();
-    setIsUnlocked(unlocked);
-    
-    if (unlocked) {
-      const locationSetup = LocalStorage.hasCompletedLocationSetup();
-      setHasLocationSetup(locationSetup);
+    try {
+      const unlocked = LocalStorage.isUnlocked();
+      setIsUnlocked(unlocked);
       
-      if (locationSetup) {
-        const consent = LocalStorage.getConsent();
-        setHasConsent(consent?.granted === true);
+      if (unlocked) {
+        const locationSetup = LocalStorage.hasCompletedLocationSetup();
+        setHasLocationSetup(locationSetup);
+        
+        if (locationSetup) {
+          const consent = LocalStorage.getConsent();
+          setHasConsent(consent?.granted === true);
+        }
       }
+    } catch (error) {
+      console.error('Error checking app state:', error);
+      // On error, default to showing public routes
+      setIsUnlocked(false);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
-  };
-
-  const handleUnlock = () => {
-    setIsUnlocked(true);
-  };
-
-  const handleLocationComplete = () => {
-    setHasLocationSetup(true);
-  };
-
-  const handleConsentGranted = () => {
-    setHasConsent(true);
   };
 
   // Check if current route is public (bypasses paywall)
@@ -69,15 +63,7 @@ function AppContent() {
     location.pathname === route || location.pathname.startsWith('/info')
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
-
-  // Public routes - render directly without paywall
+  // Always show public routes immediately without waiting for localStorage check
   if (isPublicRoute) {
     return (
       <Routes>
@@ -89,6 +75,14 @@ function AppContent() {
         <Route path="/info/contact" element={<InfoContact />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
     );
   }
 
