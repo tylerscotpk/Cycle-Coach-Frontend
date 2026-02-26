@@ -171,14 +171,15 @@ const InfoPricing = () => {
               <Card 
                 key={plan.id}
                 className={`bg-slate-900/80 border-slate-700/50 flex flex-col ${
-                  plan.highlight ? 'ring-2 ring-cyan-500/50 border-cyan-500/30' : ''
+                  plan.highlight === 'cyan' ? 'ring-2 ring-cyan-500/50 border-cyan-500/30' : 
+                  plan.highlight === 'green' ? 'ring-2 ring-emerald-500/50 border-emerald-500/30' : ''
                 }`}
                 data-testid={`plan-${plan.id}`}
               >
                 <CardHeader className="flex-1">
-                  {plan.highlight && (
-                    <div className="text-xs text-cyan-400 font-semibold uppercase tracking-wider mb-2">
-                      Most Popular
+                  {plan.badge && (
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 ${plan.badgeColor}`}>
+                      {plan.badge}
                     </div>
                   )}
                   <CardTitle className="text-white text-2xl font-bold">
@@ -196,8 +197,10 @@ const InfoPricing = () => {
                   <Button
                     onClick={() => handleSelectPlan(plan)}
                     className={`w-full py-6 text-lg font-semibold ${
-                      plan.highlight 
+                      plan.buttonStyle === 'cyan' 
                         ? 'bg-cyan-500 hover:bg-cyan-600 text-white' 
+                        : plan.buttonStyle === 'green'
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
                         : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-600'
                     }`}
                     data-testid={`select-${plan.id}-btn`}
