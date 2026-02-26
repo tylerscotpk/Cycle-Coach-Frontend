@@ -2,6 +2,9 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import InfoNav from '@/components/InfoNav';
 
+// Cycle Coach circular icon
+const CYCLE_COACH_ICON = "https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png";
+
 const InfoHome = () => {
   return (
     <div className="min-h-screen bg-slate-950">
@@ -15,11 +18,26 @@ const InfoHome = () => {
         </div>
         
         <div className="relative z-10 max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight mb-6" data-testid="hero-headline">
+          {/* Centered Icon */}
+          <div className="flex justify-center mb-8">
+            <img 
+              src={CYCLE_COACH_ICON} 
+              alt="Cycle Coach" 
+              className="w-24 h-24 sm:w-28 sm:h-28 object-contain"
+            />
+          </div>
+          
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight mb-4" data-testid="hero-headline">
             The Relationship<br />Game-Changer for Men
           </h1>
-          <p className="text-xl sm:text-2xl text-slate-400 max-w-3xl mx-auto leading-relaxed mb-10">
-            Cycle Coach gives you the emotional pattern behind the menstrual cycle so you can communicate better, support smarter, and stay in sync.
+          
+          {/* Teal Subheading */}
+          <p className="text-xl sm:text-2xl text-cyan-400 font-light mb-8">
+            Partners who track together — stay together
+          </p>
+          
+          <p className="text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed mb-10">
+            Cycle Coach is your daily playbook for understanding the emotional rhythm behind the menstrual cycle — so you can lead with confidence, support her better, and win the relationship.
           </p>
           <Link to="/about">
             <Button 
