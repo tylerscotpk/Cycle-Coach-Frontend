@@ -16,7 +16,7 @@ const PLANS = [
     price: '$3.99',
     period: '/month',
     description: 'A flexible month-to-month plan for men who want consistent guidance and support without long-term commitment.',
-    paymentLink: 'https://buy.stripe.com/7sYbJ219f3rG7F86j953O04',
+    paymentLink: process.env.REACT_APP_STRIPE_MONTHLY_LINK,
     highlight: false,
   },
   {
@@ -25,7 +25,7 @@ const PLANS = [
     price: '$10.49',
     period: '/3 months',
     description: 'A seasonal approach that builds rhythm and momentum. Perfect for couples who want deeper structure and stability.',
-    paymentLink: 'https://buy.stripe.com/4gM3cw05b5zO7F86j953O07',
+    paymentLink: process.env.REACT_APP_STRIPE_QUARTERLY_LINK,
     highlight: true,
   },
   {
@@ -34,7 +34,7 @@ const PLANS = [
     price: '$35.99',
     period: '/year',
     description: 'The full-year plan for men committed to long-term growth, mastery, and leading their relationship with intention.',
-    paymentLink: 'https://buy.stripe.com/aFa7sMg491jy8Jc36X53O06',
+    paymentLink: process.env.REACT_APP_STRIPE_ANNUAL_LINK,
     highlight: false,
   },
 ];
