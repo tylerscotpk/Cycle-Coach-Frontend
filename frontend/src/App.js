@@ -219,14 +219,6 @@ function AppContent() {
       </Routes>
     );
   }
-        <Route path="/login" element={<InfoLogin />} />
-        <Route path="/forgot-password" element={<InfoForgotPassword />} />
-        <Route path="/reset-password" element={<InfoResetPassword />} />
-        <Route path="/info/contact" element={<InfoContact />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-      </Routes>
-    );
-  }
 
   // Protected app routes - show setup flows if needed
   if (auth.isAuthenticated && auth.hasSubscription) {
