@@ -1,13 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { LocalStorage } from '@/utils/localStorageManager';
 import InfoNav from '@/components/InfoNav';
-
-const API = process.env.REACT_APP_BACKEND_URL;
 
 const PLANS = [
   {
@@ -49,61 +44,18 @@ const PLANS = [
 ];
 
 const InfoPricing = () => {
-  const [licenseKey, setLicenseKey] = useState('');
-  const [isValidating, setIsValidating] = useState(false);
-
   const handleSelectPlan = (plan) => {
-    window.location.href = plan.paymentLink;
-  };
-
-  const handleValidateKey = async (e) => {
-    e.preventDefault();
-    
-    if (!licenseKey.trim()) {
-      toast.error('Please enter your license key');
-      return;
-    }
-
-    setIsValidating(true);
-
-    try {
-      const normalizedKey = licenseKey.trim().toUpperCase();
-      
-      const response = await fetch(`${API}/api/license/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ license_key: normalizedKey })
-      });
-      
-      const result = await response.json();
-      
-      if (result.valid) {
-        LocalStorage.saveLicenseKey(normalizedKey);
-        LocalStorage.saveSubscriptionTier({
-          tier: result.tier,
-          tier_display: result.tier_display,
-          has_partner_profile: result.has_partner_profile,
-          has_ai_wingman: result.has_ai_wingman,
-          expires_at: result.expires_at,
-          email: result.email,
-          is_trial: result.is_trial,
-          created_at: result.created_at,
-          customer_id: result.customer_id,
-          subscription_id: result.subscription_id,
-          cancels_at: result.cancels_at,
-          is_cancelled: result.is_cancelled
-        });
-        
-        toast.success('Welcome to Cycle Coach!');
-        window.location.href = '/app';
-      } else {
-        toast.error(result.message || 'Invalid license key. Please check and try again.');
-      }
-    } catch (error) {
-      console.error('License validation error:', error);
-      toast.error('Unable to validate license. Please try again.');
-    } finally {
-      setIsValidating(false);
+    // Check if user is logged in
+    const user = localStorage.getItem('user');
+    if (user) {
+      // If logged in, add user context to Stripe checkout
+      const userData = JSON.parse(user);
+      const url = new URL(plan.paymentLink);
+      url.searchParams.set('prefilled_email', userData.email);
+      window.location.href = url.toString();
+    } else {
+      // If not logged in, go directly to Stripe
+      window.location.href = plan.paymentLink;
     }
   };
 
@@ -124,42 +76,6 @@ const InfoPricing = () => {
           <p className="text-xl text-slate-400 max-w-2xl mx-auto">
             Three ways to stay in sync — pick the one that fits your season.
           </p>
-        </div>
-      </section>
-
-      {/* Already Have a Key Section */}
-      <section className="pt-8 px-6">
-        <div className="max-w-md mx-auto">
-          <Card className="bg-slate-900/60 border-slate-700/50">
-            <CardContent className="py-6">
-              <form onSubmit={handleValidateKey} className="space-y-4">
-                <div className="text-center mb-4">
-                  <p className="text-slate-300 font-medium">Already have a login key?</p>
-                </div>
-                <div>
-                  <label className="block text-slate-400 text-sm mb-2">
-                    Enter your login key
-                  </label>
-                  <Input
-                    type="text"
-                    value={licenseKey}
-                    onChange={(e) => setLicenseKey(e.target.value)}
-                    placeholder="XXXX-XXXX-XXXX-XXXX"
-                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 font-mono"
-                    data-testid="pricing-license-key-input"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={isValidating}
-                  className="w-full bg-cyan-500 hover:bg-cyan-600 text-white"
-                  data-testid="pricing-validate-key-btn"
-                >
-                  {isValidating ? 'Validating...' : 'Submit'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
         </div>
       </section>
 
@@ -237,6 +153,18 @@ const InfoPricing = () => {
               <span>Cancel Anytime</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Already have account link */}
+      <section className="pb-16 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-slate-500">
+            Already have an account?{' '}
+            <Link to="/login" className="text-cyan-400 hover:text-cyan-300">
+              Log In
+            </Link>
+          </p>
         </div>
       </section>
 
