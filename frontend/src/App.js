@@ -174,23 +174,34 @@ function AppContent() {
     );
   }
 
-  // ACTIVE USER visiting public routes -> redirect to app
+  // ============ ROUTING RULES ============
+  
+  // Rule 1: ACTIVE USER (logged in + has subscription/trial) visiting public routes
+  // -> Redirect to /app (except /admin)
   if (auth.isAuthenticated && auth.hasSubscription && isPublicRoute && location.pathname !== '/admin') {
     return <Navigate to="/app" replace />;
   }
 
-  // Logged in but NO subscription visiting app routes -> redirect to pricing
+  // Rule 2: Logged in but NO subscription trying to access /app routes
+  // -> Redirect to pricing
   if (auth.isAuthenticated && !auth.hasSubscription && location.pathname.startsWith('/app')) {
     return <Navigate to="/pricing" replace />;
   }
 
-  // Not logged in trying to access app routes -> redirect to login
+  // Rule 3: NOT logged in trying to access /app routes
+  // -> Redirect to login
   if (!auth.isAuthenticated && location.pathname.startsWith('/app')) {
     return <Navigate to="/login" replace />;
   }
 
-  // Public routes
-  if (isPublicRoute) {
+  // Rule 4: Logged in but NO subscription on public routes
+  // -> Allow them to view public pages (they can browse Home, About, etc.)
+  // -> Primary CTA on these pages should route them to Pricing
+  // (This is handled by the public routes below - no redirect needed)
+
+  // ============ PUBLIC ROUTES ============
+  // Accessible by: logged-out visitors AND logged-in users without subscription
+  if (isPublicRoute || (auth.isAuthenticated && !auth.hasSubscription)) {
     return (
       <Routes>
         <Route path="/" element={<InfoHome />} />
@@ -198,6 +209,16 @@ function AppContent() {
         <Route path="/about" element={<InfoAbout />} />
         <Route path="/pricing" element={<InfoPricing />} />
         <Route path="/signup" element={<InfoSignUp />} />
+        <Route path="/login" element={<InfoLogin />} />
+        <Route path="/forgot-password" element={<InfoForgotPassword />} />
+        <Route path="/reset-password" element={<InfoResetPassword />} />
+        <Route path="/info/contact" element={<InfoContact />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        {/* Catch-all for logged-in non-subscribed users */}
+        <Route path="*" element={<Navigate to="/pricing" replace />} />
+      </Routes>
+    );
+  }
         <Route path="/login" element={<InfoLogin />} />
         <Route path="/forgot-password" element={<InfoForgotPassword />} />
         <Route path="/reset-password" element={<InfoResetPassword />} />
