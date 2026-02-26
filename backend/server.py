@@ -2293,12 +2293,12 @@ async def request_trial_access(request: TrialRequestInput):
             line_items=[{
                 'price_data': {
                     'currency': 'usd',
-                    'unit_amount': SUBSCRIPTION_TIERS["winning"]["price_cents"],  # $1.99
+                    'unit_amount': SUBSCRIPTION_TIERS["monthly"]["price_cents"],
                     'recurring': {
                         'interval': 'month'
                     },
                     'product_data': {
-                        'name': 'Cycle Coach - Winning Game Plan',
+                        'name': 'Cycle Coach - Monthly Training Plan',
                         'description': 'Monthly subscription after 30-day Free Training',
                     },
                 },
@@ -2309,7 +2309,7 @@ async def request_trial_access(request: TrialRequestInput):
                 'trial_period_days': 30,
                 'metadata': {
                     'tier': 'free_training',
-                    'converts_to': 'winning'
+                    'converts_to': 'monthly'
                 }
             },
             customer_email=email,
