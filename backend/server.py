@@ -599,7 +599,7 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
                 trial_end = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00')) if isinstance(trial_ends_at, str) else trial_ends_at
                 if trial_end > datetime.now(timezone.utc):
                     has_subscription = True
-            except:
+            except Exception:
                 pass
         
         return {
