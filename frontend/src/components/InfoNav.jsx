@@ -2,6 +2,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
+// Cycle Coach circular icon
+const CYCLE_COACH_ICON = "https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png";
+
 const InfoNav = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -26,8 +29,13 @@ const InfoNav = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/50">
       <div className="max-w-6xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+          {/* Logo with Icon */}
           <Link to="/" className="flex items-center gap-2">
+            <img 
+              src={CYCLE_COACH_ICON} 
+              alt="Cycle Coach" 
+              className="w-8 h-8 object-contain"
+            />
             <span className="text-xl font-bold text-white tracking-tight">
               Cycle<span className="text-cyan-500">Coach</span>
             </span>
