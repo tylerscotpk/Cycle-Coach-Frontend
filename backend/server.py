@@ -261,6 +261,362 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
     response.delete_cookie(key="session_token", path="/")
     return {"message": "Logged out successfully"}
 
+# ============ EMAIL/PASSWORD AUTH ROUTES ============
+
+import hashlib
+
+def hash_password(password: str) -> str:
+    """Hash password using SHA-256 with salt"""
+    salt = os.environ.get('PASSWORD_SALT', 'cyclecoach_default_salt_2024')
+    return hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+
+def generate_reset_token() -> str:
+    """Generate a secure reset token"""
+    return secrets.token_urlsafe(32)
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    confirm_password: str
+    phone: Optional[str] = None
+
+class LoginRequest(BaseModel):
+    email_or_phone: str
+    password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@api_router.post("/auth/register")
+async def register_user(request: RegisterRequest, response: Response):
+    """Register a new user with email and password"""
+    try:
+        email = request.email.lower().strip()
+        
+        # Validate email format
+        if '@' not in email or '.' not in email:
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        
+        # Validate password
+        if len(request.password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        
+        if request.password != request.confirm_password:
+            raise HTTPException(status_code=400, detail="Passwords do not match")
+        
+        # Check if user already exists
+        existing_user = await db.auth_users.find_one({"email": email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="An account with this email already exists")
+        
+        # Check if phone already exists (if provided)
+        if request.phone:
+            phone = request.phone.strip()
+            existing_phone = await db.auth_users.find_one({"phone": phone})
+            if existing_phone:
+                raise HTTPException(status_code=400, detail="An account with this phone number already exists")
+        
+        # Create user
+        user_id = str(uuid.uuid4())
+        password_hash = hash_password(request.password)
+        
+        auth_user = {
+            "id": user_id,
+            "email": email,
+            "phone": request.phone.strip() if request.phone else None,
+            "password_hash": password_hash,
+            "is_active": True,
+            "subscription_status": None,  # No subscription yet
+            "subscription_id": None,
+            "subscription_tier": None,
+            "trial_ends_at": None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.auth_users.insert_one(auth_user)
+        
+        # Create session and log user in
+        session_token = secrets.token_urlsafe(32)
+        session = {
+            "user_id": user_id,
+            "session_token": session_token,
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.user_sessions.insert_one(session)
+        
+        # Set session cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=30 * 24 * 60 * 60  # 30 days
+        )
+        
+        logger.info(f"New user registered: {email}")
+        
+        return {
+            "success": True,
+            "message": "Account created successfully",
+            "user": {
+                "id": user_id,
+                "email": email,
+                "has_subscription": False
+            },
+            "session_token": session_token
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create account")
+
+@api_router.post("/auth/login")
+async def login_user(request: LoginRequest, response: Response):
+    """Login with email/phone and password"""
+    try:
+        identifier = request.email_or_phone.lower().strip()
+        
+        # Find user by email or phone
+        user = await db.auth_users.find_one({
+            "$or": [
+                {"email": identifier},
+                {"phone": identifier}
+            ]
+        })
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid email/phone or password")
+        
+        # Verify password
+        password_hash = hash_password(request.password)
+        if user.get("password_hash") != password_hash:
+            raise HTTPException(status_code=401, detail="Invalid email/phone or password")
+        
+        # Check if account is active
+        if not user.get("is_active", True):
+            raise HTTPException(status_code=401, detail="Account is disabled")
+        
+        # Create new session
+        session_token = secrets.token_urlsafe(32)
+        session = {
+            "user_id": user["id"],
+            "session_token": session_token,
+            "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.user_sessions.insert_one(session)
+        
+        # Set session cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=30 * 24 * 60 * 60  # 30 days
+        )
+        
+        # Check subscription status
+        has_subscription = False
+        subscription_status = user.get("subscription_status")
+        trial_ends_at = user.get("trial_ends_at")
+        
+        if subscription_status == "active":
+            has_subscription = True
+        elif trial_ends_at:
+            trial_end = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00')) if isinstance(trial_ends_at, str) else trial_ends_at
+            if trial_end > datetime.now(timezone.utc):
+                has_subscription = True
+        
+        logger.info(f"User logged in: {user.get('email')}")
+        
+        return {
+            "success": True,
+            "message": "Login successful",
+            "user": {
+                "id": user["id"],
+                "email": user.get("email"),
+                "has_subscription": has_subscription,
+                "subscription_status": subscription_status,
+                "subscription_tier": user.get("subscription_tier")
+            },
+            "session_token": session_token
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Login failed")
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send password reset email"""
+    try:
+        email = request.email.lower().strip()
+        
+        # Find user
+        user = await db.auth_users.find_one({"email": email})
+        
+        # Always return success to prevent email enumeration
+        if not user:
+            return {"success": True, "message": "If an account exists, a reset link has been sent"}
+        
+        # Generate reset token
+        reset_token = generate_reset_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        
+        # Store reset token
+        await db.password_resets.delete_many({"user_id": user["id"]})  # Remove old tokens
+        await db.password_resets.insert_one({
+            "user_id": user["id"],
+            "email": email,
+            "token": reset_token,
+            "expires_at": expires_at.isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Send reset email
+        if RESEND_API_KEY:
+            try:
+                frontend_url = os.environ.get('FRONTEND_URL', 'https://cyclecoach.net')
+                reset_link = f"{frontend_url}/reset-password?token={reset_token}"
+                
+                resend.emails.send({
+                    "from": SENDER_EMAIL,
+                    "to": email,
+                    "subject": "Reset Your Cycle Coach Password",
+                    "html": f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2 style="color: #0891b2;">Reset Your Password</h2>
+                        <p>You requested to reset your Cycle Coach password.</p>
+                        <p>Click the button below to set a new password:</p>
+                        <a href="{reset_link}" style="display: inline-block; background-color: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">Reset Password</a>
+                        <p style="color: #666; font-size: 14px;">This link expires in 1 hour.</p>
+                        <p style="color: #666; font-size: 14px;">If you didn't request this, you can ignore this email.</p>
+                    </div>
+                    """
+                })
+                logger.info(f"Password reset email sent to: {email}")
+            except Exception as e:
+                logger.error(f"Failed to send reset email: {str(e)}")
+        
+        return {"success": True, "message": "If an account exists, a reset link has been sent"}
+        
+    except Exception as e:
+        logger.error(f"Forgot password error: {str(e)}")
+        return {"success": True, "message": "If an account exists, a reset link has been sent"}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password using token"""
+    try:
+        # Find reset token
+        reset_record = await db.password_resets.find_one({"token": request.token})
+        
+        if not reset_record:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+        
+        # Check if expired
+        expires_at = datetime.fromisoformat(reset_record["expires_at"].replace('Z', '+00:00'))
+        if expires_at < datetime.now(timezone.utc):
+            await db.password_resets.delete_one({"token": request.token})
+            raise HTTPException(status_code=400, detail="Reset link has expired")
+        
+        # Validate new password
+        if len(request.new_password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        
+        # Update password
+        password_hash = hash_password(request.new_password)
+        await db.auth_users.update_one(
+            {"id": reset_record["user_id"]},
+            {"$set": {"password_hash": password_hash, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        # Delete used token
+        await db.password_resets.delete_one({"token": request.token})
+        
+        # Invalidate all existing sessions
+        await db.user_sessions.delete_many({"user_id": reset_record["user_id"]})
+        
+        logger.info(f"Password reset for user: {reset_record['email']}")
+        
+        return {"success": True, "message": "Password reset successfully. Please log in with your new password."}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reset password error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to reset password")
+
+@api_router.get("/auth/check")
+async def check_auth(session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
+    """Check if user is authenticated and get subscription status"""
+    try:
+        token = session_token
+        if not token and authorization and authorization.startswith("Bearer "):
+            token = authorization.replace("Bearer ", "")
+        
+        if not token:
+            return {"authenticated": False, "has_subscription": False}
+        
+        # Find session
+        session = await db.user_sessions.find_one({"session_token": token})
+        if not session:
+            return {"authenticated": False, "has_subscription": False}
+        
+        # Check if expired
+        expires_at = session.get('expires_at')
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+        if expires_at < datetime.now(timezone.utc):
+            return {"authenticated": False, "has_subscription": False}
+        
+        # Get user
+        user = await db.auth_users.find_one({"id": session["user_id"]})
+        if not user:
+            return {"authenticated": False, "has_subscription": False}
+        
+        # Check subscription status
+        has_subscription = False
+        subscription_status = user.get("subscription_status")
+        trial_ends_at = user.get("trial_ends_at")
+        
+        if subscription_status == "active":
+            has_subscription = True
+        elif trial_ends_at:
+            try:
+                trial_end = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00')) if isinstance(trial_ends_at, str) else trial_ends_at
+                if trial_end > datetime.now(timezone.utc):
+                    has_subscription = True
+            except:
+                pass
+        
+        return {
+            "authenticated": True,
+            "has_subscription": has_subscription,
+            "user": {
+                "id": user["id"],
+                "email": user.get("email"),
+                "subscription_status": subscription_status,
+                "subscription_tier": user.get("subscription_tier")
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Auth check error: {str(e)}")
+        return {"authenticated": False, "has_subscription": False}
+
 # ============ PARTNER PROFILE ROUTES ============
 
 @api_router.post("/partner", response_model=PartnerProfile)
