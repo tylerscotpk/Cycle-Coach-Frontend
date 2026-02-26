@@ -30,7 +30,7 @@ const InfoAbout = () => {
             Why It Works
           </h2>
           <p className="text-lg text-slate-400 leading-relaxed">
-            The menstrual cycle follows a consistent emotional rhythm. Once you understand that rhythm, everything becomes clearer: conversations, planning, intimacy, and conflict. Cycle Coach breaks the pattern down into simple, actionable insights you can use every day.
+            The menstrual cycle follows a consistent rhythm that results in predictable emotional patterns. Once you understand that rhythm, everything becomes clearer: conversations, planning, intimacy, and conflict. Cycle Coach breaks the pattern down into simple, actionable insights you can use every day.
           </p>
         </div>
       </section>
