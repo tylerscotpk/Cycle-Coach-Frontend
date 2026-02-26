@@ -32,7 +32,7 @@ const InfoHome = () => {
           </h1>
           
           {/* Teal Subheading */}
-          <p className="text-xl sm:text-2xl text-cyan-400 font-light mb-8">
+          <p className="text-xl sm:text-2xl text-cyan-400 font-light mb-4">
             Partners who track together — stay together
           </p>
           
