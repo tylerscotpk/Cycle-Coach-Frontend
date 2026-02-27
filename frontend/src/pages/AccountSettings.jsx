@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { LocalStorage } from '../utils/localStorageManager';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,67 +27,59 @@ const AccountSettings = () => {
     loadSubscriptionData();
   }, []);
 
-  const loadSubscriptionData = () => {
+  const loadSubscriptionData = async () => {
     try {
-      const tierData = LocalStorage.getSubscriptionTier();
-      const licenseData = LocalStorage.getLicenseKey();
-      
-      setSubscription({
-        tier: tierData?.tier || 'unknown',
-        email: tierData?.email || licenseData?.email || null,
-        customerId: tierData?.customer_id || null,
-        subscriptionId: tierData?.subscription_id || null,
-        expiresAt: tierData?.expires_at || null,
-        cancelsAt: tierData?.cancels_at || null,
-        isCancelled: tierData?.is_cancelled || false,
-        activatedAt: licenseData?.activatedAt || null
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await fetch(`${API}/api/account/subscription`, {
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+        credentials: 'include'
       });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          navigate('/login');
+          return;
+        }
+        throw new Error('Failed to load subscription');
+      }
+
+      const data = await response.json();
+      setSubscription(data);
     } catch (error) {
       console.error('Error loading subscription:', error);
+      toast.error('Failed to load subscription data');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancelSubscription = async () => {
-    if (!subscription?.customerId || !subscription?.subscriptionId) {
-      toast.error('Unable to cancel: Missing subscription information');
-      return;
-    }
-
     setCancelling(true);
     try {
-      const response = await fetch(`${API}/api/cancel-subscription`, {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch(`${API}/api/account/cancel-subscription`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: subscription.customerId,
-          subscriptionId: subscription.subscriptionId
-        })
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+        credentials: 'include'
       });
 
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Update local storage with cancellation info
-        const tierData = LocalStorage.getSubscriptionTier();
-        LocalStorage.saveSubscriptionTier({
-          ...tierData,
-          cancels_at: result.cancels_at,
-          is_cancelled: true
-        });
-
-        // Update local state
         setSubscription(prev => ({
           ...prev,
-          cancelsAt: result.cancels_at,
-          isCancelled: true
+          subscription_status: 'cancelling',
+          cancels_at: result.cancels_at
         }));
-
         setShowCancelModal(false);
         toast.success('Subscription cancelled. You have access until ' + formatDate(result.cancels_at));
       } else {
-        toast.error(result.message || 'Failed to cancel subscription');
+        toast.error(result.detail || result.message || 'Failed to cancel subscription');
       }
     } catch (error) {
       console.error('Error cancelling subscription:', error);
@@ -96,14 +87,6 @@ const AccountSettings = () => {
     } finally {
       setCancelling(false);
     }
-  };
-
-  const openCancelModal = () => {
-    if (!subscription?.customerId || !subscription?.subscriptionId) {
-      toast.error('Unable to cancel: Missing subscription information. Please contact support.');
-      return;
-    }
-    setShowCancelModal(true);
   };
 
   const formatDate = (dateString) => {
@@ -119,12 +102,12 @@ const AccountSettings = () => {
     const names = {
       'monthly': 'Monthly Training Plan',
       'quarterly': 'Quarter by Quarter',
+      'annual': 'Full Season Strategy',
       'yearly': 'Full Season Strategy',
       'lifetime': 'Lifetime Access',
       'grandfathered': 'Lifetime Access (Grandfathered)',
-      'free_trial': 'Free Trial',
-      'premium': 'Premium',
-      'basic': 'Basic'
+      'basic': 'Basic',
+      'premium': 'Premium'
     };
     return names[tier] || tier || 'Unknown';
   };
@@ -133,6 +116,7 @@ const AccountSettings = () => {
     const colors = {
       'monthly': 'bg-green-500/20 text-green-400 border-green-500/30',
       'quarterly': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+      'annual': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
       'yearly': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
       'lifetime': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
       'grandfathered': 'bg-purple-500/20 text-purple-400 border-purple-500/30'
@@ -142,9 +126,10 @@ const AccountSettings = () => {
 
   const getBillingAmount = (tier) => {
     const prices = {
-      'monthly': '$3.99',
-      'quarterly': '$10.49',
-      'yearly': '$35.91',
+      'monthly': '$3',
+      'quarterly': '$8',
+      'annual': '$30',
+      'yearly': '$30',
       'lifetime': 'Paid in full',
       'grandfathered': 'Free'
     };
@@ -155,6 +140,7 @@ const AccountSettings = () => {
     const cycles = {
       'monthly': 'per month',
       'quarterly': 'every 3 months',
+      'annual': 'per year',
       'yearly': 'per year',
       'lifetime': '',
       'grandfathered': ''
@@ -162,25 +148,13 @@ const AccountSettings = () => {
     return cycles[tier] || '';
   };
 
-  const getNextBillingDate = () => {
-    // If cancelled, show when access ends
-    if (subscription?.isCancelled && subscription?.cancelsAt) {
-      return subscription.cancelsAt;
-    }
-    // Otherwise show next billing date from expires_at
-    if (subscription?.expiresAt) {
-      return subscription.expiresAt;
-    }
-    return null;
-  };
+  const isCancelling = subscription?.subscription_status === 'cancelling';
 
   const canCancel = () => {
-    // Can cancel if: has subscription IDs, not already cancelled, and not lifetime/grandfathered
     return (
-      subscription?.customerId &&
-      subscription?.subscriptionId &&
-      !subscription?.isCancelled &&
-      !['lifetime', 'grandfathered'].includes(subscription?.tier)
+      subscription?.stripe_subscription_id &&
+      subscription?.subscription_status === 'active' &&
+      !['lifetime', 'grandfathered'].includes(subscription?.subscription_tier)
     );
   };
 
@@ -198,42 +172,45 @@ const AccountSettings = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">Account Settings</h1>
+            <h1 className="text-3xl font-bold text-white" data-testid="account-settings-title">Account Settings</h1>
             <p className="text-slate-400 mt-1">Manage your subscription and account</p>
           </div>
           <Button
             variant="outline"
             className="border-slate-600 text-slate-300"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/app')}
             data-testid="back-to-dashboard-btn"
           >
-            ← Back to Dashboard
+            Back to Dashboard
           </Button>
         </div>
 
         {/* Subscription Status Card */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-3">
+            <CardTitle className="text-white flex items-center gap-3" data-testid="subscription-status-title">
               Subscription Status
-              <span className={`px-3 py-1 rounded-full text-sm border ${getTierBadgeColor(subscription?.tier)}`}>
-                {getTierDisplayName(subscription?.tier)}
-              </span>
+              {subscription?.subscription_tier && (
+                <span className={`px-3 py-1 rounded-full text-sm border ${getTierBadgeColor(subscription.subscription_tier)}`}>
+                  {getTierDisplayName(subscription.subscription_tier)}
+                </span>
+              )}
             </CardTitle>
             <CardDescription className="text-slate-400">
               Your current plan and billing information
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Status Details */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-slate-900/50 rounded-lg p-4">
                 <p className="text-slate-400 text-sm">Status</p>
-                <p className="text-white font-medium mt-1">
-                  {subscription?.isCancelled ? (
-                    <span className="text-orange-400">Cancels on {formatDate(subscription?.cancelsAt)}</span>
-                  ) : (
+                <p className="text-white font-medium mt-1" data-testid="subscription-status-value">
+                  {isCancelling ? (
+                    <span className="text-orange-400">Cancels {formatDate(subscription?.cancels_at)}</span>
+                  ) : subscription?.subscription_status === 'active' ? (
                     <span className="text-green-400">Active</span>
+                  ) : (
+                    <span className="text-slate-400">{subscription?.subscription_status || 'None'}</span>
                   )}
                 </p>
               </div>
@@ -241,45 +218,31 @@ const AccountSettings = () => {
               <div className="bg-slate-900/50 rounded-lg p-4">
                 <p className="text-slate-400 text-sm">Member Since</p>
                 <p className="text-white font-medium mt-1">
-                  {formatDate(subscription?.activatedAt)}
+                  {formatDate(subscription?.created_at)}
                 </p>
               </div>
 
               {subscription?.email && (
                 <div className="bg-slate-900/50 rounded-lg p-4 col-span-2">
                   <p className="text-slate-400 text-sm">Account Email</p>
-                  <p className="text-white font-medium mt-1">{subscription.email}</p>
+                  <p className="text-white font-medium mt-1" data-testid="account-email">{subscription.email}</p>
                 </div>
               )}
 
-              {/* Billing Information - Only show for recurring subscriptions */}
-              {!['lifetime', 'grandfathered'].includes(subscription?.tier) && (
+              {subscription?.subscription_tier && !['lifetime', 'grandfathered'].includes(subscription.subscription_tier) && (
                 <>
                   <div className="bg-slate-900/50 rounded-lg p-4">
                     <p className="text-slate-400 text-sm">
-                      {subscription?.isCancelled ? 'Access Ends' : 'Next Billing Date'}
+                      {isCancelling ? 'Access Ends' : 'Billing Amount'}
                     </p>
                     <p className="text-white font-medium mt-1">
-                      {subscription?.isCancelled ? (
-                        <span className="text-orange-400">{formatDate(getNextBillingDate())}</span>
-                      ) : (
-                        formatDate(getNextBillingDate()) || 'Not available'
-                      )}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-slate-900/50 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">
-                      {subscription?.isCancelled ? 'Final Amount Paid' : 'Next Billing Amount'}
-                    </p>
-                    <p className="text-white font-medium mt-1">
-                      {subscription?.isCancelled ? (
-                        <span className="text-slate-500">—</span>
+                      {isCancelling ? (
+                        <span className="text-orange-400">{formatDate(subscription?.cancels_at)}</span>
                       ) : (
                         <>
-                          <span className="text-2xl text-cyan-400">{getBillingAmount(subscription?.tier)}</span>
-                          {getBillingCycle(subscription?.tier) && (
-                            <span className="text-slate-400 text-sm ml-1">{getBillingCycle(subscription?.tier)}</span>
+                          <span className="text-2xl text-cyan-400">{getBillingAmount(subscription.subscription_tier)}</span>
+                          {getBillingCycle(subscription.subscription_tier) && (
+                            <span className="text-slate-400 text-sm ml-1">{getBillingCycle(subscription.subscription_tier)}</span>
                           )}
                         </>
                       )}
@@ -290,22 +253,12 @@ const AccountSettings = () => {
             </div>
 
             {/* Cancellation Notice */}
-            {subscription?.isCancelled && (
-              <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+            {isCancelling && (
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4" data-testid="cancellation-notice">
                 <p className="text-orange-400 font-medium">Subscription Cancelled</p>
                 <p className="text-orange-300/80 text-sm mt-1">
-                  Your subscription will end on {formatDate(subscription.cancelsAt)}. 
-                  You will continue to have full access to all features until then.
-                </p>
-              </div>
-            )}
-
-            {/* Lifetime/Grandfathered Notice */}
-            {['lifetime', 'grandfathered'].includes(subscription?.tier) && (
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-                <p className="text-purple-400 font-medium">🎉 Lifetime Access</p>
-                <p className="text-purple-300/80 text-sm mt-1">
-                  You have lifetime access to all Cycle Coach features. No billing, no expiration.
+                  Your subscription will end on {formatDate(subscription.cancels_at)}. 
+                  You will continue to have full access until then.
                 </p>
               </div>
             )}
@@ -314,7 +267,7 @@ const AccountSettings = () => {
             {canCancel() && (
               <div className="pt-4 border-t border-slate-700">
                 <Button
-                  onClick={openCancelModal}
+                  onClick={() => setShowCancelModal(true)}
                   disabled={cancelling}
                   variant="outline"
                   className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
@@ -328,11 +281,11 @@ const AccountSettings = () => {
               </div>
             )}
 
-            {/* No subscription IDs - show message */}
-            {!subscription?.customerId && !['lifetime', 'grandfathered'].includes(subscription?.tier) && (
+            {/* No subscription */}
+            {!subscription?.subscription_status && (
               <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-4">
                 <p className="text-slate-400 text-sm">
-                  To manage your subscription billing, please contact support or manage it through your Stripe account.
+                  No active subscription. <a href="/pricing" className="text-cyan-400 hover:text-cyan-300">Choose a plan</a> to get started.
                 </p>
               </div>
             )}
@@ -349,34 +302,12 @@ const AccountSettings = () => {
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
-              <li className="flex items-center gap-3 text-white">
-                <span className="text-green-400">✓</span>
-                Cycle Tracking & Phase Detection
-              </li>
-              <li className="flex items-center gap-3 text-white">
-                <span className="text-green-400">✓</span>
-                MoodMap Visualizer
-              </li>
-              <li className="flex items-center gap-3 text-white">
-                <span className="text-green-400">✓</span>
-                Phase-Based Tips & Insights
-              </li>
-              <li className="flex items-center gap-3 text-white">
-                <span className="text-green-400">✓</span>
-                Research-Backed Resources
-              </li>
-              <li className="flex items-center gap-3 text-white">
-                <span className="text-green-400">✓</span>
-                Partner Profile & Preferences
-              </li>
-              <li className="flex items-center gap-3 text-white">
-                <span className="text-green-400">✓</span>
-                AI Wingman (Personalized Advice)
-              </li>
-              <li className="flex items-center gap-3 text-white">
-                <span className="text-green-400">✓</span>
-                Push Notifications
-              </li>
+              {['Cycle Tracking & Phase Detection', 'MoodMap Visualizer', 'Phase-Based Tips & Insights', 'Research-Backed Resources', 'Partner Profile & Preferences', 'AI Wingman (Personalized Advice)', 'Push Notifications'].map((feature) => (
+                <li key={feature} className="flex items-center gap-3 text-white">
+                  <span className="text-green-400">&#10003;</span>
+                  {feature}
+                </li>
+              ))}
             </ul>
           </CardContent>
         </Card>
@@ -393,7 +324,7 @@ const AccountSettings = () => {
               onClick={() => navigate('/privacy')}
               data-testid="privacy-settings-link"
             >
-              🔒 Privacy & Data Settings
+              Privacy & Data Settings
             </Button>
             <Button
               variant="outline"
@@ -401,15 +332,15 @@ const AccountSettings = () => {
               onClick={() => navigate('/contact')}
               data-testid="contact-link"
             >
-              ✉️ Contact Support
+              Contact Support
             </Button>
             <Button
               variant="outline"
               className="w-full justify-start border-slate-600 text-slate-300 hover:bg-slate-700"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/app')}
               data-testid="dashboard-link"
             >
-              📊 Back to Dashboard
+              Back to Dashboard
             </Button>
           </CardContent>
         </Card>
@@ -424,14 +355,14 @@ const AccountSettings = () => {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300 space-y-3">
               <p>
-                Are you sure you want to cancel your <span className="text-cyan-400 font-medium">{getTierDisplayName(subscription?.tier)}</span> subscription?
+                Are you sure you want to cancel your <span className="text-cyan-400 font-medium">{getTierDisplayName(subscription?.subscription_tier)}</span> subscription?
               </p>
               <div className="bg-slate-900/50 rounded-lg p-4 mt-4">
                 <p className="text-slate-400 text-sm mb-2">What happens when you cancel:</p>
                 <ul className="text-slate-300 text-sm space-y-1">
-                  <li>• You&apos;ll keep full access until your billing period ends</li>
-                  <li>• No more charges after your current period</li>
-                  <li>• You can resubscribe anytime</li>
+                  <li>You&apos;ll keep full access until your billing period ends</li>
+                  <li>No more charges after your current period</li>
+                  <li>You can resubscribe anytime</li>
                 </ul>
               </div>
             </AlertDialogDescription>
