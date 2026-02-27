@@ -444,6 +444,9 @@ async def register_user(request: RegisterRequest, response: Response):
         
         logger.info(f"New user registered: {email}")
         
+        # Send welcome email (fire and forget, don't block registration)
+        asyncio.create_task(send_welcome_email(email))
+        
         return {
             "success": True,
             "message": "Account created successfully",
