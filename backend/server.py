@@ -2040,6 +2040,22 @@ async def stripe_webhook(request: Request):
             
             logger.info(f"Created {tier} license {license_key} for {customer_email}")
             
+            # Sync subscription status to auth_users collection
+            auth_user_update = await db.auth_users.find_one({"email": customer_email.lower()})
+            if auth_user_update:
+                await db.auth_users.update_one(
+                    {"email": customer_email.lower()},
+                    {"$set": {
+                        "subscription_status": "active",
+                        "subscription_tier": tier,
+                        "stripe_subscription_id": subscription_id,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                logger.info(f"Synced subscription to auth_users for {customer_email}")
+            else:
+                logger.warning(f"No auth_users record found for {customer_email} - user may not have registered yet")
+            
             # Send email with license key
             email_sent = await send_subscription_email(customer_email, license_key, tier)
             
