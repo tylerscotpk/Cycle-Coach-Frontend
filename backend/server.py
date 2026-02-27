@@ -3343,25 +3343,17 @@ async def grant_key(request: GrantKeyRequest):
     }
 
 @api_router.get("/admin/users")
-async def get_all_users(archived: bool = False, cancelled: bool = False, key_type: Optional[str] = None):
-    """Get all users with their license info"""
-    if archived:
-        query = {"is_archived": True}
-    elif cancelled:
-        query = {"is_cancelled": True}
-    else:
-        query = {"is_archived": {"$ne": True}, "is_cancelled": {"$ne": True}}
+async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str] = None):
+    """Get all registered users from auth_users collection"""
+    query = {"is_active": True}
     
-    # Filter by key_type if specified
-    if key_type and not archived and not cancelled:
-        if key_type == 'trial':
-            # Trial includes both explicit 'trial' and missing key_type (legacy)
-            query["$or"] = [{"key_type": "trial"}, {"key_type": {"$exists": False}}, {"key_type": None}]
-        else:
-            query["key_type"] = key_type
+    if cancelled:
+        query = {"subscription_status": {"$in": ["cancelled", "cancelling"]}}
+    elif subscription_tier:
+        query["subscription_tier"] = subscription_tier
     
-    licenses = await db.license_keys.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
-    return {"users": licenses, "count": len(licenses)}
+    users = await db.auth_users.find(query, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(200)
+    return {"users": users, "count": len(users)}
 
 @api_router.post("/admin/archive-user/{email}")
 async def archive_user(email: str):
