@@ -2171,6 +2171,12 @@ async def stripe_webhook(request: Request):
                 {"$set": {"payment_status": "past_due"}}
             )
             
+            # Sync to auth_users
+            await db.auth_users.update_one(
+                {"stripe_subscription_id": subscription_id},
+                {"$set": {"subscription_status": "past_due", "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            
             return {"status": "payment_failed_recorded"}
         
         return {"status": "ignored", "event_type": event_type}
