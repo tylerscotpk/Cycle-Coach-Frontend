@@ -104,9 +104,9 @@ const InfoAbout = () => {
                   <div className="text-white font-semibold text-lg mb-2">Resources</div>
                   <div className="text-slate-400 text-sm text-center">Phase-specific guidance and articles</div>
                   <div className="mt-4 space-y-2 w-full">
-                    <div className="bg-slate-700/50 rounded-lg p-2 text-slate-300 text-xs text-left">📖 Understanding Her Energy</div>
-                    <div className="bg-slate-700/50 rounded-lg p-2 text-slate-300 text-xs text-left">💡 Communication Tips</div>
-                    <div className="bg-slate-700/50 rounded-lg p-2 text-slate-300 text-xs text-left">🎯 Date Night Ideas</div>
+                    <div className="bg-slate-700/50 rounded-lg p-2 text-slate-300 text-xs text-center">📖 Understanding Her Energy</div>
+                    <div className="bg-slate-700/50 rounded-lg p-2 text-slate-300 text-xs text-center">💡 Communication Tips</div>
+                    <div className="bg-slate-700/50 rounded-lg p-2 text-slate-300 text-xs text-center">🎯 Date Night Ideas</div>
                   </div>
                 </div>
               </div>
