@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,21 @@ import InfoNav from '@/components/InfoNav';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+const PLAN_LINKS = {
+  monthly: process.env.REACT_APP_STRIPE_MONTHLY_LINK,
+  quarterly: process.env.REACT_APP_STRIPE_QUARTERLY_LINK,
+  yearly: process.env.REACT_APP_STRIPE_ANNUAL_LINK,
+};
+
+const PLAN_NAMES = {
+  monthly: 'Monthly Training Camp',
+  quarterly: 'Quarter by Quarter',
+  yearly: 'Full Season Strategy',
+};
+
 const InfoSignUp = () => {
   const navigate = useNavigate();
+  const [pendingPlan, setPendingPlan] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -17,6 +30,13 @@ const InfoSignUp = () => {
     confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const plan = localStorage.getItem('pending_plan');
+    if (plan && PLAN_LINKS[plan]) {
+      setPendingPlan(plan);
+    }
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -30,17 +50,14 @@ const InfoSignUp = () => {
       toast.error('Please enter your email');
       return;
     }
-    
     if (!formData.password) {
       toast.error('Please enter a password');
       return;
     }
-    
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
-    
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -64,14 +81,21 @@ const InfoSignUp = () => {
       const result = await response.json();
       
       if (response.ok && result.success) {
-        // Store session token
         localStorage.setItem('session_token', result.session_token);
         localStorage.setItem('user', JSON.stringify(result.user));
         
-        toast.success('Account created! Choose a plan to get started.');
-        
-        // Redirect to pricing since they don't have a subscription yet
-        window.location.href = '/pricing';
+        // Check for pending plan — redirect to Stripe checkout
+        const plan = localStorage.getItem('pending_plan');
+        if (plan && PLAN_LINKS[plan]) {
+          localStorage.removeItem('pending_plan');
+          toast.success('Account created! Redirecting to checkout...');
+          const url = new URL(PLAN_LINKS[plan]);
+          url.searchParams.set('prefilled_email', formData.email.trim());
+          window.location.href = url.toString();
+        } else {
+          toast.success('Account created! Choose a plan to get started.');
+          window.location.href = '/pricing';
+        }
       } else {
         toast.error(result.detail || 'Failed to create account');
       }
@@ -87,7 +111,6 @@ const InfoSignUp = () => {
     <div className="min-h-screen bg-slate-950">
       <InfoNav />
       
-      {/* Hero Section */}
       <section className="relative pt-32 pb-16 px-6">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-40 left-20 w-[400px] h-[400px] bg-cyan-600/5 rounded-full blur-3xl"></div>
@@ -97,12 +120,23 @@ const InfoSignUp = () => {
           <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight tracking-tight mb-6 text-center" data-testid="signup-headline">
             Create Account
           </h1>
+
+          {/* Pending plan banner */}
+          {pendingPlan && (
+            <div className="mb-6 bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 text-center" data-testid="pending-plan-banner">
+              <p className="text-cyan-400 font-medium text-sm">
+                Create your account to start your <span className="font-bold">{PLAN_NAMES[pendingPlan]}</span> plan.
+              </p>
+            </div>
+          )}
           
           <Card className="bg-slate-900/80 border-slate-700/50">
             <CardHeader>
               <CardTitle className="text-white text-xl">Join Cycle Coach</CardTitle>
               <CardDescription className="text-slate-400">
-                Create your account to get started with Cycle Coach.
+                {pendingPlan
+                  ? 'Create your account, then you\'ll be taken to secure checkout.'
+                  : 'Create your account to get started with Cycle Coach.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -176,11 +210,10 @@ const InfoSignUp = () => {
                   className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-6 text-lg font-semibold"
                   data-testid="signup-submit-btn"
                 >
-                  {isLoading ? 'Creating Account...' : 'Create Account'}
+                  {isLoading ? 'Creating Account...' : pendingPlan ? 'Create Account & Continue to Checkout' : 'Create Account'}
                 </Button>
               </form>
 
-              {/* Login Link */}
               <div className="mt-6 pt-4 border-t border-slate-700 text-center">
                 <p className="text-slate-500 text-sm">
                   Already have an account?{' '}
@@ -194,11 +227,10 @@ const InfoSignUp = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="py-12 px-6 border-t border-slate-800/50 mt-auto">
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} Stars & Honey, LLC. All rights reserved.
+            &copy; {new Date().getFullYear()} Stars & Honey, LLC. All rights reserved.
           </p>
         </div>
       </footer>

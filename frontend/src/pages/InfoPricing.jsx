@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import InfoNav from '@/components/InfoNav';
+import { toast } from 'sonner';
 
 const PLANS = [
   {
@@ -44,18 +45,23 @@ const PLANS = [
 ];
 
 const InfoPricing = () => {
+  const navigate = useNavigate();
+
   const handleSelectPlan = (plan) => {
-    // Check if user is logged in
+    const sessionToken = localStorage.getItem('session_token');
     const user = localStorage.getItem('user');
-    if (user) {
-      // If logged in, add user context to Stripe checkout
+
+    if (sessionToken && user) {
+      // Logged in — go straight to Stripe with prefilled email
       const userData = JSON.parse(user);
       const url = new URL(plan.paymentLink);
       url.searchParams.set('prefilled_email', userData.email);
       window.location.href = url.toString();
     } else {
-      // If not logged in, go directly to Stripe
-      window.location.href = plan.paymentLink;
+      // NOT logged in — save selected plan, send to signup
+      localStorage.setItem('pending_plan', plan.id);
+      toast.info('Create your account first, then complete your purchase.');
+      navigate('/signup');
     }
   };
 
@@ -175,7 +181,7 @@ const InfoPricing = () => {
       <footer className="py-12 px-6 border-t border-slate-800/50">
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} Stars & Honey, LLC. All rights reserved.
+            &copy; {new Date().getFullYear()} Stars & Honey, LLC. All rights reserved.
           </p>
         </div>
       </footer>

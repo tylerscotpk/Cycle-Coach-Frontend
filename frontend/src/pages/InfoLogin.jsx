@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,13 +8,27 @@ import InfoNav from '@/components/InfoNav';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
+const PLAN_LINKS = {
+  monthly: process.env.REACT_APP_STRIPE_MONTHLY_LINK,
+  quarterly: process.env.REACT_APP_STRIPE_QUARTERLY_LINK,
+  yearly: process.env.REACT_APP_STRIPE_ANNUAL_LINK,
+};
+
 const InfoLogin = () => {
   const navigate = useNavigate();
+  const [pendingPlan, setPendingPlan] = useState(null);
   const [formData, setFormData] = useState({
     emailOrPhone: '',
     password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const plan = localStorage.getItem('pending_plan');
+    if (plan && PLAN_LINKS[plan]) {
+      setPendingPlan(plan);
+    }
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,7 +42,6 @@ const InfoLogin = () => {
       toast.error('Please enter your email or phone number');
       return;
     }
-    
     if (!formData.password) {
       toast.error('Please enter your password');
       return;
@@ -50,17 +63,29 @@ const InfoLogin = () => {
       const result = await response.json();
       
       if (response.ok && result.success) {
-        // Store session token
         localStorage.setItem('session_token', result.session_token);
         localStorage.setItem('user', JSON.stringify(result.user));
         
-        toast.success('Welcome back!');
-        
-        // Redirect based on subscription status
+        // Check for pending plan first
+        const plan = localStorage.getItem('pending_plan');
+        if (plan && PLAN_LINKS[plan] && !result.user.has_subscription) {
+          localStorage.removeItem('pending_plan');
+          toast.success('Welcome back! Redirecting to checkout...');
+          const url = new URL(PLAN_LINKS[plan]);
+          url.searchParams.set('prefilled_email', result.user.email);
+          window.location.href = url.toString();
+          return;
+        }
+
+        localStorage.removeItem('pending_plan');
+
+        // Route based on subscription
         if (result.user.has_subscription) {
+          toast.success('Welcome back!');
           window.location.href = '/app';
         } else {
-          window.location.href = '/signup';
+          toast.success('Welcome back! Choose a plan to get started.');
+          window.location.href = '/pricing';
         }
       } else {
         toast.error(result.detail || 'Invalid email/phone or password');
@@ -77,7 +102,6 @@ const InfoLogin = () => {
     <div className="min-h-screen bg-slate-950">
       <InfoNav />
       
-      {/* Hero Section */}
       <section className="relative pt-32 pb-16 px-6">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-40 right-20 w-[400px] h-[400px] bg-cyan-600/5 rounded-full blur-3xl"></div>
@@ -87,6 +111,15 @@ const InfoLogin = () => {
           <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight tracking-tight mb-6 text-center" data-testid="login-headline">
             Log In
           </h1>
+
+          {/* Pending plan banner */}
+          {pendingPlan && (
+            <div className="mb-6 bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 text-center" data-testid="pending-plan-banner">
+              <p className="text-cyan-400 font-medium text-sm">
+                Log in to continue to checkout.
+              </p>
+            </div>
+          )}
           
           <Card className="bg-slate-900/80 border-slate-700/50">
             <CardHeader>
@@ -137,7 +170,6 @@ const InfoLogin = () => {
                 </Button>
               </form>
 
-              {/* Forgot Password Link */}
               <div className="mt-6 text-center">
                 <Link 
                   to="/forgot-password" 
@@ -148,7 +180,6 @@ const InfoLogin = () => {
                 </Link>
               </div>
 
-              {/* Sign Up Link */}
               <div className="mt-4 pt-4 border-t border-slate-700 text-center">
                 <p className="text-slate-500 text-sm">
                   Don't have an account?{' '}
@@ -162,11 +193,10 @@ const InfoLogin = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="py-12 px-6 border-t border-slate-800/50 mt-auto">
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} Stars & Honey, LLC. All rights reserved.
+            &copy; {new Date().getFullYear()} Stars & Honey, LLC. All rights reserved.
           </p>
         </div>
       </footer>
