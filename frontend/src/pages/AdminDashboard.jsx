@@ -514,7 +514,7 @@ const AdminDashboard = () => {
         {activeTab === 'users' && (
           <>
             {/* Stats */}
-            <div className="grid grid-cols-6 gap-3">
+            <div className="grid grid-cols-5 gap-3">
               {userFilters.map((f) => (
                 <Card 
                   key={f.key}
