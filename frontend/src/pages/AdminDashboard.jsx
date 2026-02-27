@@ -570,103 +570,69 @@ const AdminDashboard = () => {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <p className="text-white font-medium">{user.customer_email}</p>
-                              <span className={`px-2 py-0.5 rounded text-xs border ${getKeyTypeColor(user.key_type)}`}>
-                                {user.key_type || 'unknown'}
-                              </span>
-                              {isExpired(user.expires_at) && (
-                                <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30">
-                                  expired
+                              <p className="text-white font-medium">{user.email}</p>
+                              {user.subscription_tier && (
+                                <span className={`px-2 py-0.5 rounded text-xs border ${getKeyTypeColor(user.subscription_tier)}`}>
+                                  {user.subscription_tier}
                                 </span>
                               )}
-                              {user.activation_count > 0 && (
+                              {user.subscription_status === 'active' && (
                                 <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-                                  activated
+                                  active
                                 </span>
                               )}
-                              {user.is_cancelled && (
+                              {user.subscription_status === 'cancelling' && (
+                                <span className="px-2 py-0.5 rounded text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                                  cancelling
+                                </span>
+                              )}
+                              {(user.subscription_status === 'cancelled') && (
                                 <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30">
                                   cancelled
                                 </span>
                               )}
+                              {!user.subscription_status && (
+                                <span className="px-2 py-0.5 rounded text-xs bg-slate-500/20 text-slate-400 border border-slate-500/30">
+                                  no plan
+                                </span>
+                              )}
                             </div>
-                            <p className="text-cyan-400 text-sm font-mono">{user.license_key}</p>
+                            {user.phone && (
+                              <p className="text-slate-400 text-sm">{user.phone}</p>
+                            )}
                             <div className="flex gap-4 mt-1 text-xs text-slate-500">
-                              <span>Created: {formatDate(user.created_at)}</span>
-                              <span>Expires: {user.expires_at ? formatDate(user.expires_at) : 'Never'}</span>
+                              <span>Joined: {formatDate(user.created_at)}</span>
+                              {user.cancels_at && <span>Cancels: {formatDate(user.cancels_at)}</span>}
                             </div>
                           </div>
                           <div className="flex gap-2 flex-wrap justify-end">
-                            {userFilter === 'archived' ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                                onClick={() => handleUnarchive(user.customer_email)}
-                              >
-                                Restore
-                              </Button>
-                            ) : userFilter === 'cancelled' ? (
+                            {userFilter === 'cancelled' ? (
                               <Button
                                 size="sm"
                                 className="bg-green-600 hover:bg-green-700"
-                                onClick={() => handleRestoreCancelled(user.customer_email)}
+                                onClick={() => handleRestoreCancelled(user.email)}
                               >
                                 Restore Access
                               </Button>
                             ) : (
                               <>
-                                {user.key_type !== 'monthly' && (
+                                {user.subscription_status === 'active' && (
                                   <Button
                                     size="sm"
-                                    className="bg-green-600 hover:bg-green-700"
-                                    onClick={() => handleGrantKey(user.customer_email, 'monthly')}
+                                    variant="outline"
+                                    className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
+                                    onClick={() => handleCancel(user.email)}
                                   >
-                                    Monthly
+                                    Cancel
                                   </Button>
                                 )}
-                                {user.key_type !== 'quarterly' && (
-                                  <Button
-                                    size="sm"
-                                    className="bg-cyan-600 hover:bg-cyan-700"
-                                    onClick={() => handleGrantKey(user.customer_email, 'quarterly')}
-                                  >
-                                    Quarterly
-                                  </Button>
-                                )}
-                                {user.key_type !== 'yearly' && user.key_type !== 'lifetime' && (
-                                  <Button
-                                    size="sm"
-                                    className="bg-blue-600 hover:bg-blue-700"
-                                    onClick={() => handleGrantKey(user.customer_email, 'yearly')}
-                                  >
-                                    Yearly
-                                  </Button>
-                                )}
-                                {user.key_type !== 'lifetime' && (
-                                  <Button
-                                    size="sm"
-                                    className="bg-purple-600 hover:bg-purple-700"
-                                    onClick={() => handleGrantKey(user.customer_email, 'lifetime')}
-                                  >
-                                    Lifetime
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
-                                  onClick={() => handleCancel(user.customer_email)}
-                                >
-                                  Cancel
-                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="border-slate-600 text-slate-400 hover:bg-slate-700"
-                                  onClick={() => handleArchive(user.customer_email)}
+                                  onClick={() => handleArchive(user.email)}
                                 >
-                                  Archive
+                                  Deactivate
                                 </Button>
                               </>
                             )}
