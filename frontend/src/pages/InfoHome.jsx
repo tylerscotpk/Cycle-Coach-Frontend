@@ -33,7 +33,7 @@ const InfoHome = () => {
           
           {/* Teal Subheading */}
           <p className="text-xl sm:text-2xl text-cyan-400 font-light mb-4">
-            Partners who track together — stay together
+            -Put something else here-
           </p>
           
           <p className="text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed mb-10">
@@ -53,19 +53,19 @@ const InfoHome = () => {
 
       {/* A Smarter Way Section */}
       <section className="py-24 px-6 border-t border-slate-800/50">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 tracking-tight">
             A Better Way to Understand Her
           </h2>
           <p className="text-lg text-slate-400 leading-relaxed">
-            Most couples don't struggle because they're incompatible. They struggle because they're unsynced. Cycle Coach gives you a clear, coach-like framework for understanding the emotional rhythm behind the cycle — so you can show up with the right energy at the right time.
+            Admit it; you can't read her mind. But with Cycle Coach, you're one step closer to being able to. Women's emotions are driven by their hormones, which - you already know - change throughout the month. Climb into the driver's seat, Champ, because you're about to navigate those changes with precision.
           </p>
         </div>
       </section>
 
       {/* Built for Men Section */}
       <section className="py-24 px-6 bg-slate-900/50">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 tracking-tight">
             Built for Men Who Want to Lead With Awareness
           </h2>
@@ -104,7 +104,6 @@ const InfoHome = () => {
                   </div>
                 </div>
               </div>
-              <h3 className="text-white font-semibold text-lg">MoodMap</h3>
             </div>
 
             {/* Phase Predictor */}
@@ -121,7 +120,6 @@ const InfoHome = () => {
                   </div>
                 </div>
               </div>
-              <h3 className="text-white font-semibold text-lg">Phase Predictor</h3>
             </div>
 
             {/* Resources */}
@@ -138,7 +136,6 @@ const InfoHome = () => {
                   </div>
                 </div>
               </div>
-              <h3 className="text-white font-semibold text-lg">Resources</h3>
             </div>
           </div>
         </div>
