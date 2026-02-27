@@ -391,7 +391,7 @@ const AdminDashboard = () => {
             className={activeTab === 'users' ? 'bg-cyan-500' : 'text-slate-400'}
             onClick={() => setActiveTab('users')}
           >
-            Users & Keys
+            Users
           </Button>
         </div>
 
