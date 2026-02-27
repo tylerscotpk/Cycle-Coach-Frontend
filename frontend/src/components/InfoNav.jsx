@@ -1,152 +1,187 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
 
-// Cycle Coach circular icon
-const CYCLE_COACH_ICON = "https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png";
+const API = process.env.REACT_APP_BACKEND_URL;
 
 const InfoNav = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [authState, setAuthState] = useState({ isAuthenticated: false, hasSubscription: false });
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [hasSubscription, setHasSubscription] = useState(false);
 
   useEffect(() => {
-    // Check auth state from localStorage
+    // Check auth state for nav display
     const sessionToken = localStorage.getItem('session_token');
-    const user = localStorage.getItem('user');
-    
-    if (sessionToken && user) {
-      setIsAuthenticated(true);
-      try {
-        const userData = JSON.parse(user);
-        setHasSubscription(userData.has_subscription || false);
-      } catch {
-        setHasSubscription(false);
+    if (sessionToken) {
+      fetch(`${API}/api/auth/check`, {
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+        credentials: 'include'
+      })
+        .then(r => r.json())
+        .then(data => {
+          setAuthState({
+            isAuthenticated: data.authenticated,
+            hasSubscription: data.has_subscription
+          });
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const isActive = (path) => location.pathname === path;
+
+  const linkClasses = (path) =>
+    `transition-colors duration-200 ${
+      isActive(path) ? 'text-cyan-400' : 'text-slate-300 hover:text-white'
+    }`;
+
+  const handleLogout = async () => {
+    const sessionToken = localStorage.getItem('session_token');
+    try {
+      if (sessionToken) {
+        await fetch(`${API}/api/auth/logout`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+          credentials: 'include'
+        });
       }
-    } else {
-      setIsAuthenticated(false);
-      setHasSubscription(false);
-    }
-  }, [location]);
-
-  // Public navigation links
-  const publicNavLinks = [
-    { path: '/', label: 'Home' },
-    { path: '/about', label: 'About' },
-    { path: '/pricing', label: 'Pricing' },
-    { path: '/login', label: 'Login' },
-    { path: '/info/contact', label: 'Contact' },
-  ];
-
-  // Authenticated user navigation links (with subscription)
-  const appNavLinks = [
-    { path: '/app', label: 'Dashboard' },
-    { path: '/account', label: 'Account' },
-  ];
-
-  const navLinks = (isAuthenticated && hasSubscription) ? appNavLinks : publicNavLinks;
-
-  const isActive = (path) => {
-    if (path === '/' || path === '/info') {
-      return location.pathname === '/info' || location.pathname === '/';
-    }
-    return location.pathname === path;
-  };
-
-  const handleLogout = () => {
+    } catch (e) {}
     localStorage.removeItem('session_token');
     localStorage.removeItem('user');
+    localStorage.removeItem('pending_plan');
     window.location.href = '/';
   };
 
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/50">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo with Icon */}
-          <Link to={isAuthenticated && hasSubscription ? "/app" : "/"} className="flex items-center gap-2">
-            <img 
-              src={CYCLE_COACH_ICON} 
-              alt="Cycle Coach" 
-              className="w-8 h-8 object-contain"
-            />
-            <span className="text-xl font-bold text-white tracking-tight">
-              Cycle<span className="text-cyan-500">Coach</span>
-            </span>
-          </Link>
+  // Active subscriber — don't show public nav, they should be in-app
+  if (authState.isAuthenticated && authState.hasSubscription) {
+    return null;
+  }
 
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50">
+      <div className="max-w-6xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="text-xl font-bold text-white tracking-tight" data-testid="nav-logo">Cycle Coach</span>
+          </Link>
+          
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`text-sm font-medium transition-colors ${
-                  isActive(link.path)
-                    ? 'text-cyan-400'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                data-testid={`nav-${link.label.toLowerCase().replace(' ', '-')}`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            {isAuthenticated && (
-              <button
-                onClick={handleLogout}
-                className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
-                data-testid="nav-logout"
-              >
-                Logout
-              </button>
+            <Link to="/" className={linkClasses('/')} data-testid="nav-home">Home</Link>
+            <Link to="/about" className={linkClasses('/about')} data-testid="nav-about">About</Link>
+            <Link to="/pricing" className={linkClasses('/pricing')} data-testid="nav-pricing">Pricing</Link>
+            <Link to="/info/contact" className={linkClasses('/info/contact')} data-testid="nav-contact">Contact</Link>
+            
+            {authState.isAuthenticated ? (
+              <div className="flex items-center gap-4">
+                <Link to="/pricing">
+                  <Button variant="outline" className="border-cyan-500 text-cyan-400 hover:bg-cyan-500/10" data-testid="nav-choose-plan-btn">
+                    Choose a Plan
+                  </Button>
+                </Link>
+                <Button 
+                  variant="ghost" 
+                  className="text-slate-400 hover:text-white"
+                  onClick={handleLogout}
+                  data-testid="nav-logout-btn"
+                >
+                  Log Out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <Link to="/login">
+                  <Button variant="ghost" className="text-slate-300 hover:text-white" data-testid="nav-login-btn">
+                    Log In
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button className="bg-cyan-500 hover:bg-cyan-600 text-white" data-testid="nav-signup-btn">
+                    Sign Up
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-slate-400 hover:text-white"
-            data-testid="mobile-menu-btn"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden text-slate-300 hover:text-white p-2"
+            data-testid="nav-mobile-menu-btn"
           >
-            {mobileMenuOpen ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isMenuOpen ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              ) : (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
+              )}
+            </svg>
           </button>
         </div>
 
         {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-slate-800/50">
-            <div className="flex flex-col gap-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`text-base font-medium py-2 ${
-                    isActive(link.path)
-                      ? 'text-cyan-400'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              {isAuthenticated && (
-                <button
-                  onClick={handleLogout}
-                  className="text-base font-medium py-2 text-slate-400 text-left"
-                >
-                  Logout
-                </button>
+        {isMenuOpen && (
+          <div className="md:hidden mt-4 pt-4 border-t border-slate-800/50 space-y-4 pb-4">
+            <Link
+              to="/"
+              className={`block ${linkClasses('/')}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Home
+            </Link>
+            <Link
+              to="/about"
+              className={`block ${linkClasses('/about')}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              About
+            </Link>
+            <Link
+              to="/pricing"
+              className={`block ${linkClasses('/pricing')}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Pricing
+            </Link>
+            <Link
+              to="/info/contact"
+              className={`block ${linkClasses('/info/contact')}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Contact
+            </Link>
+            
+            <div className="pt-4 border-t border-slate-800/50 space-y-3">
+              {authState.isAuthenticated ? (
+                <>
+                  <Link to="/pricing" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="outline" className="w-full border-cyan-500 text-cyan-400 hover:bg-cyan-500/10">
+                      Choose a Plan
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full text-slate-400 hover:text-white"
+                    onClick={() => { handleLogout(); setIsMenuOpen(false); }}
+                  >
+                    Log Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full text-slate-300 hover:text-white">
+                      Log In
+                    </Button>
+                  </Link>
+                  <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-white">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </>
               )}
             </div>
           </div>
