@@ -354,12 +354,11 @@ const AdminDashboard = () => {
   }
 
   const userFilters = [
+    { key: 'all', label: 'All Users', color: 'cyan', count: stats.users?.total || 0 },
     { key: 'monthly', label: 'Monthly', color: 'green', count: stats.users?.monthly || 0 },
     { key: 'quarterly', label: 'Quarterly', color: 'cyan', count: stats.users?.quarterly || 0 },
-    { key: 'yearly', label: 'Yearly', color: 'blue', count: stats.users?.yearly || 0 },
-    { key: 'lifetime', label: 'Lifetime', color: 'purple', count: stats.users?.lifetime || 0 },
+    { key: 'yearly', label: 'Annual', color: 'blue', count: stats.users?.annual || 0 },
     { key: 'cancelled', label: 'Cancelled', color: 'red', count: stats.users?.cancelled || 0 },
-    { key: 'archived', label: 'Archived', color: 'slate', count: stats.users?.archived || 0 },
   ];
 
   return (
