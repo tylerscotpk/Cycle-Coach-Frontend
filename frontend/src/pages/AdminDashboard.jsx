@@ -118,12 +118,10 @@ const AdminDashboard = () => {
     try {
       let url = `${API}/api/admin/users?`;
       
-      if (userFilter === 'archived') {
-        url += 'archived=true';
-      } else if (userFilter === 'cancelled') {
+      if (userFilter === 'cancelled') {
         url += 'cancelled=true';
-      } else {
-        url += `archived=false&key_type=${userFilter}`;
+      } else if (userFilter !== 'all') {
+        url += `subscription_tier=${userFilter}`;
       }
       
       const response = await fetch(url);
