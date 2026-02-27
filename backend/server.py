@@ -619,6 +619,99 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
         logger.error(f"Auth check error: {str(e)}")
         return {"authenticated": False, "has_subscription": False}
 
+@api_router.get("/account/subscription")
+async def get_account_subscription(session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
+    """Get detailed subscription info for account settings page"""
+    token = session_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    session = await db.user_sessions.find_one({"session_token": token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    user = await db.auth_users.find_one({"id": session["user_id"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "email": user.get("email"),
+        "subscription_status": user.get("subscription_status"),
+        "subscription_tier": user.get("subscription_tier"),
+        "stripe_subscription_id": user.get("stripe_subscription_id"),
+        "cancels_at": user.get("cancels_at"),
+        "created_at": user.get("created_at"),
+    }
+
+@api_router.post("/account/cancel-subscription")
+async def cancel_user_subscription(session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
+    """Cancel the authenticated user's subscription"""
+    token = session_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    session = await db.user_sessions.find_one({"session_token": token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    user = await db.auth_users.find_one({"id": session["user_id"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    subscription_id = user.get("stripe_subscription_id")
+    if not subscription_id:
+        raise HTTPException(status_code=400, detail="No active subscription found")
+    
+    if user.get("subscription_status") == "cancelling":
+        raise HTTPException(status_code=400, detail="Subscription is already scheduled for cancellation")
+    
+    try:
+        updated_subscription = stripe.Subscription.modify(
+            subscription_id,
+            cancel_at_period_end=True
+        )
+        
+        cancel_at = updated_subscription.current_period_end
+        cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
+        
+        # Update auth_users
+        await db.auth_users.update_one(
+            {"id": session["user_id"]},
+            {"$set": {
+                "subscription_status": "cancelling",
+                "cancels_at": cancels_at_date,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # Also update license_keys for backward compat
+        await db.license_keys.update_one(
+            {"stripe_subscription_id": subscription_id},
+            {"$set": {
+                "cancels_at": cancels_at_date,
+                "is_cancelled": True,
+                "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        logger.info(f"User {user.get('email')} cancelled subscription {subscription_id}")
+        
+        return {
+            "success": True,
+            "message": "Subscription cancelled successfully",
+            "cancels_at": cancels_at_date
+        }
+    except stripe.StripeError as e:
+        logger.error(f"Stripe error cancelling subscription: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to cancel: {str(e)}")
+
 # ============ PARTNER PROFILE ROUTES ============
 
 @api_router.post("/partner", response_model=PartnerProfile)
