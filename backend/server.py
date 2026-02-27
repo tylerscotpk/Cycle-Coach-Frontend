@@ -1985,7 +1985,7 @@ async def send_subscription_email(customer_email: str, license_key: str, tier: s
         logger.warning("RESEND_API_KEY not configured - skipping email")
         return False
     
-    tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["basic"])
+    tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS.get("monthly", {}))
     tier_name = tier_config["name"]
     has_ai = tier_config["has_ai_wingman"]
     has_profile = tier_config["has_partner_profile"]
