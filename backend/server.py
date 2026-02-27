@@ -3357,62 +3357,50 @@ async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str
 
 @api_router.post("/admin/archive-user/{email}")
 async def archive_user(email: str):
-    """Archive a user (hide from main list)"""
+    """Deactivate a user account"""
     email = email.lower().strip()
-    
-    result = await db.license_keys.update_many(
-        {"customer_email": email},
-        {"$set": {"is_archived": True}}
+    result = await db.auth_users.update_one(
+        {"email": email},
+        {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
-    
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
-    
     return {"status": "archived", "email": email}
 
 @api_router.post("/admin/unarchive-user/{email}")
 async def unarchive_user(email: str):
-    """Unarchive a user"""
+    """Reactivate a user account"""
     email = email.lower().strip()
-    
-    result = await db.license_keys.update_many(
-        {"customer_email": email},
-        {"$set": {"is_archived": False}}
+    result = await db.auth_users.update_one(
+        {"email": email},
+        {"$set": {"is_active": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
-    
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
-    
     return {"status": "unarchived", "email": email}
 
 @api_router.post("/admin/cancel-user/{email}")
 async def cancel_user(email: str):
-    """Cancel a user's access"""
+    """Cancel a user's subscription access"""
     email = email.lower().strip()
-    
-    result = await db.license_keys.update_many(
-        {"customer_email": email},
-        {"$set": {"is_cancelled": True, "is_active": False}}
+    result = await db.auth_users.update_one(
+        {"email": email},
+        {"$set": {"subscription_status": "cancelled", "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
-    
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
-    
     return {"status": "cancelled", "email": email}
 
 @api_router.post("/admin/restore-user/{email}")
 async def restore_user(email: str):
-    """Restore a cancelled user's access"""
+    """Restore a cancelled user's subscription access"""
     email = email.lower().strip()
-    
-    result = await db.license_keys.update_many(
-        {"customer_email": email},
-        {"$set": {"is_cancelled": False, "is_active": True}}
+    result = await db.auth_users.update_one(
+        {"email": email},
+        {"$set": {"subscription_status": "active", "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
-    
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
-    
     return {"status": "restored", "email": email}
 
 @api_router.get("/admin/stats")
