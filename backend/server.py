@@ -2257,6 +2257,16 @@ async def cancel_subscription(request: CancelSubscriptionRequest):
                 }
             )
             
+            # Sync cancellation to auth_users
+            await db.auth_users.update_one(
+                {"stripe_subscription_id": subscription_id},
+                {"$set": {
+                    "subscription_status": "cancelling",
+                    "cancels_at": cancels_at_date,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
             logger.info(f"Successfully cancelled subscription {subscription_id}, cancels at {cancels_at_date}")
             
             return {
