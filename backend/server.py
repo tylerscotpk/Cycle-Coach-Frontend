@@ -2142,6 +2142,20 @@ async def stripe_webhook(request: Request):
             if result.modified_count > 0:
                 logger.info(f"Updated subscription {subscription_id}: status={status}, cancel_at_period_end={cancel_at_period_end}")
             
+            # Sync key fields to auth_users
+            auth_update = {"updated_at": datetime.now(timezone.utc).isoformat()}
+            if status == "active":
+                auth_update["subscription_status"] = "active"
+            elif status in ("canceled", "unpaid"):
+                auth_update["subscription_status"] = "cancelled"
+            elif status == "past_due":
+                auth_update["subscription_status"] = "past_due"
+            
+            await db.auth_users.update_one(
+                {"stripe_subscription_id": subscription_id},
+                {"$set": auth_update}
+            )
+            
             return {"status": "subscription_updated", "subscription_status": status}
         
         # Handle payment failed
