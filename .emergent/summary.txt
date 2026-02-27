@@ -1,170 +1,195 @@
 <analysis>**original_problem_statement:**
 The user wants to create a mobile-friendly web app called Cycle Coach to help men understand their partners' menstrual cycles. The app tracks cycles, provides phase-based tips and research-backed insights, and features an AI Wingman for personalized advice.
 
+A new requirement was added to build a public-facing informational website for the app.
+
+Most recently, the user requested a complete overhaul of the authentication system, moving from a license-key-based activation to a standard email/password login system with subscription-based routing.
+
 **PRODUCT REQUIREMENTS:**
--   **Core Functionality:** Track cycles, provide phase-based tips, display research-backed facts, and link to reputable resources. All personal cycle data remains on the user's device ().
--   **AI Wingman:** Anonymously provide AI-driven advice, personalized using the user's Partner Profile.
--   **Monetization:** A subscription model using Stripe Payment Links. Webhooks handle license key generation and email delivery.
-    -   Monthly Training Plan: .99/mo (7-day free trial)
-    -   Quarter by Quarter: 0.49/3 months
-    -   Full Season Strategy: 5.91/year
--   **Admin Dashboard:** A password-protected portal () for the app owner to manage users and view stats.
--   **Push Notifications:** Enable opt-out notifications for phase reminders and reflection prompts.
--   **Deployment:** Must be deployable to iOS and Android app stores (project is set up with Capacitor).
--   **Contact Page:** A form for users to send messages to a private admin email.
--   **Account Page:** A page for users to view their subscription status and cancel their subscription.
--   **Phase Predictor:** A feature to predict the cycle phase for any given date.
+-   **Core App Functionality:** Track cycles, provide phase-based tips, display research-backed facts. All personal cycle data remains on the user's device ().
+-   **AI Wingman:** Anonymously provide AI-driven advice.
+-   **Public Informational Website:** A clean, minimal, mobile-responsive website with Home, About, Pricing/Sign Up, and Contact pages.
+-   **Authentication:** Email/phone and password-based sign-up and login.
+-   **Subscription-Based Routing:**
+    -   Public visitors can see marketing pages.
+    -   Logged-in users with an active subscription are redirected to the main app ().
+    -   Logged-in users without a subscription are redirected to the pricing page.
+-   **Monetization:** A subscription model using Stripe.
+-   **Admin Dashboard:** A password-protected portal ().
+-   **Contact Page:** A form for users to send messages to a private admin email ().
 
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a PWA built with React and a FastAPI backend.
--   **Frontend:** A client-side React app storing user data in . It features a , , a  using Stripe Payment Links, and dedicated pages for , , , and a . The app is set up with Capacitor for native builds.
--   **Backend:** A FastAPI server () that handles:
-    1.  An AI Wingman proxy () that uses partner profile context.
-    2.  A licensing system using MongoDB.
-    3.  A Stripe webhook () to manage the full subscription lifecycle (, , ).
-    4.  An admin dashboard API.
-    5.  A contact form endpoint () that emails submissions via Resend.
--   **Monetization Flow:** The paywall redirects to Stripe Payment Links. Webhooks notify the backend to create/update licenses. A cancellation flow allows users to cancel via a backend endpoint, which tells Stripe to .
+The project consists of two main parts: the core PWA and a new public-facing informational website.
+1.  **Public Website (React):** A set of informational pages (, , , , ) built with React and Tailwind CSS. It features a new email/password authentication system.
+2.  **Core PWA (React/Capacitor):** The main application logic resides behind the new authentication wall at the  route. It includes the , , , and .
+3.  **Backend (FastAPI):** A monolithic  file handles:
+    -   New email/password authentication (register, login, logout, password reset stubs).
+    -   Subscription status checks to determine user access.
+    -   Stripe webhooks for managing subscription lifecycle.
+    -   An AI Wingman proxy.
+    -   A contact form endpoint using Resend.
+    -   A secure admin login endpoint.
+
+The previous license-key-based activation system has been mostly removed from the UI and replaced by the new email/password flow, but backend remnants and database schema quirks exist.
 
 **Last working item**:
--   Last item agent was working: The user requested UI color corrections in the Resources section. Specifically, to make the Coming Up badge purple to match the Read Article button, and to ensure the phase title text (e.g., 'Menstrual') is white.
--   Status: **USER VERIFICATION PENDING**
--   Agent Testing Done: Y
+-   Last item agent was working: The user requested that all content on the About page () be center-aligned. The agent had viewed the file  to prepare for the change.
+-   Status: **IN PROGRESS**
+-   Agent Testing Done: N
 -   Which testing method agent to use? screenshot tool
 -   User Testing Done: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Critical Deployment Blockers (P0)**
-    -   **Description:** A  health check identified critical issues preventing deployment. The user continued to add features instead of fixing these.
-    -   **Attempted fixes:** None. The agent acknowledged the report but was immediately redirected to other tasks by the user.
+-   **Issue 1: Center-align About page content (P0)**
+    -   **Description:** The user wants all elements on the About page to be center-aligned for a different visual presentation.
     -   **Next debug checklist:**
-        1.  **Hardcoded Admin Password:** Move the password from  to a backend environment variable and create an auth check.
-        2.  **Hardcoded Stripe Links:** Move the Stripe Payment Links from  to frontend environment variables ().
-        3.  **Missing  files/config:** Ensure  and  are properly configured for deployment (the user requested a hardcoded backend URL, which should be reverted to use ).
-        4.  **Missing Supervisor Config:** Create the necessary  for the production environment.
-    -   **Why fix this issue and what will be achieved with the fix?** The application cannot be deployed until these blockers are resolved. Fixing them is essential for a production-ready state.
-    -   **Status:** NOT STARTED
+        1.  Edit .
+        2.  Apply Tailwind CSS classes like , , , and  to the main containers to achieve the desired centered layout.
+        3.  Take a screenshot to verify the visual change.
+    -   **Why fix this issue and what will be achieved with the fix?** To fulfill the user's direct UI/UX request for the public-facing website.
+    -   **Status:** IN PROGRESS
     -   **Is recurring issue?** N
-    -   **Should Test frontend/backend/both after fix?** both
-    -   **Blocked on other issue:** None
+    -   **Should Test frontend/backend/both after fix?** frontend
+
+-   **Issue 2: Recurring White Screen on Preview/Deployment (P1)**
+    -   **Description:** The application intermittently shows a blank white screen upon loading in the preview or production environment. This is usually caused by a JavaScript runtime error that is not caught during compilation.
+    -   **Attempted fixes:** This has happened multiple times. Past fixes involved:
+        1.  Refactoring  routing logic.
+        2.  Fixing a variable  that was used instead of a string  in .
+    -   **Next debug checklist:** If this recurs, the first step is to always check the browser's developer console for JavaScript errors on the preview page. These errors are the most common cause.
+    -   **Why fix this issue and what will be achieved with the fix?** This is a critical blocker that makes the application unusable. Fixing it ensures the app is stable for users.
+    -   **Status:** RESOLVED (but high risk of recurrence)
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** frontend
 
 **In progress Task List**:
--   None.
+-   **Task 1: Finalize Email/Password Authentication System (P1)**
+    -   **Description:** The transition from license keys to email/password auth is incomplete. The backend for the Forgot Password flow needs to be implemented.
+    -   **Where to resume:**
+        1.  Implement the backend logic in  for the  and  endpoints. This includes generating a secure token, sending a reset email via Resend, and providing an endpoint to update the password with the token.
+        2.  Conduct an end-to-end test of the full user lifecycle: Sign Up -> Pay via Stripe -> Webhook updates subscription status -> User can log in and access the  dashboard.
+    -   **What will be achieved with this?** A complete, standard, and secure user authentication system.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** both
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   **(P0) Fix Deployment Blockers:** Address all critical issues identified by the deployment health check.
+    -   **(P1) Refactor Database Schema:** The new user authentication system incorrectly stores user data (like ) in the old  collection. This should be migrated to a dedicated  collection for clarity, security, and scalability.
+    -   **(P2) Fix Contact Form:** The contact form is not functional because the user's Resend domain is not verified. Remind the user and guide them if necessary. The agent has already identified the error in the logs.
 -   **Future Tasks:**
-    -   **(P1) Complete App Store Deployment:** Use the existing Capacitor setup to build and guide the user through submitting the app to app stores.
-    -   **(P2) Refactor :** The file contains deprecated code and mixed responsibilities that should be cleaned up.
-    -   **(P3) Refactor :** The main dashboard component is large and complex; it should be broken down into smaller, more manageable components.
+    -   **(P2) Refactor :** The main backend file is over 3500 lines long and handles all API logic (auth, webhooks, admin, etc.). It is fragile and difficult to maintain. It should be broken down into smaller, modular files (e.g., , ).
+    -   **(P3) Complete App Store Deployment:** Use the existing Capacitor setup to build and guide the user through submitting the app to the iOS and Android app stores.
+    -   **(P3) Refactor :** The main dashboard component is large and could be broken down into smaller components.
 
 **Completed work in this session**
--   **AI Wingman Enhancement:** The backend now uses the full partner profile context for more personalized AI advice.
--   **Push Notification System:** Implemented a  for PWA notifications and integrated it with the UI in  and .
--   **Admin Dashboard Update:** Updated the dashboard to reflect the new subscription plans (monthly, quarterly, yearly, lifetime), removing the old 'trial' plan.
--   **Resources Overhaul:** Replaced the entire resource library with a new, user-provided list of articles. Implemented phase-tagging, phase-prioritization, and an Upcoming Phase section. Fixed various styling issues with badges and buttons.
--   **Account Settings Page:** Created a new page at  for users to view subscription status, billing details, and cancel their subscription.
--   **Subscription Cancellation Flow:** Added frontend logic and a backend webhook handler () to manage  requests.
--   **Contact Page:** Created a new page at  and a corresponding backend endpoint () that uses Resend to forward messages.
--   **Phase Predictor Page:** Created a feature to predict cycle phases for any date, initially on the dashboard and then moved to its own dedicated page at .
--   **UI/Layout Fixes:** Addressed multiple user requests to fix button alignment on the  and  pages.
--   **Backend URL Update:** Updated the frontend's  to use a specific backend URL () as requested by the user.
+-   **Authentication Overhaul:** Replaced the license-key system with a full email/password authentication system, including new login, sign-up, and password reset pages, backend endpoints, and complex subscription-based routing logic in .
+-   **Informational Website Creation:** Built a multi-page public website (Home, About, Pricing, Contact) from scratch based on user-provided copy.
+-   **Deployment Blockers Fixed:**
+    -   Secured the admin dashboard by moving authentication to the backend.
+    -   Moved hardcoded Stripe payment links to environment variables.
+-   **Subscription Management:** Added a Cancel Subscription flow to the user account page.
+-   **UI/UX Updates:**
+    -   Implemented numerous user-requested UI changes to the informational site, including new pricing, text, icons, and color highlights on the pricing page.
+    -   Limited the number of articles displayed in the app's Resources section.
+    -   Fixed multiple white screen bugs caused by routing and JavaScript errors.
+-   **User Support:** Answered user questions about admin passwords, MongoDB URLs, the Deploy button, and custom domain setup.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1:  code quality:** This file contains significant deprecated code from the pre-privacy-pivot architecture. It needs to be refactored to remove unused routes, models, and logic.
--   **Issue 2:  complexity:** The main dashboard component, while simplified, is still large and could benefit from being broken into smaller components.
+-   **Issue 1:  code quality:** This issue was mentioned in the previous handoff and has become more critical as the file has grown significantly, increasing technical debt.
+-   **Issue 2: Resend Domain Not Verified:** The contact form is non-functional because it fails to send emails. Backend logs show the user needs to verify their domain with Resend. This is a configuration issue on the user's side.
 
 **Known issue recurrence from previous fork**
--   None.
+-   **White Screen on Preview/Deployment:** The app has failed to render multiple times, showing a blank white screen. This is typically due to a JavaScript runtime error and is a high-risk issue.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Architecture:** Hybrid - Local-First PWA with a server-side component for monetization/admin.
--   **Frontend:** React, Tailwind CSS, Shadcn/UI, Capacitor.
--   **Data Storage:** Browser , MongoDB.
--   **Backend:** FastAPI.
--   **Monetization:** Stripe (Payment Links + Webhooks), Resend (Transactional Emails).
--   **AI Integration:** OpenAI via an anonymous backend proxy.
--   **Notifications:** Web Push API for PWA notifications.
+-   **Architecture:** React PWA (with Capacitor) fronting a monolithic FastAPI backend.
+-   **Frontend:** React, Tailwind CSS, Shadcn/UI, React Router.
+-   **Backend:** FastAPI, Pydantic.
+-   **Database:** MongoDB.
+-   **Authentication:** JWT-based email/password authentication.  for password hashing.
+-   **Monetization & Email:** Stripe (Payments & Webhooks), Resend (Transactional Emails).
 
 **key DB schema**
--   ** collection:** 
+-   ** collection:** This collection is being used incorrectly to store **all user data**, including new email/password fields. It should be refactored into a  collection.
+    -   
 
 **changes in tech stack**
--   None.
+-   The authentication model has fundamentally changed from a custom license-key system to a standard JWT-based email/password system.
 
 **All files of reference**
--   **/app/frontend/src/pages/Dashboard.jsx**: Heavily modified to add/remove features and fix layouts.
--   **/app/frontend/src/pages/AdminDashboard.jsx**: Updated with new subscription tiers.
--   **/app/frontend/src/components/Paywall.jsx**: Updated layout to align buttons.
--   **/app/frontend/src/utils/resourcesData.js**: Completely rewritten with user-provided data.
--   **/app/backend/server.py**: Added contact endpoint and logic to handle  webhook.
--   **/app/frontend/src/App.js**: Added routes for new pages.
--   **/app/frontend/src/pages/AccountSettings.jsx**: New file.
--   **/app/frontend/src/pages/Contact.jsx**: New file.
--   **/app/frontend/src/pages/PhasePredictor.jsx**: New file.
--   **/app/frontend/src/utils/notificationService.js**: New file.
+-   **/app/backend/server.py**: Heavily modified; contains all new auth logic and is the single source of truth for the backend.
+-   **/app/frontend/src/App.js**: Completely rewritten to handle the new subscription-based routing logic using an .
+-   **/app/frontend/src/pages/InfoLogin.jsx**: New file for the email/password login UI.
+-   **/app/frontend/src/pages/InfoSignUp.jsx**: New file for user registration.
+-   **/app/frontend/src/pages/InfoPricing.jsx**: Rewritten to remove license key logic and updated with new pricing/styles.
+-   **/app/frontend/src/pages/InfoAbout.jsx**: File to be modified for the last working item.
+-   **/app/frontend/src/components/InfoNav.jsx**: New navigation component with conditional links.
 
 **Areas that need refactoring**:
--   **:** Still contains significant technical debt and deprecated code.
--   **:** Remains a large, monolithic component.
+-   **Database Schema:** User auth data (, ) is stored in the  collection. This is a major design flaw and must be migrated to a dedicated  collection.
+-   **:** Critically needs to be broken down into smaller, manageable router files for different concerns (auth, webhooks, admin, etc.). Its current monolithic nature makes it error-prone.
+-   **:** The routing logic, while functional, is complex. It could be simplified by creating dedicated  and  wrapper components.
 
 **key api endpoints**
--   : (POST) Handles Stripe lifecycle events (, , ).
--   : (POST) Proxies requests to AI, now with partner profile context.
--   : (POST) Frontend calls this to initiate a subscription cancellation.
--   : (POST) Submits the contact form to be emailed via Resend.
--   : Endpoints for the admin dashboard.
+-    (POST)
+-    (POST)
+-    (POST)
+-    (POST) - *Backend logic is a placeholder.*
+-    (POST) - *Backend logic is a placeholder.*
+-    (POST)
+-    (POST)
 
 **Critical Info for New Agent**
--   **Fix Deployment Blockers First:** The highest priority is to resolve the critical deployment blockers identified by the . The user has ignored these in favor of new features, but the app cannot be deployed without fixing them.
--   **Backend URL:** The user requested to hardcode the backend URL to . This was done, but it is one of the deployment blockers. The next agent should revert this to use the  environment variable for proper deployment.
--   **Admin Access:** The admin dashboard is at  with the password  (this hardcoded password is a deployment blocker).
+-   The project has just pivoted from license keys to an **email/password authentication system**. This impacts all user-facing routing and access control. Do not re-implement any license key logic.
+-   The top priority after the current task is to **finalize the new auth system**, specifically the backend for password resets.
+-   **The database schema is flawed.** User auth information is being stored in the  collection. This should be a high-priority refactoring task to move to a proper  collection.
+-   The **white screen bug** is a recurring problem. Always check the browser console for runtime JavaScript errors if the preview is blank.
+-   The backend file  is extremely large and fragile. Be very careful when making edits.
 
 **documents and test reports created in this job**
--    (updated)
+-    (updated multiple times)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Asks for the link to the live admin dashboard.
-2.  **User:** Provides a very detailed prompt to completely replace the Resources library with a new structured database of articles.
-3.  **User:** Asks to add a prediction feature to calculate cycle day/phase for any selected date.
-4.  **User:** Asks to add a Contact page with a form that sends a private email to the admin.
-5.  **User:** Asks to move the new Phase Predictor feature from the dashboard into its own dedicated page.
-6.  **User:** Asks to adjust the layout of buttons in the Current Phase window on the dashboard.
-7.  **User:** Provides a screenshot indicating the button placement is still wrong and asks for a correction.
-8.  **User:** Asks to align the Start Free Trial button with other plan buttons on the paywall.
-9.  **User:** States that the paywall button alignment is still incorrect based on the screenshot.
-10. **User:** Asks for the correct API endpoints and payload format for handling  and  Stripe webhooks.
-11. **User:** Asks to display Next Billing Date and Next Billing Amount on the Account Settings screen.
-12. **User:** Asks to change the phase label text color to white and restore the Upcoming Phase block in the Resources section.
-13. **User:** Asks to change the color of buttons in the Upcoming Phase section to purple.
-14. **User:** Asks to change the Coming Up badge color to match the purple button and fix the phase title color. (Last working item).
+1.  **User:** Requests to center-align all content on the About page. (Current task)
+2.  **User:** Acknowledges they caused a previous error by editing in VS Code and requests new pricing updates (//0) and a purple highlight for the monthly plan.
+3.  **User:** Asks why the preview is a white screen.
+4.  **User:** Asks for their VS Code password.
+5.  **User:** Updates copy on the Why It Works section of the About page.
+6.  **User:** Asks for confirmation of the default routing behavior for the new auth system.
+7.  **User:** Provides a detailed prompt to remove the license key system entirely and replace it with email/password auth and subscription-based routing.
+8.  **User:** Requests updates to the pricing section (new prices, new labels like Free 14-Day Trial and Best Value, and new highlight colors).
+9.  **User:** Asks how to set up their custom domain ().
+10. **User:** Asks to run the deployment health check.
 
 **Project Health Check:**
--   **Broken:** Deployment is broken. The  identified hardcoded secrets/links and missing configuration, which prevents the app from being deployed.
+-   **Broken:**
+    -   The new authentication system is incomplete (password reset backend is missing).
+    -   The contact form is non-functional due to a user-side Resend configuration issue.
+    -   The project has a history of white screen bugs that make it unstable for production.
 -   **Mocked:** None.
 
 **3rd Party Integrations**
--   **OpenAI GPT-4** — Uses Emergent LLM Key via a stateless, anonymous backend proxy.
--   **Stripe** — Integrated for processing payments via Payment Links and Webhooks. Requires User API Key and Webhook Secret.
--   **Resend** — Integrated for sending license key and contact form emails. Requires User API Key.
+-   **OpenAI GPT-4:** Used for the AI Wingman feature.
+-   **Stripe:** Used for subscription payments and webhooks to manage subscription status.
+-   **Resend:** Used for transactional emails (e.g., contact form). Currently broken due to an unverified domain.
 
 **Testing status**
--   Testing agent used after significant changes: NO (The agent attempted to call it but it did not produce a report. The agent then performed extensive manual testing via screenshots.)
+-   Testing agent used after significant changes: NO
 -   Troubleshoot agent used after agent stuck in loop: NO
 -   Test files created: None
--   Known regressions: None
+-   Known regressions: The application is prone to showing a blank white screen on preview/deployment due to runtime JavaScript errors.
 
 **Credentials to test flow:**
--   **App:** No user login required. Access is gated by a license key obtained via a Stripe purchase.
 -   **Admin Dashboard:**
     -   URL: 
-    -   Password: 
+    -   Password:  (This is now stored as a backend environment variable).
+-   **App Access:** Requires creating an account via the new Sign Up page and having an active subscription status (which is currently tied to Stripe webhooks).
 
 **What agent forgot to execute**
--   The agent completely failed to address the **critical deployment blockers** identified by the . Despite acknowledging the health check failure, the agent immediately pivoted to implementing numerous new user features without resolving the underlying issues that prevent the application from going live. This is the most critical pending task.</analysis>
+-   The agent created frontend pages and backend route stubs for the Forgot Password flow but did not implement the actual backend logic for generating and sending a reset token or for updating the password. This leaves the authentication system incomplete.
+-   The agent did not propose refactoring the database schema after repurposing the  collection to store user auth data, which is a significant design flaw.</analysis>
