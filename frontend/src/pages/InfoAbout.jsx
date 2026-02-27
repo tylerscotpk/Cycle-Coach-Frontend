@@ -13,7 +13,7 @@ const InfoAbout = () => {
           <div className="absolute top-40 left-20 w-[400px] h-[400px] bg-cyan-600/5 rounded-full blur-3xl"></div>
         </div>
         
-        <div className="relative z-10 max-w-4xl mx-auto">
+        <div className="relative z-10 max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight mb-8" data-testid="about-headline">
             What Is Cycle Coach?
           </h1>
@@ -25,7 +25,7 @@ const InfoAbout = () => {
 
       {/* Why It Works Section */}
       <section className="py-20 px-6 border-t border-slate-800/50">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 tracking-tight">
             Why It Works
           </h2>
@@ -37,7 +37,7 @@ const InfoAbout = () => {
 
       {/* Direct Approach Section */}
       <section className="py-20 px-6 bg-slate-900/50">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6 tracking-tight">
             A Direct, Practical Approach
           </h2>
