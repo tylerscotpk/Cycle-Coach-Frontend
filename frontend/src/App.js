@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Dashboard from "@/pages/Dashboard";
@@ -39,11 +39,7 @@ function AuthProvider({ children }) {
     user: null
   });
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const sessionToken = localStorage.getItem('session_token');
       
@@ -76,7 +72,6 @@ function AuthProvider({ children }) {
         });
         localStorage.setItem('user', JSON.stringify(result.user));
       } else {
-        // Clear invalid session
         localStorage.removeItem('session_token');
         localStorage.removeItem('user');
         setAuthState({
@@ -95,7 +90,11 @@ function AuthProvider({ children }) {
         user: null
       });
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const logout = async () => {
     try {
@@ -114,6 +113,7 @@ function AuthProvider({ children }) {
     } finally {
       localStorage.removeItem('session_token');
       localStorage.removeItem('user');
+      localStorage.removeItem('pending_plan');
       setAuthState({
         isLoading: false,
         isAuthenticated: false,
@@ -138,7 +138,6 @@ function AppContent() {
   const [hasConsent, setHasConsent] = useState(false);
 
   useEffect(() => {
-    // Check location setup and consent for app routes
     if (auth.isAuthenticated && auth.hasSubscription) {
       const locationSetup = localStorage.getItem('cyclecoach_state_waiver_complete') === 'true';
       setHasLocationSetup(locationSetup);
@@ -147,6 +146,24 @@ function AppContent() {
         const consent = localStorage.getItem('cyclecoach_consent_granted') === 'true';
         setHasConsent(consent);
       }
+    }
+  }, [auth.isAuthenticated, auth.hasSubscription]);
+
+  // Poll for subscription status after Stripe payment return
+  useEffect(() => {
+    if (auth.isAuthenticated && !auth.hasSubscription) {
+      // User is logged in but no subscription yet — might be returning from Stripe
+      let pollCount = 0;
+      const maxPolls = 10;
+      const interval = setInterval(async () => {
+        pollCount++;
+        if (pollCount > maxPolls) {
+          clearInterval(interval);
+          return;
+        }
+        await auth.checkAuth();
+      }, 3000);
+      return () => clearInterval(interval);
     }
   }, [auth.isAuthenticated, auth.hasSubscription]);
 
@@ -160,7 +177,6 @@ function AppContent() {
     setHasConsent(true);
   };
 
-  // Check if current route is public
   const isPublicRoute = PUBLIC_ROUTES.some(route => 
     location.pathname === route || location.pathname.startsWith('/info')
   );
@@ -176,31 +192,22 @@ function AppContent() {
 
   // ============ ROUTING RULES ============
   
-  // Rule 1: ACTIVE USER (logged in + has subscription/trial) visiting public routes
-  // -> Redirect to /app (except /admin)
+  // Rule 1: ACTIVE USER (logged in + subscription) visiting public routes → redirect to /app (except /admin)
   if (auth.isAuthenticated && auth.hasSubscription && isPublicRoute && location.pathname !== '/admin') {
     return <Navigate to="/app" replace />;
   }
 
-  // Rule 2: Logged in but NO subscription trying to access /app routes
-  // -> Redirect to pricing
+  // Rule 2: Logged in but NO subscription trying to access /app routes → redirect to pricing
   if (auth.isAuthenticated && !auth.hasSubscription && location.pathname.startsWith('/app')) {
     return <Navigate to="/pricing" replace />;
   }
 
-  // Rule 3: NOT logged in trying to access /app routes
-  // -> Redirect to login
+  // Rule 3: NOT logged in trying to access /app routes → redirect to login
   if (!auth.isAuthenticated && location.pathname.startsWith('/app')) {
     return <Navigate to="/login" replace />;
   }
 
-  // Rule 4: Logged in but NO subscription on public routes
-  // -> Allow them to view public pages (they can browse Home, About, etc.)
-  // -> Primary CTA on these pages should route them to Pricing
-  // (This is handled by the public routes below - no redirect needed)
-
   // ============ PUBLIC ROUTES ============
-  // Accessible by: logged-out visitors AND logged-in users without subscription
   if (isPublicRoute || (auth.isAuthenticated && !auth.hasSubscription)) {
     return (
       <Routes>
@@ -214,25 +221,21 @@ function AppContent() {
         <Route path="/reset-password" element={<InfoResetPassword />} />
         <Route path="/info/contact" element={<InfoContact />} />
         <Route path="/admin" element={<AdminDashboard />} />
-        {/* Catch-all for logged-in non-subscribed users */}
         <Route path="*" element={<Navigate to="/pricing" replace />} />
       </Routes>
     );
   }
 
-  // Protected app routes - show setup flows if needed
+  // Protected app routes
   if (auth.isAuthenticated && auth.hasSubscription) {
-    // Show state privacy waiver if not completed
     if (!hasLocationSetup) {
       return <StatePrivacyWaiver onComplete={handleLocationComplete} />;
     }
 
-    // Show consent screen if not granted
     if (!hasConsent) {
       return <PartnerConsent onConsentGranted={handleConsentGranted} />;
     }
 
-    // Show app
     return (
       <Routes>
         <Route path="/app" element={<Dashboard />} />
@@ -246,7 +249,6 @@ function AppContent() {
     );
   }
 
-  // Fallback - redirect to home
   return <Navigate to="/" replace />;
 }
 
