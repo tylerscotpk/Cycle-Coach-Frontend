@@ -87,6 +87,7 @@ const InfoPricing = () => {
               <Card 
                 key={plan.id}
                 className={`bg-slate-900/80 border-slate-700/50 flex flex-col ${
+                  plan.highlight === 'purple' ? 'ring-2 ring-purple-500/50 border-purple-500/30' :
                   plan.highlight === 'cyan' ? 'ring-2 ring-cyan-500/50 border-cyan-500/30' : 
                   plan.highlight === 'green' ? 'ring-2 ring-emerald-500/50 border-emerald-500/30' : ''
                 }`}
@@ -113,7 +114,9 @@ const InfoPricing = () => {
                   <Button
                     onClick={() => handleSelectPlan(plan)}
                     className={`w-full py-6 text-lg font-semibold ${
-                      plan.buttonStyle === 'cyan' 
+                      plan.buttonStyle === 'purple'
+                        ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                        : plan.buttonStyle === 'cyan' 
                         ? 'bg-cyan-500 hover:bg-cyan-600 text-white' 
                         : plan.buttonStyle === 'green'
                         ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
