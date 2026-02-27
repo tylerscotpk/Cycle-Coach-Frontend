@@ -592,7 +592,7 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
         subscription_status = user.get("subscription_status")
         trial_ends_at = user.get("trial_ends_at")
         
-        if subscription_status == "active":
+        if subscription_status in ("active", "cancelling"):
             has_subscription = True
         elif trial_ends_at:
             try:
@@ -609,7 +609,9 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
                 "id": user["id"],
                 "email": user.get("email"),
                 "subscription_status": subscription_status,
-                "subscription_tier": user.get("subscription_tier")
+                "subscription_tier": user.get("subscription_tier"),
+                "stripe_subscription_id": user.get("stripe_subscription_id"),
+                "cancels_at": user.get("cancels_at")
             }
         }
         
