@@ -2080,6 +2080,15 @@ async def stripe_webhook(request: Request):
             if result.modified_count > 0:
                 logger.info(f"Deactivated license for subscription {subscription_id}")
             
+            # Sync to auth_users
+            await db.auth_users.update_one(
+                {"stripe_subscription_id": subscription_id},
+                {"$set": {
+                    "subscription_status": "cancelled",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
             return {"status": "subscription_cancelled"}
         
         # Handle subscription updated (status changes, plan changes, cancellation scheduled)
