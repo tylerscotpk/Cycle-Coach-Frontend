@@ -274,6 +274,88 @@ def generate_reset_token() -> str:
     """Generate a secure reset token"""
     return secrets.token_urlsafe(32)
 
+async def send_welcome_email(email: str):
+    """Send welcome email after account creation"""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured - skipping welcome email")
+        return False
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [email],
+            "subject": "Welcome to Cycle Coach!",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0;">Welcome to Cycle Coach!</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">Your account has been created</p>
+                </div>
+                <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <p>Thanks for joining Cycle Coach — the relationship performance tool built for men.</p>
+                    <p>Next step: <strong>Choose a plan</strong> to unlock your dashboard, AI Wingman, cycle tracking, and all the tools you need to stay in sync.</p>
+                    <div style="text-align: center; margin: 25px 0;">
+                        <a href="https://cyclecoach.net/pricing" style="display: inline-block; background-color: #0891b2; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Choose Your Plan</a>
+                    </div>
+                    <p style="color: #64748b; font-size: 13px;">If you have any questions, reply to this email or visit our Contact page.</p>
+                </div>
+                <div style="text-align: center; margin-top: 20px; color: #64748b; font-size: 12px;">
+                    <p>Cycle Coach — Stars &amp; Honey, LLC</p>
+                </div>
+            </div>
+            """
+        }
+        await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Welcome email sent to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send welcome email to {email}: {str(e)}")
+        return False
+
+async def send_purchase_confirmation_email(email: str, tier: str):
+    """Send purchase confirmation email after successful Stripe checkout"""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured - skipping purchase confirmation email")
+        return False
+    tier_names = {"monthly": "Monthly Training Plan", "quarterly": "Quarter by Quarter", "annual": "Full Season Strategy"}
+    tier_name = tier_names.get(tier, tier.title())
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [email],
+            "subject": f"You're In! Cycle Coach {tier_name} is Active",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0;">You're All Set!</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">{tier_name} — Now Active</p>
+                </div>
+                <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <p>Your <strong>{tier_name}</strong> subscription is now active. You have full access to everything Cycle Coach offers:</p>
+                    <ul style="line-height: 2;">
+                        <li>Cycle tracking &amp; phase predictions</li>
+                        <li>Phase-based tips &amp; insights</li>
+                        <li>Partner Profile</li>
+                        <li>AI Wingman — personalized advice 24/7</li>
+                        <li>Research-backed resources</li>
+                    </ul>
+                    <div style="text-align: center; margin: 25px 0;">
+                        <a href="https://cyclecoach.net/app" style="display: inline-block; background-color: #0891b2; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Open Your Dashboard</a>
+                    </div>
+                    <p style="color: #64748b; font-size: 13px;">Manage your subscription anytime from Account Settings inside the app.</p>
+                </div>
+                <div style="text-align: center; margin-top: 20px; color: #64748b; font-size: 12px;">
+                    <p>Cycle Coach — Stars &amp; Honey, LLC</p>
+                </div>
+            </div>
+            """
+        }
+        await asyncio.to_thread(resend.Emails.send, params)
+        logger.info(f"Purchase confirmation email sent to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send purchase confirmation email to {email}: {str(e)}")
+        return False
+
 class RegisterRequest(BaseModel):
     email: str
     password: str
