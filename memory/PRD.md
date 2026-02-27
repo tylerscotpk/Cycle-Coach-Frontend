@@ -1,15 +1,16 @@
 # Cycle Coach - Product Requirements Document
 
 ## Original Problem Statement
-Create a mobile-friendly web app called "Cycle Coach" to help men understand their partners' menstrual cycles. The app tracks cycles, provides phase-based tips and research-backed insights, and features an "AI Wingman" for personalized advice.
+Create a mobile-friendly web app called "Cycle Coach" to help men understand their partners' menstrual cycles. The app tracks cycles, provides phase-based tips and research-backed insights, and features an "AI Wingman" for personalized advice. Includes a public-facing informational website and subscription-based monetization.
 
 ## Core Requirements
 - **Cycle Tracking:** Track cycles, provide phase-based tips, display research-backed facts
 - **Privacy-First:** All personal cycle data stored locally in browser `localStorage`
 - **AI Wingman:** Anonymously provide AI-driven advice using partner profile context
+- **Authentication:** Email/password sign-up and login with JWT sessions
+- **Subscription Routing:** Public visitors see marketing pages; subscribed users access /app; non-subscribed users see pricing
 - **Monetization:** Stripe Payment Links subscription model with webhooks
 - **Admin Dashboard:** Password-protected portal for user/subscription management
-- **Push Notifications:** Phase reminders and reflection prompts
 - **Contact Page:** Form to send messages to admin email
 - **Account Page:** View subscription status and cancel subscription
 - **Phase Predictor:** Predict cycle phase for any given date
@@ -17,100 +18,104 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 ## Tech Stack
 - **Frontend:** React, Tailwind CSS, Shadcn/UI, Capacitor (native builds)
 - **Backend:** FastAPI, MongoDB
-- **Data Storage:** Browser `localStorage` for cycle data, MongoDB for licensing
+- **Data Storage:** Browser `localStorage` for cycle data, MongoDB for users/subscriptions
 - **Integrations:** Stripe (payments), Resend (emails), OpenAI GPT (AI Wingman via Emergent LLM Key)
 
 ## Architecture
 ```
 /app/
 ├── backend/
-│   ├── .env                    # Environment variables (Mongo, Stripe, Resend, Admin password)
+│   ├── .env
 │   ├── requirements.txt
-│   └── server.py               # FastAPI: AI proxy, license/webhook, admin auth, contact APIs
+│   └── server.py               # FastAPI: auth, subscriptions, webhooks, AI, admin
 ├── frontend/
-│   ├── .env                    # REACT_APP_BACKEND_URL
-│   ├── capacitor.config.json
+│   ├── .env
 │   ├── package.json
 │   └── src/
-│       ├── App.js              # Main router
+│       ├── App.js              # Routing + AuthContext (public vs private)
 │       ├── components/
-│       │   ├── Paywall.jsx     # Subscription plans
-│       │   └── NotificationSettings.jsx
+│       │   ├── InfoNav.jsx     # Public website navigation
+│       │   └── ui/             # Shadcn UI components
 │       ├── pages/
-│       │   ├── Dashboard.jsx
-│       │   ├── AdminDashboard.jsx
-│       │   ├── PrivacySettings.jsx
-│       │   ├── AccountSettings.jsx
-│       │   ├── Contact.jsx
-│       │   └── PhasePredictor.jsx
+│       │   ├── InfoHome.jsx        # Public landing page
+│       │   ├── InfoAbout.jsx       # Public about page (center-aligned)
+│       │   ├── InfoPricing.jsx     # Pricing with Stripe Payment Links ($3/$8/$30)
+│       │   ├── InfoContact.jsx     # Contact form
+│       │   ├── InfoLogin.jsx       # Email/password login
+│       │   ├── InfoSignUp.jsx      # User registration
+│       │   ├── InfoForgotPassword.jsx  # Password reset request
+│       │   ├── InfoResetPassword.jsx   # Password reset form
+│       │   ├── Dashboard.jsx       # Main app dashboard (subscribed users)
+│       │   ├── AccountSettings.jsx # Subscription management (API-driven)
+│       │   ├── AdminDashboard.jsx  # Admin portal
+│       │   └── PhasePredictor.jsx  # Cycle phase predictor
 │       └── utils/
-│           ├── localStorageManager.js
-│           ├── resourcesData.js
-│           └── notificationService.js
+│           └── localStorageManager.js
 ```
 
 ## Subscription Tiers
-- **Monthly Training Plan:** $3.99/mo (7-day free trial)
-- **Quarter by Quarter:** $10.49/3 months
-- **Full Season Strategy:** $35.91/year
+- **Monthly Training Plan:** $3/mo
+- **Quarter by Quarter:** $8/3 months (Free 14-Day Trial)
+- **Full Season Strategy:** $30/year (Best Value)
+
+## Database Collections
+- **`auth_users`:** Email/password users with subscription status (primary user store)
+- **`user_sessions`:** Session tokens for authentication
+- **`password_resets`:** Password reset tokens (1hr expiry)
+- **`license_keys`:** Legacy collection (kept for backward compat with Stripe webhooks)
+- **`admin_sessions`:** Admin authentication tokens
+
+## Key API Endpoints
+- `POST /api/auth/register` - Create account
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/check` - Check auth + subscription status
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password with token
+- `GET /api/account/subscription` - Get subscription details
+- `POST /api/account/cancel-subscription` - Cancel subscription
+- `POST /api/webhook/stripe` - Handle Stripe events (syncs to auth_users)
 
 ## Admin Access
 - **URL:** `/admin`
 - **Password:** Stored in `backend/.env` as `ADMIN_PASSWORD`
-- **Authentication:** Backend-validated via `/api/admin/login` endpoint
 
 ---
 
-## Changelog
+## What's Been Implemented
 
-### 2025-02-15 - Informational Website Created
-- **Added:** New informational website pages at `/info`, `/about`, `/signup`, `/info/contact`
-- **Created:** `InfoHome.jsx` - Landing page with hero, sections, app previews, and CTA
-- **Created:** `InfoAbout.jsx` - About page explaining Cycle Coach
-- **Created:** `InfoPricing.jsx` - Pricing/Sign Up page with 3 Stripe-linked plans ($35.99/year)
-- **Created:** `InfoContact.jsx` - Contact form (sends to cyclecoach4men@gmail.com internally)
-- **Created:** `InfoNav.jsx` - Navigation component with mobile menu
-- **Updated:** `App.js` to handle info website routes separately from app routes
-- **Feature:** Mobile-responsive design with hamburger menu
+### Feb 27, 2026 - Auth System Finalized & Database Sync
+- **Fixed:** Stripe webhook now syncs subscription_status to `auth_users` collection
+- **Added:** `GET /api/account/subscription` endpoint for authenticated subscription data
+- **Added:** `POST /api/account/cancel-subscription` endpoint (session-based auth)
+- **Updated:** AccountSettings.jsx fetches data from API instead of localStorage
+- **Fixed:** `send_subscription_email` tier config fallback bug (KeyError: 'basic')
+- **Fixed:** `resend.emails.send` capitalization to `resend.Emails.send`
+- **Fixed:** About page center-aligned (text-left → text-center on resource items)
+- **Fixed:** Placeholder text on home page hero section
+- **Result:** Full auth lifecycle works: Register → Pay via Stripe → Webhook syncs → User accesses /app
 
-### 2025-02-02 - Cancel Subscription Feature
-- **Added:** Backend endpoint `POST /api/cancel-subscription` with Stripe integration
-- **Added:** Confirmation modal in Account Settings page using AlertDialog
-- **Updated:** Subscription cancellation updates both Stripe and local database
-- **Feature:** Users can now cancel subscriptions directly from the app
-
-### 2025-02-01 - Security Fix
-- **Fixed:** Moved hardcoded admin password from frontend to backend environment variable
-- **Added:** Backend admin authentication endpoints (`/api/admin/login`, `/api/admin/verify`, `/api/admin/logout`)
-- **Added:** Admin session management in MongoDB with 24-hour token expiry
-- **Updated:** Frontend `AdminDashboard.jsx` to use backend authentication
-
-### Previous Session Completed Work
-- AI Wingman with partner profile context
-- Push notification system
-- Admin dashboard with subscription tier filtering
-- Resources overhaul with phase-tagging
-- Account Settings page with subscription management
+### Previous Session Work
+- Authentication overhaul from license-keys to email/password
+- Informational website (Home, About, Pricing, Contact pages)
+- Stripe Payment Links integration
 - Subscription cancellation flow
-- Contact page with Resend email integration
-- Phase Predictor feature
-- UI/Layout fixes for Paywall and Dashboard
+- Admin dashboard with backend auth
+- AI Wingman, Phase Predictor, Push Notifications
+- Resources system with bookmarking
 
 ---
 
 ## Backlog
 
-### P0 - Critical (Deployment Blockers)
-- [ ] Move hardcoded Stripe Payment Links to frontend env variables
-- [ ] Revert hardcoded backend URL to use `REACT_APP_BACKEND_URL`
-
 ### P1 - High Priority
-- [ ] Complete App Store deployment with Capacitor
-- [ ] Add supervisor config for production deployment
+- [ ] Refactor `backend/server.py` into modular router files (auth.py, stripe.py, admin.py)
+- [ ] Fix Contact Form (Resend domain verification needed by user)
 
 ### P2 - Medium Priority
-- [ ] Refactor `backend/server.py` - cleanup deprecated code
-- [ ] Refactor `Dashboard.jsx` - break into smaller components
+- [ ] Refactor `Dashboard.jsx` into smaller components
+- [ ] Clean up legacy `license_keys` references in admin dashboard
+- [ ] Complete App Store deployment with Capacitor
 
 ### P3 - Future Enhancements
 - [ ] Additional notification triggers
