@@ -2179,72 +2179,42 @@ async def stripe_webhook(request: Request):
             session_id = session.get("id")
             subscription_id = session.get("subscription")
             metadata = session.get("metadata", {})
-            tier = metadata.get("tier", "basic")
+            tier = metadata.get("tier", "monthly")
             
             if not customer_email:
                 logger.error(f"No customer email in session {session_id}")
                 return {"status": "error", "message": "No customer email"}
             
-            # Check if license already exists for this session
-            existing = await db.license_keys.find_one({"stripe_session_id": session_id})
-            if existing:
-                logger.info(f"License already exists for session {session_id}")
-                return {"status": "already_processed"}
+            customer_email = customer_email.lower().strip()
             
-            # Deactivate any existing trial/free licenses for this email
-            await db.license_keys.update_many(
-                {"customer_email": customer_email.lower(), "key_type": {"$in": ["free_trial", "trial"]}},
-                {"$set": {"is_active": False}}
-            )
-            
-            # Generate unique license key
-            license_key = generate_license_key()
-            while await db.license_keys.find_one({"license_key": license_key}):
-                license_key = generate_license_key()
-            
-            # Save license to database with subscription info
-            license_dict = {
-                "id": str(uuid.uuid4()),
-                "license_key": license_key,
-                "customer_email": customer_email.lower(),
-                "stripe_session_id": session_id,
-                "stripe_subscription_id": subscription_id,
-                "is_active": True,
-                "key_type": tier,
-                "subscription_tier": tier,
-                "expires_at": None,  # Subscriptions don't expire until cancelled
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "activation_count": 0
-            }
-            await db.license_keys.insert_one(license_dict)
-            
-            logger.info(f"Created {tier} license {license_key} for {customer_email}")
-            
-            # Sync subscription status to auth_users collection
-            auth_user_update = await db.auth_users.find_one({"email": customer_email.lower()})
-            if auth_user_update:
+            # Only update existing auth_users — do NOT create ghost records
+            auth_user = await db.auth_users.find_one({"email": customer_email})
+            if auth_user:
+                # Check if already processed
+                if auth_user.get("stripe_subscription_id") == subscription_id:
+                    logger.info(f"Subscription already synced for {customer_email}")
+                    return {"status": "already_processed"}
+                
                 await db.auth_users.update_one(
-                    {"email": customer_email.lower()},
+                    {"email": customer_email},
                     {"$set": {
                         "subscription_status": "active",
                         "subscription_tier": tier,
                         "stripe_subscription_id": subscription_id,
+                        "stripe_session_id": session_id,
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )
-                logger.info(f"Synced subscription to auth_users for {customer_email}")
+                logger.info(f"Activated {tier} subscription for {customer_email}")
+                
+                # Send purchase confirmation email
+                asyncio.create_task(send_purchase_confirmation_email(customer_email, tier))
+                
+                return {"status": "success", "tier": tier}
             else:
-                logger.warning(f"No auth_users record found for {customer_email} - user may not have registered yet")
-            
-            # Send email with license key
-            email_sent = await send_subscription_email(customer_email, license_key, tier)
-            
-            return {
-                "status": "success",
-                "license_key": license_key,
-                "tier": tier,
-                "email_sent": email_sent
-            }
+                # No registered user — log warning, do NOT create ghost record
+                logger.warning(f"Webhook: No registered user found for {customer_email} (session {session_id}). Skipping — user must register first.")
+                return {"status": "no_user", "message": f"No registered user for {customer_email}"}
         
         # Handle subscription cancelled
         elif event_type == "customer.subscription.deleted":
