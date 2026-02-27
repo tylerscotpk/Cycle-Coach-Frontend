@@ -491,7 +491,7 @@ async def forgot_password(request: ForgotPasswordRequest):
                 frontend_url = os.environ.get('FRONTEND_URL', 'https://cyclecoach.net')
                 reset_link = f"{frontend_url}/reset-password?token={reset_token}"
                 
-                resend.emails.send({
+                resend.Emails.send({
                     "from": SENDER_EMAIL,
                     "to": email,
                     "subject": "Reset Your Cycle Coach Password",

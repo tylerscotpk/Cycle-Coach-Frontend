@@ -33,7 +33,7 @@ const InfoHome = () => {
           
           {/* Teal Subheading */}
           <p className="text-xl sm:text-2xl text-cyan-400 font-light mb-4">
-            -Put something else here-
+            Understand her cycle. Strengthen your bond.
           </p>
           
           <p className="text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed mb-10">
