@@ -3417,38 +3417,31 @@ async def restore_user(email: str):
 
 @api_router.get("/admin/stats")
 async def get_admin_stats():
-    """Get overall stats for dashboard"""
-    # Trial requests stats
+    """Get overall stats for dashboard from auth_users"""
+    total_users = await db.auth_users.count_documents({"is_active": True})
+    monthly_count = await db.auth_users.count_documents({"subscription_tier": "monthly", "subscription_status": {"$in": ["active", "cancelling"]}})
+    quarterly_count = await db.auth_users.count_documents({"subscription_tier": "quarterly", "subscription_status": {"$in": ["active", "cancelling"]}})
+    annual_count = await db.auth_users.count_documents({"subscription_tier": "annual", "subscription_status": {"$in": ["active", "cancelling"]}})
+    no_subscription = await db.auth_users.count_documents({"subscription_status": None, "is_active": True})
+    cancelled_count = await db.auth_users.count_documents({"subscription_status": {"$in": ["cancelled", "cancelling"]}})
+    
+    # Legacy trial requests
     pending_count = await db.trial_requests.count_documents({"status": "pending"})
     approved_count = await db.trial_requests.count_documents({"status": "approved"})
-    rejected_count = await db.trial_requests.count_documents({"status": "rejected"})
-    
-    # User/license stats (non-archived only)
-    # Trial includes legacy keys without key_type
-    trial_count = await db.license_keys.count_documents({
-        "$or": [{"key_type": "trial"}, {"key_type": {"$exists": False}}, {"key_type": None}],
-        "is_archived": {"$ne": True},
-        "is_cancelled": {"$ne": True}
-    })
-    monthly_count = await db.license_keys.count_documents({"key_type": "monthly", "is_archived": {"$ne": True}, "is_cancelled": {"$ne": True}})
-    yearly_count = await db.license_keys.count_documents({"key_type": "yearly", "is_archived": {"$ne": True}, "is_cancelled": {"$ne": True}})
-    lifetime_count = await db.license_keys.count_documents({"key_type": "lifetime", "is_archived": {"$ne": True}, "is_cancelled": {"$ne": True}})
-    cancelled_count = await db.license_keys.count_documents({"is_cancelled": True})
-    archived_count = await db.license_keys.count_documents({"is_archived": True})
     
     return {
         "requests": {
             "pending": pending_count,
             "approved": approved_count,
-            "rejected": rejected_count
+            "rejected": 0
         },
         "users": {
-            "trial": trial_count,
+            "total": total_users,
             "monthly": monthly_count,
-            "yearly": yearly_count,
-            "lifetime": lifetime_count,
-            "cancelled": cancelled_count,
-            "archived": archived_count
+            "quarterly": quarterly_count,
+            "annual": annual_count,
+            "no_subscription": no_subscription,
+            "cancelled": cancelled_count
         }
     }
 
