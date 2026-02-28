@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import InfoNav from '@/components/InfoNav';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 const InfoResetPassword = () => {
   const [searchParams] = useSearchParams();
