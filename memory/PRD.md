@@ -27,7 +27,15 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 ├── backend/
 │   ├── .env
 │   ├── requirements.txt
-│   └── server.py
+│   ├── server.py            # Main app + remaining routes
+│   ├── database.py          # Shared MongoDB connection
+│   ├── dependencies.py      # Shared auth helpers
+│   ├── middleware/
+│   │   └── cors.py          # StrictCORSMiddleware (echoes exact origin)
+│   └── routes/
+│       ├── auth.py           # /api/auth/*, /api/account/*
+│       ├── stripe.py         # /api/webhook/stripe
+│       └── health.py         # /api/health
 ├── frontend/
 │   ├── .env
 │   ├── package.json
