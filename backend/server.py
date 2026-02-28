@@ -3686,7 +3686,7 @@ app.add_middleware(
     allow_origins=[
         "https://cyclecoach.net",
         "https://www.cyclecoach.net",
-        os.environ.get("REACT_APP_BACKEND_URL", ""),
+        "https://cycle-insights-test.preview.emergentagent.com",
         "http://localhost:3000",
     ],
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
