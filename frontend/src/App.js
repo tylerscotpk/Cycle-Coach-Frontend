@@ -21,7 +21,7 @@ import InfoSignUp from "@/pages/InfoSignUp";
 import InfoForgotPassword from "@/pages/InfoForgotPassword";
 import InfoResetPassword from "@/pages/InfoResetPassword";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 // Auth Context
 const AuthContext = createContext(null);
