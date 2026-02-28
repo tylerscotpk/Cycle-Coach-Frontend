@@ -52,6 +52,7 @@ const InfoLogin = () => {
     try {
       const response = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email_or_phone: formData.emailOrPhone.trim(),
