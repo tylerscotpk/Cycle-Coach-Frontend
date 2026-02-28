@@ -3680,6 +3680,10 @@ async def submit_contact(request: ContactRequest):
 # Include the router in the main app
 app.include_router(api_router)
 
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
+
 # ============ RAW ASGI CORS MIDDLEWARE ============
 # Handles CORS at the lowest level to prevent proxy override
 
