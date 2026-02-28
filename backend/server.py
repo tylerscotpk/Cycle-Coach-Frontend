@@ -3740,6 +3740,5 @@ class StrictCORSMiddleware:
 
 app = StrictCORSMiddleware(app)
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+# Note: shutdown handler registered before middleware wrapping (above)
+# Use atexit as fallback for DB cleanup
