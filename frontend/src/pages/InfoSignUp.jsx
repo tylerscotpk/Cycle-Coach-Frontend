@@ -69,7 +69,6 @@ const InfoSignUp = () => {
       const response = await fetch(`${API}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           email: formData.email.trim(),
           phone: formData.phone.trim() || null,

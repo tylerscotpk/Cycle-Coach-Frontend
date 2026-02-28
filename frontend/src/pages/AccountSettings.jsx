@@ -36,8 +36,7 @@ const AccountSettings = () => {
       }
 
       const response = await fetch(`${API}/api/account/subscription`, {
-        headers: { 'Authorization': `Bearer ${sessionToken}` },
-        credentials: 'include'
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       });
 
       if (!response.ok) {
@@ -64,8 +63,7 @@ const AccountSettings = () => {
       const sessionToken = localStorage.getItem('session_token');
       const response = await fetch(`${API}/api/account/cancel-subscription`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${sessionToken}` },
-        credentials: 'include'
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       });
 
       const result = await response.json();

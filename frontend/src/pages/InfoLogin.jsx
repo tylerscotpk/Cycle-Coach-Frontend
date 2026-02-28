@@ -53,7 +53,6 @@ const InfoLogin = () => {
       const response = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           email_or_phone: formData.emailOrPhone.trim(),
           password: formData.password
