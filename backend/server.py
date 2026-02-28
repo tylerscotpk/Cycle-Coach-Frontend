@@ -1,7 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Cookie, Response, Header, Request
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
-from starlette.types import ASGIApp, Receive, Scope, Send
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -21,10 +20,8 @@ import stripe
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# Shared database (also used by route modules via database.py)
+from database import db, client
 
 # Emergent LLM Key
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
