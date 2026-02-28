@@ -64,6 +64,7 @@ const AccountSettings = () => {
       const sessionToken = localStorage.getItem('session_token');
       const response = await fetch(`${API}/api/account/cancel-subscription`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       });
 
