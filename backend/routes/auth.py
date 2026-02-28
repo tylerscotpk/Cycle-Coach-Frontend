@@ -346,7 +346,7 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
         subscription_status = user.get("subscription_status")
         trial_ends_at = user.get("trial_ends_at")
 
-        if subscription_status in ("active", "cancelling"):
+        if subscription_status in ("active", "trialing", "cancelling"):
             has_subscription = True
         elif trial_ends_at:
             try:
