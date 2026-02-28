@@ -190,8 +190,8 @@ async def login_user(request: LoginRequest, response: Response):
 
         response.set_cookie(
             key="session_token", value=session_token,
-            httponly=True, secure=True, samesite="lax",
-            max_age=30 * 24 * 60 * 60
+            httponly=True, secure=True, samesite="none",
+            max_age=30 * 24 * 60 * 60, path="/"
         )
 
         has_subscription = False
