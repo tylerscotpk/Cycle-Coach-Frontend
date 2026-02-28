@@ -141,8 +141,8 @@ async def register_user(request: RegisterRequest, response: Response):
 
         response.set_cookie(
             key="session_token", value=session_token,
-            httponly=True, secure=True, samesite="lax",
-            max_age=30 * 24 * 60 * 60
+            httponly=True, secure=True, samesite="none",
+            max_age=30 * 24 * 60 * 60, path="/"
         )
 
         logger.info(f"New user registered: {email}")
