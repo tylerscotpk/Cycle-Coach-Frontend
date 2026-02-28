@@ -150,6 +150,7 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 
 ### P1 — High Priority
 - [x] Fix CORS + cookie configuration for production auth (DONE Feb 28)
+- [x] Switch to same-origin relative API paths (DONE Feb 28) — root cause fix
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
 - [ ] Fix Contact Form (Resend domain verification needed by user)
 
