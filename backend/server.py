@@ -1286,6 +1286,39 @@ async def seed_resources():
 
 # ============ STRIPE/WEBHOOK routes moved to routes/stripe.py ============
 
+# Legacy helpers still needed by trial/admin routes below
+def generate_license_key():
+    """Generate a unique license key in CC-XXXX-XXXX-XXXX format"""
+    segments = []
+    for _ in range(3):
+        segment = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+        segments.append(segment)
+    return f"CC-{'-'.join(segments)}"
+
+
+async def send_subscription_email(customer_email, license_key, tier):
+    """Send subscription confirmation email"""
+    if not RESEND_API_KEY:
+        return False
+    try:
+        tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS.get("monthly", {}))
+        resend.Emails.send({
+            "from": SENDER_EMAIL,
+            "to": customer_email,
+            "subject": f"Your Cycle Coach {tier_config.get('name', tier)} Access",
+            "html": f"<p>Your license key: <strong>{license_key}</strong></p>"
+        })
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        return False
+
+
+class TrialRequestInput(BaseModel):
+    email: str
+    name: Optional[str] = None
+    reason: Optional[str] = None
+
     # Find the most recent active license for this email
     license_record = await db.license_keys.find_one(
         {"customer_email": email, "is_active": True, "is_cancelled": {"$ne": True}},
