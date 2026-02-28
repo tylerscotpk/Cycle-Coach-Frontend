@@ -98,14 +98,16 @@ class TestAuthRegister:
         assert data.get("success") is True
         assert "session_token" in data
         assert len(data["session_token"]) > 0
-        assert data["user"]["email"] == unique_email
+        # Server lowercases emails, so compare case-insensitively
+        assert data["user"]["email"].lower() == unique_email.lower()
         assert data["user"]["has_subscription"] is False
 
         # Verify cookie set with SameSite=none; Secure
         cookies = response.headers.get("set-cookie", "")
+        cookies_lower = cookies.lower()
         assert "session_token=" in cookies
-        assert "SameSite=none" in cookies.lower() or "samesite=none" in cookies
-        assert "Secure" in cookies
+        assert "samesite=none" in cookies_lower
+        assert "secure" in cookies_lower
 
     def test_register_duplicate_email_fails(self):
         """Register with existing email returns 400"""
@@ -157,9 +159,10 @@ class TestAuthLogin:
 
         # Verify cookie set with SameSite=none; Secure
         cookies = response.headers.get("set-cookie", "")
+        cookies_lower = cookies.lower()
         assert "session_token=" in cookies
-        assert "SameSite=none" in cookies.lower() or "samesite=none" in cookies
-        assert "Secure" in cookies
+        assert "samesite=none" in cookies_lower
+        assert "secure" in cookies_lower
 
     def test_login_invalid_password_fails(self):
         """Login with wrong password returns 401"""
