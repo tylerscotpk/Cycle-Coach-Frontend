@@ -42,6 +42,7 @@ const InfoNav = () => {
       if (sessionToken) {
         await fetch(`${API}/api/auth/logout`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${sessionToken}` }
         });
       }
