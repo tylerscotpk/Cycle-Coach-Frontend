@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL || "";
 
 const FeedbackModal = ({ isOpen, onClose, feedbackType, email, subscriptionTier }) => {
   const [rating, setRating] = useState(0);
