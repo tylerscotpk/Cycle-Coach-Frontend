@@ -106,6 +106,13 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 
 ## Implementation History
 
+### Feb 28, 2026 — Same-Origin API Fix (Root Cause Resolution)
+- **Root cause identified:** Production frontend (cyclecoach.net) was calling external preview backend hosts (partner-sync-6.emergent.host), causing cross-origin CORS/cookie failures
+- **Fix:** Set `REACT_APP_BACKEND_URL=""` so ALL API calls use relative paths (`/api/auth/login` instead of `https://external-host/api/auth/login`)
+- **All 14 frontend files updated** with `|| ""` fallback for safety
+- **Result:** All requests are now same-origin — eliminates CORS and cookie issues entirely
+- **Testing:** 16/16 backend + all frontend tests passed (100%), no external host requests detected
+
 ### Feb 28, 2026 — P0 CORS + Cookie Fix for Production Auth
 - **Cookie SameSite:** Changed from `lax` to `none` + `Secure` on register, login, and logout endpoints
 - **CORS Middleware:** Hardened `StrictCORSMiddleware` — echoes exact origin, returns `Access-Control-Allow-Credentials: true` for allowed origins (cyclecoach.net, www.cyclecoach.net, preview URL, localhost)
