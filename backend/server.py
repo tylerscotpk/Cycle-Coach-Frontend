@@ -176,12 +176,6 @@ async def get_current_user(session_token: Optional[str] = Cookie(None), authoriz
     return User(**user)
 
 # ============ PARTNER PROFILE ROUTES ============
-
-@api_router.post("/auth/process-session")
-async def process_session(session_id: str, response: Response):
-    """Process session_id from Emergent Auth and create user session"""
-    # Get user data from Emergent
-    user_data = await get_session_data_from_emergent(session_id)
     if not user_data:
         raise HTTPException(status_code=400, detail="Invalid session ID")
     
