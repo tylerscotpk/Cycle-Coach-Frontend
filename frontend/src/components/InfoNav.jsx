@@ -15,8 +15,7 @@ const InfoNav = () => {
     const sessionToken = localStorage.getItem('session_token');
     if (sessionToken) {
       fetch(`${API}/api/auth/check`, {
-        headers: { 'Authorization': `Bearer ${sessionToken}` },
-        credentials: 'include'
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
         .then(r => r.json())
         .then(data => {
@@ -42,8 +41,7 @@ const InfoNav = () => {
       if (sessionToken) {
         await fetch(`${API}/api/auth/logout`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${sessionToken}` },
-          credentials: 'include'
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
         });
       }
     } catch (e) {}

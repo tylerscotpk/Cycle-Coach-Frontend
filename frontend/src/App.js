@@ -57,8 +57,7 @@ function AuthProvider({ children }) {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${sessionToken}`
-        },
-        credentials: 'include'
+        }
       });
 
       const result = await response.json();
@@ -104,8 +103,7 @@ function AuthProvider({ children }) {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${sessionToken}`
-          },
-          credentials: 'include'
+          }
         });
       }
     } catch (error) {
