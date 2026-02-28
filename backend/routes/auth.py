@@ -232,7 +232,7 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
         token = authorization.replace("Bearer ", "")
     if token:
         await db.user_sessions.delete_one({"session_token": token})
-    response.delete_cookie(key="session_token", path="/")
+    response.delete_cookie(key="session_token", path="/", secure=True, samesite="none")
     return {"message": "Logged out successfully"}
 
 
