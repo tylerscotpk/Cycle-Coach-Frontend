@@ -197,7 +197,7 @@ async def login_user(request: LoginRequest, response: Response):
         has_subscription = False
         subscription_status = user.get("subscription_status")
         trial_ends_at = user.get("trial_ends_at")
-        if subscription_status in ("active", "cancelling"):
+        if subscription_status in ("active", "trialing", "cancelling"):
             has_subscription = True
         elif trial_ends_at:
             trial_end = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00')) if isinstance(trial_ends_at, str) else trial_ends_at
