@@ -134,7 +134,9 @@ class PreferenceUpdate(BaseModel):
     key: str
     value: str
 
-# ============ AUTH HELPERS ============
+# ============ AUTH + ACCOUNT routes moved to routes/auth.py ============
+
+# ============ PARTNER PROFILE ROUTES ============
 
 async def get_session_data_from_emergent(session_id: str):
     """Get user data from Emergent Auth API"""
