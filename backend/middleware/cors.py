@@ -9,12 +9,15 @@ ALLOWED_ORIGINS = {
     "http://localhost:3000",
 }
 
-CORS_HEADERS = [
-    (b"access-control-allow-credentials", b"true"),
-    (b"access-control-allow-methods", b"GET,POST,PUT,DELETE,OPTIONS,PATCH"),
-    (b"access-control-allow-headers", b"Content-Type,Authorization,Cookie,X-Requested-With"),
-    (b"vary", b"Origin"),
-]
+CORS_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+CORS_HEADERS = "Content-Type,Authorization,Cookie,X-Requested-With"
+
+
+def _origin_allowed(origin: str) -> bool:
+    """Check if origin is in the allowlist (normalized, no trailing slash)."""
+    if not origin:
+        return False
+    return origin.rstrip("/") in ALLOWED_ORIGINS
 
 
 class StrictCORSMiddleware:
@@ -33,37 +36,38 @@ class StrictCORSMiddleware:
                 origin = v.decode()
                 break
 
-        is_allowed = origin in ALLOWED_ORIGINS
+        is_allowed = _origin_allowed(origin)
 
-        # OPTIONS preflight — always respond, even for disallowed origins (with no CORS headers)
+        # OPTIONS preflight
         if scope["method"] == "OPTIONS":
+            resp_headers = {}
             if is_allowed:
-                resp = Response(
-                    status_code=204,
-                    headers={
-                        "access-control-allow-origin": origin,
-                        "access-control-allow-credentials": "true",
-                        "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS,PATCH",
-                        "access-control-allow-headers": "Content-Type,Authorization,Cookie,X-Requested-With",
-                        "access-control-max-age": "600",
-                    },
-                )
-            else:
-                resp = Response(status_code=204)
+                resp_headers = {
+                    "access-control-allow-origin": origin,
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-methods": CORS_METHODS,
+                    "access-control-allow-headers": CORS_HEADERS,
+                    "access-control-max-age": "600",
+                    "vary": "Origin",
+                }
+            resp = Response(status_code=204, headers=resp_headers)
             await resp(scope, receive, send)
             return
 
-        # Normal requests — inject CORS headers on every response
+        # Normal requests — inject CORS headers into every response
         async def send_with_cors(message):
-            if message["type"] == "http.response.start":
-                # Strip any proxy-injected CORS headers
+            if message["type"] == "http.response.start" and is_allowed:
                 raw_headers = [
-                    (k, v) for k, v in message.get("headers", [])
+                    (k, v)
+                    for k, v in message.get("headers", [])
                     if not k.lower().startswith(b"access-control-")
+                    and k.lower() != b"vary"
                 ]
-                if is_allowed:
-                    raw_headers.append((b"access-control-allow-origin", origin.encode()))
-                    raw_headers.extend(CORS_HEADERS)
+                raw_headers.append((b"access-control-allow-origin", origin.encode()))
+                raw_headers.append((b"access-control-allow-credentials", b"true"))
+                raw_headers.append((b"access-control-allow-methods", CORS_METHODS.encode()))
+                raw_headers.append((b"access-control-allow-headers", CORS_HEADERS.encode()))
+                raw_headers.append((b"vary", b"Origin"))
                 message["headers"] = raw_headers
             await send(message)
 
