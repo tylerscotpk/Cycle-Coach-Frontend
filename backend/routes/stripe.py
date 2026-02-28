@@ -1,4 +1,4 @@
-"""Stripe routes: /api/webhook/stripe, /api/subscription/*, /api/cancel-subscription"""
+"""Stripe routes: /api/webhook/stripe, /api/cancel-subscription"""
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -23,8 +23,8 @@ stripe.api_key = STRIPE_API_KEY
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'info@cyclecoach.net')
 
+ENTITLED_STATUSES = {"active", "trialing", "cancelling"}
 
-# ============ HELPERS ============
 
 async def send_purchase_confirmation_email(email: str, tier: str):
     if not RESEND_API_KEY:
@@ -57,38 +57,68 @@ async def send_purchase_confirmation_email(email: str, tier: str):
                     </div>
                     <p style="color: #64748b; font-size: 13px;">Manage your subscription anytime from Account Settings inside the app.</p>
                 </div>
-                <div style="text-align: center; margin-top: 20px; color: #64748b; font-size: 12px;">
-                    <p>Cycle Coach — Stars &amp; Honey, LLC</p>
-                </div>
             </div>
             """
         }
         await asyncio.to_thread(resend.Emails.send, params)
-        logger.info(f"Purchase confirmation email sent to {email}")
+        logger.info(f"EMAIL SENT: purchase confirmation to {email}")
         return True
     except Exception as e:
-        logger.error(f"Failed to send purchase confirmation email to {email}: {str(e)}")
+        logger.error(f"EMAIL FAILED: purchase confirmation to {email}: {str(e)}")
         return False
 
 
-# ============ REQUEST MODELS ============
+def _extract_object(event, key="data"):
+    """Safely extract nested object from Stripe event (dict or object)."""
+    if isinstance(event, dict):
+        return event.get(key, {}).get("object", {})
+    return getattr(getattr(event, key, None), "object", {})
 
-class CreateCheckoutRequest(BaseModel):
-    email: str
-    tier: str = "basic"
-    success_url: Optional[str] = None
-    cancel_url: Optional[str] = None
+
+async def _find_user_by_email(email: str):
+    """Find auth_users record by email (case-insensitive)."""
+    if not email:
+        return None
+    return await db.auth_users.find_one({"email": email.lower().strip()})
+
+
+async def _find_user_by_stripe_customer(customer_id: str):
+    """Find auth_users record by stripe_customer_id."""
+    if not customer_id:
+        return None
+    return await db.auth_users.find_one({"stripe_customer_id": customer_id})
+
+
+async def _find_user_by_stripe_subscription(subscription_id: str):
+    """Find auth_users record by stripe_subscription_id."""
+    if not subscription_id:
+        return None
+    return await db.auth_users.find_one({"stripe_subscription_id": subscription_id})
+
+
+async def _activate_user(user, fields: dict, event_label: str):
+    """Update auth_users entitlement fields and log the result."""
+    email = user.get("email", "unknown")
+    user_id = user.get("id", "unknown")
+    fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    result = await db.auth_users.update_one({"id": user_id}, {"$set": fields})
+
+    logger.info(
+        f"ENTITLEMENT UPDATE [{event_label}]: user={email} (id={user_id}) "
+        f"matched={result.matched_count} modified={result.modified_count} "
+        f"fields={fields}"
+    )
+    return result.modified_count > 0
+
 
 class CancelSubscriptionRequest(BaseModel):
     customerId: str
     subscriptionId: str
 
 
-# ============ ROUTES ============
-
 @router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
-    """Handle Stripe webhook events for subscriptions"""
     payload = await request.body()
     sig_header = request.headers.get("Stripe-Signature")
 
@@ -100,167 +130,228 @@ async def stripe_webhook(request: Request):
             logger.warning("Processing webhook without signature verification")
 
         event_type = event.get("type") if isinstance(event, dict) else event.type
-        logger.info(f"Received Stripe webhook: {event_type}")
+        logger.info(f"WEBHOOK RECEIVED: {event_type}")
 
+        # ---- checkout.session.completed ----
         if event_type == "checkout.session.completed":
-            session = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
-            customer_email = session.get("customer_email") or session.get("customer_details", {}).get("email")
+            session = _extract_object(event)
             session_id = session.get("id")
             subscription_id = session.get("subscription")
+            customer_id = session.get("customer")
+            customer_email = (
+                session.get("customer_email")
+                or session.get("customer_details", {}).get("email")
+            )
             metadata = session.get("metadata", {})
             tier = metadata.get("tier", "monthly")
 
+            logger.info(
+                f"CHECKOUT SESSION: id={session_id} sub={subscription_id} "
+                f"customer={customer_id} email={customer_email} metadata={metadata}"
+            )
+
+            # Try to resolve the Stripe subscription status (may be trialing)
+            sub_status = "active"
+            if subscription_id:
+                try:
+                    sub_obj = stripe.Subscription.retrieve(subscription_id)
+                    sub_status = sub_obj.get("status", "active") if isinstance(sub_obj, dict) else sub_obj.status
+                    logger.info(f"SUBSCRIPTION STATUS from Stripe API: {sub_status}")
+                except Exception as e:
+                    logger.warning(f"Could not retrieve subscription {subscription_id}: {e}")
+
             if not customer_email:
-                logger.error(f"No customer email in session {session_id}")
+                logger.error(f"NO EMAIL in checkout session {session_id}")
                 return {"status": "error", "message": "No customer email"}
 
-            customer_email = customer_email.lower().strip()
+            customer_email_lower = customer_email.lower().strip()
 
-            auth_user = await db.auth_users.find_one({"email": customer_email})
-            if auth_user:
-                if auth_user.get("stripe_subscription_id") == subscription_id:
-                    logger.info(f"Subscription already synced for {customer_email}")
-                    return {"status": "already_processed"}
-
-                await db.auth_users.update_one(
-                    {"email": customer_email},
-                    {"$set": {
-                        "subscription_status": "active",
-                        "subscription_tier": tier,
-                        "stripe_subscription_id": subscription_id,
-                        "stripe_session_id": session_id,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
+            # Find user: by email
+            auth_user = await _find_user_by_email(customer_email_lower)
+            if not auth_user:
+                logger.warning(
+                    f"NO USER MATCH for email={customer_email_lower} "
+                    f"(session={session_id}). No entitlement granted."
                 )
-                logger.info(f"Activated {tier} subscription for {customer_email}")
-                asyncio.create_task(send_purchase_confirmation_email(customer_email, tier))
-                return {"status": "success", "tier": tier}
+                return {"status": "no_user", "message": f"No registered user for {customer_email_lower}"}
+
+            # Skip if already processed with same subscription
+            if auth_user.get("stripe_subscription_id") == subscription_id and auth_user.get("subscription_status") in ENTITLED_STATUSES:
+                logger.info(f"ALREADY PROCESSED: {customer_email_lower} sub={subscription_id}")
+                return {"status": "already_processed"}
+
+            entitlement_status = sub_status if sub_status in ENTITLED_STATUSES else "active"
+
+            await _activate_user(auth_user, {
+                "subscription_status": entitlement_status,
+                "subscription_tier": tier,
+                "stripe_subscription_id": subscription_id,
+                "stripe_customer_id": customer_id,
+                "stripe_session_id": session_id,
+            }, "checkout.session.completed")
+
+            # Send confirmation email AFTER entitlement persisted
+            email_ok = await send_purchase_confirmation_email(customer_email_lower, tier)
+            logger.info(f"CHECKOUT COMPLETE: {customer_email_lower} → status={entitlement_status} tier={tier} email_sent={email_ok}")
+            return {"status": "success", "tier": tier, "entitlement": entitlement_status}
+
+        # ---- customer.subscription.created ----
+        elif event_type == "customer.subscription.created":
+            subscription = _extract_object(event)
+            subscription_id = subscription.get("id")
+            customer_id = subscription.get("customer")
+            status = subscription.get("status", "active")
+
+            logger.info(f"SUBSCRIPTION CREATED: sub={subscription_id} customer={customer_id} status={status}")
+
+            auth_user = await _find_user_by_stripe_customer(customer_id)
+            if not auth_user:
+                auth_user = await _find_user_by_stripe_subscription(subscription_id)
+
+            if auth_user:
+                entitlement_status = status if status in ENTITLED_STATUSES else "active"
+                await _activate_user(auth_user, {
+                    "subscription_status": entitlement_status,
+                    "stripe_subscription_id": subscription_id,
+                    "stripe_customer_id": customer_id,
+                }, "customer.subscription.created")
             else:
-                logger.warning(f"Webhook: No registered user found for {customer_email} (session {session_id}). Skipping.")
-                return {"status": "no_user", "message": f"No registered user for {customer_email}"}
+                logger.warning(f"SUBSCRIPTION CREATED but no user matched: customer={customer_id} sub={subscription_id}")
 
-        elif event_type == "customer.subscription.deleted":
-            subscription = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
-            subscription_id = subscription.get("id")
+            return {"status": "subscription_created", "subscription_status": status}
 
-            await db.license_keys.update_one(
-                {"stripe_subscription_id": subscription_id},
-                {"$set": {"is_active": False, "is_cancelled": True, "cancelled_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            await db.auth_users.update_one(
-                {"stripe_subscription_id": subscription_id},
-                {"$set": {"subscription_status": "cancelled", "updated_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            return {"status": "subscription_cancelled"}
-
+        # ---- customer.subscription.updated ----
         elif event_type == "customer.subscription.updated":
-            subscription = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
+            subscription = _extract_object(event)
             subscription_id = subscription.get("id")
+            customer_id = subscription.get("customer")
             status = subscription.get("status")
             cancel_at_period_end = subscription.get("cancel_at_period_end", False)
             cancel_at = subscription.get("cancel_at")
-            current_period_end = subscription.get("current_period_end")
 
-            update_fields = {"subscription_status": status, "updated_at": datetime.now(timezone.utc).isoformat()}
+            logger.info(f"SUBSCRIPTION UPDATED: sub={subscription_id} status={status} cancel_at_period_end={cancel_at_period_end}")
 
-            if cancel_at_period_end and cancel_at:
-                cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
-                update_fields["cancels_at"] = cancels_at_date
-                update_fields["is_cancelled"] = True
-            elif not cancel_at_period_end:
-                update_fields["cancels_at"] = None
-                update_fields["is_cancelled"] = False
+            auth_user = (
+                await _find_user_by_stripe_subscription(subscription_id)
+                or await _find_user_by_stripe_customer(customer_id)
+            )
 
-            if current_period_end:
-                update_fields["expires_at"] = datetime.fromtimestamp(current_period_end, tz=timezone.utc).isoformat()
+            if auth_user:
+                update = {"stripe_customer_id": customer_id}
+                if status == "active":
+                    update["subscription_status"] = "active"
+                elif status == "trialing":
+                    update["subscription_status"] = "trialing"
+                elif status in ("canceled", "unpaid"):
+                    update["subscription_status"] = "cancelled"
+                elif status == "past_due":
+                    update["subscription_status"] = "past_due"
 
-            if status == "active":
-                update_fields["is_active"] = True
-                update_fields["payment_status"] = "current"
-            elif status == "past_due":
-                update_fields["payment_status"] = "past_due"
-            elif status == "unpaid":
-                update_fields["is_active"] = False
-                update_fields["payment_status"] = "unpaid"
-            elif status == "canceled":
-                update_fields["is_active"] = False
-                update_fields["is_cancelled"] = True
+                if cancel_at_period_end and cancel_at:
+                    update["subscription_status"] = "cancelling"
+                    update["cancels_at"] = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
+                elif not cancel_at_period_end:
+                    update["cancels_at"] = None
 
-            await db.license_keys.update_one({"stripe_subscription_id": subscription_id}, {"$set": update_fields})
+                await _activate_user(auth_user, update, "customer.subscription.updated")
+            else:
+                logger.warning(f"SUBSCRIPTION UPDATED but no user matched: sub={subscription_id}")
 
-            auth_update = {"updated_at": datetime.now(timezone.utc).isoformat()}
-            if status == "active":
-                auth_update["subscription_status"] = "active"
-            elif status in ("canceled", "unpaid"):
-                auth_update["subscription_status"] = "cancelled"
-            elif status == "past_due":
-                auth_update["subscription_status"] = "past_due"
-
-            await db.auth_users.update_one({"stripe_subscription_id": subscription_id}, {"$set": auth_update})
             return {"status": "subscription_updated", "subscription_status": status}
 
-        elif event_type == "invoice.payment_failed":
-            invoice = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
-            subscription_id = invoice.get("subscription")
-            logger.warning(f"Payment failed for subscription {subscription_id}")
+        # ---- customer.subscription.deleted ----
+        elif event_type == "customer.subscription.deleted":
+            subscription = _extract_object(event)
+            subscription_id = subscription.get("id")
+            customer_id = subscription.get("customer")
 
-            await db.license_keys.update_one(
-                {"stripe_subscription_id": subscription_id},
-                {"$set": {"payment_status": "past_due"}}
+            logger.info(f"SUBSCRIPTION DELETED: sub={subscription_id} customer={customer_id}")
+
+            auth_user = (
+                await _find_user_by_stripe_subscription(subscription_id)
+                or await _find_user_by_stripe_customer(customer_id)
             )
-            await db.auth_users.update_one(
-                {"stripe_subscription_id": subscription_id},
-                {"$set": {"subscription_status": "past_due", "updated_at": datetime.now(timezone.utc).isoformat()}}
+            if auth_user:
+                await _activate_user(auth_user, {"subscription_status": "cancelled"}, "customer.subscription.deleted")
+            return {"status": "subscription_cancelled"}
+
+        # ---- invoice.paid ----
+        elif event_type == "invoice.paid":
+            invoice = _extract_object(event)
+            subscription_id = invoice.get("subscription")
+            customer_id = invoice.get("customer")
+            customer_email = invoice.get("customer_email")
+
+            logger.info(f"INVOICE PAID: sub={subscription_id} customer={customer_id} email={customer_email}")
+
+            auth_user = (
+                await _find_user_by_stripe_subscription(subscription_id)
+                or await _find_user_by_stripe_customer(customer_id)
+                or await _find_user_by_email(customer_email)
             )
+            if auth_user and auth_user.get("subscription_status") not in ENTITLED_STATUSES:
+                await _activate_user(auth_user, {
+                    "subscription_status": "active",
+                    "stripe_subscription_id": subscription_id,
+                    "stripe_customer_id": customer_id,
+                }, "invoice.paid")
+
+            return {"status": "invoice_paid"}
+
+        # ---- invoice.payment_failed ----
+        elif event_type == "invoice.payment_failed":
+            invoice = _extract_object(event)
+            subscription_id = invoice.get("subscription")
+            logger.warning(f"INVOICE PAYMENT FAILED: sub={subscription_id}")
+
+            auth_user = await _find_user_by_stripe_subscription(subscription_id)
+            if auth_user:
+                await _activate_user(auth_user, {"subscription_status": "past_due"}, "invoice.payment_failed")
             return {"status": "payment_failed_recorded"}
 
-        return {"status": "ignored", "event_type": event_type}
+        else:
+            logger.info(f"WEBHOOK IGNORED: {event_type}")
+            return {"status": "ignored", "event_type": event_type}
 
     except stripe.SignatureVerificationError as e:
         logger.error(f"Webhook signature verification failed: {str(e)}")
         raise HTTPException(status_code=400, detail="Invalid signature")
     except Exception as e:
-        logger.error(f"Webhook error: {str(e)}")
+        logger.error(f"WEBHOOK ERROR: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/cancel-subscription")
 async def cancel_subscription(request: CancelSubscriptionRequest):
-    """Cancel a user's subscription at the end of the billing period"""
     try:
-        customer_id = request.customerId
         subscription_id = request.subscriptionId
+        customer_id = request.customerId
 
         license_record = await db.license_keys.find_one(
             {"stripe_subscription_id": subscription_id, "stripe_customer_id": customer_id, "is_active": True},
             {"_id": 0}
         )
-
         if not license_record:
             return JSONResponse(status_code=404, content={"success": False, "message": "Subscription not found or already cancelled"})
 
         if license_record.get("is_cancelled") and license_record.get("cancels_at"):
-            return JSONResponse(status_code=400, content={"success": False, "message": "Subscription is already scheduled for cancellation", "cancels_at": license_record.get("cancels_at")})
+            return JSONResponse(status_code=400, content={"success": False, "message": "Already scheduled for cancellation", "cancels_at": license_record.get("cancels_at")})
 
-        try:
-            updated_subscription = stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
-            cancel_at = updated_subscription.current_period_end
-            cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
+        updated_subscription = stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
+        cancel_at = updated_subscription.current_period_end
+        cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
 
-            await db.license_keys.update_one(
-                {"stripe_subscription_id": subscription_id},
-                {"$set": {"cancels_at": cancels_at_date, "is_cancelled": True, "cancelled_at": datetime.now(timezone.utc).isoformat(), "updated_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            await db.auth_users.update_one(
-                {"stripe_subscription_id": subscription_id},
-                {"$set": {"subscription_status": "cancelling", "cancels_at": cancels_at_date, "updated_at": datetime.now(timezone.utc).isoformat()}}
-            )
+        await db.license_keys.update_one(
+            {"stripe_subscription_id": subscription_id},
+            {"$set": {"cancels_at": cancels_at_date, "is_cancelled": True, "cancelled_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        await db.auth_users.update_one(
+            {"stripe_subscription_id": subscription_id},
+            {"$set": {"subscription_status": "cancelling", "cancels_at": cancels_at_date, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
 
-            logger.info(f"Successfully cancelled subscription {subscription_id}, cancels at {cancels_at_date}")
-            return {"success": True, "message": "Subscription cancelled successfully", "cancels_at": cancels_at_date}
-        except stripe.StripeError as e:
-            logger.error(f"Stripe error cancelling subscription: {str(e)}")
-            return JSONResponse(status_code=400, content={"success": False, "message": f"Failed to cancel subscription: {str(e)}"})
+        return {"success": True, "message": "Subscription cancelled successfully", "cancels_at": cancels_at_date}
+    except stripe.StripeError as e:
+        return JSONResponse(status_code=400, content={"success": False, "message": f"Failed: {str(e)}"})
     except Exception as e:
-        logger.error(f"Error cancelling subscription: {str(e)}")
-        return JSONResponse(status_code=500, content={"success": False, "message": "An error occurred while cancelling your subscription"})
+        return JSONResponse(status_code=500, content={"success": False, "message": "An error occurred"})
