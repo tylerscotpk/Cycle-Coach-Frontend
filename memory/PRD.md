@@ -142,7 +142,8 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 ## Backlog
 
 ### P1 — High Priority
-- [ ] Refactor `backend/server.py` into modular router files (auth.py, stripe.py, admin.py)
+- [x] Fix CORS + cookie configuration for production auth (DONE Feb 28)
+- [ ] Refactor `backend/server.py` remaining routes into modular router files
 - [ ] Fix Contact Form (Resend domain verification needed by user)
 
 ### P2 — Medium Priority
