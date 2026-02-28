@@ -57,6 +57,7 @@ const FeedbackModal = ({ isOpen, onClose, feedbackType, email, subscriptionTier 
     try {
       const response = await fetch(`${API}/api/feedback/submit`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
