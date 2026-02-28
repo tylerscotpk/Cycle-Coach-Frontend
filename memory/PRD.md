@@ -106,6 +106,14 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 
 ## Implementation History
 
+### Feb 28, 2026 — P0 CORS + Cookie Fix for Production Auth
+- **Cookie SameSite:** Changed from `lax` to `none` + `Secure` on register, login, and logout endpoints
+- **CORS Middleware:** Hardened `StrictCORSMiddleware` — echoes exact origin, returns `Access-Control-Allow-Credentials: true` for allowed origins (cyclecoach.net, www.cyclecoach.net, preview URL, localhost)
+- **Frontend credentials:** Added `credentials: 'include'` to all fetch calls (App.js, InfoLogin, InfoSignUp, InfoNav, AccountSettings, FeedbackModal)
+- **Logout cookie fix:** `delete_cookie` now includes `samesite="none"` and `secure=True`
+- **Testing:** 16/16 backend tests + all frontend tests passed (100%)
+- **Note:** Emergent preview ingress overrides CORS headers with `*`; middleware verified on localhost:8001. Production Vercel deployment will use middleware's headers correctly.
+
 ### Feb 27, 2026 — Account-First Flow + License Key Abandonment
 - **Account-First Purchase Flow:** Unauthenticated users clicking "Get Started" are redirected to /signup with pending plan context
 - **Ghost User Prevention:** Stripe webhook no longer creates license_keys records; only updates existing auth_users
