@@ -3683,9 +3683,14 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        "https://cyclecoach.net",
+        "https://www.cyclecoach.net",
+        os.environ.get("REACT_APP_BACKEND_URL", ""),
+        "http://localhost:3000",
+    ],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
 )
 
 @app.on_event("shutdown")
