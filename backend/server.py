@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Cookie, Response, Header, Request
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
