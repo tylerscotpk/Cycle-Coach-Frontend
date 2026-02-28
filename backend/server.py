@@ -176,7 +176,6 @@ async def get_current_user(session_token: Optional[str] = Cookie(None), authoriz
     return User(**user)
 
 # ============ PARTNER PROFILE ROUTES ============
-# ============ PARTNER PROFILE ROUTES ============
 
 @api_router.post("/partner", response_model=PartnerProfile)
 async def create_partner_profile(
