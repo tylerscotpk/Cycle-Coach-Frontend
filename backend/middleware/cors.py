@@ -5,7 +5,7 @@ from fastapi.responses import Response
 ALLOWED_ORIGINS = {
     "https://cyclecoach.net",
     "https://www.cyclecoach.net",
-    "https://cycle-insights-test.preview.emergentagent.com",
+    "https://partner-guide-4.preview.emergentagent.com",
     "http://localhost:3000",
 }
 

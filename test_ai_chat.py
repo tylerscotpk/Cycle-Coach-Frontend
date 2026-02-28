@@ -39,7 +39,7 @@ if result.returncode == 0:
     
     print("Creating partner profile...")
     response = requests.post(
-        "https://cycle-insights-test.preview.emergentagent.com/api/partner",
+        "https://partner-guide-4.preview.emergentagent.com/api/partner",
         json=partner_data,
         headers={'Authorization': f'Bearer {session_token}', 'Content-Type': 'application/json'},
         timeout=10
@@ -58,7 +58,7 @@ if result.returncode == 0:
         print("Testing AI chat (this may take 15-30 seconds)...")
         try:
             response = requests.post(
-                "https://cycle-insights-test.preview.emergentagent.com/api/chat",
+                "https://partner-guide-4.preview.emergentagent.com/api/chat",
                 json=chat_data,
                 headers={'Authorization': f'Bearer {session_token}', 'Content-Type': 'application/json'},
                 timeout=45

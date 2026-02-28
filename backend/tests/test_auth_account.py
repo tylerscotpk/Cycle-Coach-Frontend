@@ -18,7 +18,7 @@ import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://cycle-insights-test.preview.emergentagent.com"
+    BASE_URL = "https://partner-guide-4.preview.emergentagent.com"
 
 
 class TestAuthRegister:

@@ -8,7 +8,7 @@ import os
 import uuid
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cycle-insights-test.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://partner-guide-4.preview.emergentagent.com').rstrip('/')
 
 # Test credentials from requirements
 TEST_USER_WITH_SUB = {"email": "flowtest@example.com", "password": "test1234"}
