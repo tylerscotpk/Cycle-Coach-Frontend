@@ -36,6 +36,7 @@ const AccountSettings = () => {
       }
 
       const response = await fetch(`${API}/api/account/subscription`, {
+        credentials: 'include',
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       });
 
