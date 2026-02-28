@@ -267,11 +267,12 @@ class TestAuthLogout:
         
         # Verify cookie is cleared with SameSite=none; Secure
         cookies = response.headers.get("set-cookie", "")
+        cookies_lower = cookies.lower()
         assert "session_token=" in cookies
         # Cookie should be expired (Max-Age=0 or expires in past)
-        assert "Max-Age=0" in cookies or "expires=" in cookies.lower()
-        assert "SameSite=none" in cookies.lower() or "samesite=none" in cookies
-        assert "Secure" in cookies
+        assert "max-age=0" in cookies_lower or "expires=" in cookies_lower
+        assert "samesite=none" in cookies_lower
+        assert "secure" in cookies_lower
 
     def test_session_invalid_after_logout(self):
         """Session token is invalid after logout"""
