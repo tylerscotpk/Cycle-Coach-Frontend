@@ -31,7 +31,7 @@ def session():
 def auth_token(session):
     """Login and get session token"""
     response = session.post(f"{BASE_URL}/api/auth/login", json={
-        "email": TEST_EMAIL,
+        "email_or_phone": TEST_EMAIL,
         "password": TEST_PASSWORD
     })
     if response.status_code == 200:
