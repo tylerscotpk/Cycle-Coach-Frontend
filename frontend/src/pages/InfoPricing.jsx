@@ -52,10 +52,11 @@ const InfoPricing = () => {
     const user = localStorage.getItem('user');
 
     if (sessionToken && user) {
-      // Logged in — go straight to Stripe with prefilled email
+      // Logged in — go straight to Stripe with prefilled email + user ID tracking
       const userData = JSON.parse(user);
       const url = new URL(plan.paymentLink);
       url.searchParams.set('prefilled_email', userData.email);
+      url.searchParams.set('client_reference_id', userData.id);
       window.location.href = url.toString();
     } else {
       // NOT logged in — save selected plan, send to signup
