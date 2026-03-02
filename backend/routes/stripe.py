@@ -1,5 +1,5 @@
-"""Stripe routes: /api/webhook/stripe, /api/cancel-subscription"""
-from fastapi import APIRouter, HTTPException, Request
+"""Stripe routes: /api/webhook/stripe, /api/cancel-subscription, /api/subscription/sync"""
+from fastapi import APIRouter, HTTPException, Request, Cookie, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
