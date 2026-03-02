@@ -55,7 +55,6 @@ function AuthProvider({ children }) {
 
       const response = await fetch(`${API}/api/auth/check`, {
         method: 'GET',
-        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${sessionToken}`
         }
