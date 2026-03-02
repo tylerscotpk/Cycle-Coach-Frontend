@@ -360,12 +360,11 @@ async def cancel_subscription(request: CancelSubscriptionRequest):
 
 @router.post("/subscription/sync")
 async def sync_subscription_from_stripe(
-    session_token: Optional[str] = None,
-    authorization: Optional[str] = None,
+    session_token: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
 ):
     """Query Stripe directly by email to check if the logged-in user has an active
     subscription. This is the self-healing fallback when webhooks don't reach us."""
-    from fastapi import Cookie, Header
 
     # — resolve session token from cookie or header —
     token = session_token
