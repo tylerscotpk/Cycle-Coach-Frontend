@@ -153,16 +153,47 @@ function AppContent() {
   useEffect(() => {
     if (auth.isAuthenticated && !auth.hasSubscription) {
       // User is logged in but no subscription yet — might be returning from Stripe
+      // Call the sync endpoint to check Stripe directly (bypasses webhook dependency)
       let pollCount = 0;
-      const maxPolls = 10;
+      const maxPolls = 15;
+
+      const syncAndCheck = async () => {
+        try {
+          const sessionToken = localStorage.getItem('session_token');
+          if (!sessionToken) return;
+
+          // Call sync endpoint — queries Stripe API for this user's subscription
+          const syncResp = await fetch('/api/subscription/sync', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Authorization': `Bearer ${sessionToken}` }
+          });
+          const syncData = await syncResp.json();
+
+          if (syncData.synced && syncData.subscription_status) {
+            // Stripe confirmed subscription — refresh auth state
+            await auth.checkAuth();
+            return true; // stop polling
+          }
+        } catch (e) {
+          console.error('Subscription sync error:', e);
+        }
+        return false;
+      };
+
+      // Immediate sync on mount
+      syncAndCheck();
+
       const interval = setInterval(async () => {
         pollCount++;
         if (pollCount > maxPolls) {
           clearInterval(interval);
           return;
         }
-        await auth.checkAuth();
+        const found = await syncAndCheck();
+        if (found) clearInterval(interval);
       }, 3000);
+
       return () => clearInterval(interval);
     }
   }, [auth.isAuthenticated, auth.hasSubscription]);
