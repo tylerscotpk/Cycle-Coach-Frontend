@@ -106,6 +106,16 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 
 ## Implementation History
 
+### Mar 2, 2026 — Subscription Entitlement Fix (P0)
+- **Root cause:** Stripe API key overridden by system env `sk_test_emergent` → webhooks and API calls silently failing
+- **Fix 1:** `load_dotenv(override=True)` ensures real Stripe key from `.env` takes precedence
+- **Fix 2:** New `/api/subscription/sync` endpoint queries Stripe directly by email (bypasses webhook dependency)
+- **Fix 3:** Webhook handler now matches users by `client_reference_id`, email, AND `stripe_customer_id` (prevents email mismatch)
+- **Fix 4:** Frontend Payment Links now include `client_reference_id` (user's app ID) for reliable matching
+- **Fix 5:** Frontend polls sync endpoint after login to detect subscriptions
+- **Manual fix:** Activated `ts_peterson@yahoo.com` by linking to existing Stripe subscription
+- **Testing:** 8/8 backend + all frontend tests passed (100%)
+
 ### Feb 28, 2026 — Same-Origin API Fix (Root Cause Resolution)
 - **Root cause identified:** Production frontend (cyclecoach.net) was calling external preview backend hosts (partner-sync-6.emergent.host), causing cross-origin CORS/cookie failures
 - **Fix:** Set `REACT_APP_BACKEND_URL=""` so ALL API calls use relative paths (`/api/auth/login` instead of `https://external-host/api/auth/login`)
