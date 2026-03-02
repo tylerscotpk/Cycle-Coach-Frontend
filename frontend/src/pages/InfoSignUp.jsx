@@ -91,6 +91,7 @@ const InfoSignUp = () => {
           toast.success('Account created! Redirecting to checkout...');
           const url = new URL(PLAN_LINKS[plan]);
           url.searchParams.set('prefilled_email', formData.email.trim());
+          url.searchParams.set('client_reference_id', result.user.id);
           window.location.href = url.toString();
         } else {
           toast.success('Account created! Choose a plan to get started.');
