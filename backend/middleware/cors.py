@@ -1,23 +1,24 @@
 """CORS middleware — raw ASGI level, echoes exact origin for credentialed requests."""
+import os
 from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi.responses import Response
 
-ALLOWED_ORIGINS = {
-    "https://cyclecoach.net",
-    "https://www.cyclecoach.net",
-    "https://partner-guide-4.preview.emergentagent.com",
-    "http://localhost:3000",
-}
+_cors_env = os.environ.get("CORS_ORIGINS", "*")
+if _cors_env.strip() == "*":
+    ALLOW_ALL = True
+    ALLOWED_ORIGINS = set()
+else:
+    ALLOW_ALL = False
+    ALLOWED_ORIGINS = {o.strip().rstrip("/") for o in _cors_env.split(",") if o.strip()}
 
 CORS_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
 CORS_HEADERS = "Content-Type,Authorization,Cookie,X-Requested-With"
 
 
 def _origin_allowed(origin: str) -> bool:
-    """Check if origin is in the allowlist (normalized, no trailing slash)."""
     if not origin:
-        return False
-    return origin.rstrip("/") in ALLOWED_ORIGINS
+        return ALLOW_ALL
+    return ALLOW_ALL or origin.rstrip("/") in ALLOWED_ORIGINS
 
 
 class StrictCORSMiddleware:
@@ -38,18 +39,22 @@ class StrictCORSMiddleware:
 
         is_allowed = _origin_allowed(origin)
 
+        # Use wildcard when ALLOW_ALL, otherwise echo exact origin
+        allow_origin_value = b"*" if ALLOW_ALL else origin.encode()
+
         # OPTIONS preflight
         if scope["method"] == "OPTIONS":
             resp_headers = {}
             if is_allowed:
                 resp_headers = {
-                    "access-control-allow-origin": origin,
-                    "access-control-allow-credentials": "true",
+                    "access-control-allow-origin": allow_origin_value.decode() if isinstance(allow_origin_value, bytes) else allow_origin_value,
                     "access-control-allow-methods": CORS_METHODS,
                     "access-control-allow-headers": CORS_HEADERS,
                     "access-control-max-age": "600",
                     "vary": "Origin",
                 }
+                if not ALLOW_ALL:
+                    resp_headers["access-control-allow-credentials"] = "true"
             resp = Response(status_code=204, headers=resp_headers)
             await resp(scope, receive, send)
             return
@@ -63,11 +68,12 @@ class StrictCORSMiddleware:
                     if not k.lower().startswith(b"access-control-")
                     and k.lower() != b"vary"
                 ]
-                raw_headers.append((b"access-control-allow-origin", origin.encode()))
-                raw_headers.append((b"access-control-allow-credentials", b"true"))
+                raw_headers.append((b"access-control-allow-origin", allow_origin_value))
                 raw_headers.append((b"access-control-allow-methods", CORS_METHODS.encode()))
                 raw_headers.append((b"access-control-allow-headers", CORS_HEADERS.encode()))
                 raw_headers.append((b"vary", b"Origin"))
+                if not ALLOW_ALL:
+                    raw_headers.append((b"access-control-allow-credentials", b"true"))
                 message["headers"] = raw_headers
             await send(message)
 
