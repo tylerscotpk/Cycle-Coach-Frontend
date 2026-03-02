@@ -15,7 +15,6 @@ const InfoNav = () => {
     const sessionToken = localStorage.getItem('session_token');
     if (sessionToken) {
       fetch(`${API}/api/auth/check`, {
-        credentials: 'include',
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
         .then(r => r.json())
