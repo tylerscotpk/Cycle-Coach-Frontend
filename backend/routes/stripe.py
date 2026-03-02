@@ -406,7 +406,22 @@ async def sync_subscription_from_stripe(
         # 1. Find Stripe customers by email
         customers = stripe.Customer.list(email=email, limit=5)
         if not customers.data:
-            logger.info(f"SYNC: no Stripe customer for {email}")
+            # No customer by email — try checkout sessions with client_reference_id
+            logger.info(f"SYNC: no Stripe customer for {email}, checking checkout sessions by user ID")
+            sessions = stripe.checkout.Session.list(limit=50)
+            for sess in sessions.data:
+                if sess.client_reference_id == user.get("id") and sess.subscription:
+                    sub = stripe.Subscription.retrieve(sess.subscription)
+                    if sub.status in ("active", "trialing"):
+                        update_fields = {
+                            "subscription_status": sub.status,
+                            "stripe_subscription_id": sub.id,
+                            "stripe_customer_id": sess.customer,
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                        await db.auth_users.update_one({"id": user["id"]}, {"$set": update_fields})
+                        logger.info(f"SYNC SUCCESS (via session): {email} → status={sub.status}")
+                        return {"synced": True, "subscription_status": sub.status}
             return {"synced": False, "reason": "no_stripe_customer"}
 
         # 2. Check all customers for active subscriptions
