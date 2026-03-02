@@ -18,7 +18,17 @@ import resend
 import stripe
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env', override=True)
+load_dotenv(ROOT_DIR / '.env')
+
+# The Emergent platform sets STRIPE_API_KEY=sk_test_emergent as a default.
+# If present, override it with the real key from .env.
+if os.environ.get('STRIPE_API_KEY') == 'sk_test_emergent':
+    from dotenv import dotenv_values
+    _local = dotenv_values(ROOT_DIR / '.env')
+    if _local.get('STRIPE_API_KEY'):
+        os.environ['STRIPE_API_KEY'] = _local['STRIPE_API_KEY']
+    if _local.get('STRIPE_WEBHOOK_SECRET'):
+        os.environ['STRIPE_WEBHOOK_SECRET'] = _local['STRIPE_WEBHOOK_SECRET']
 
 # Shared database (also used by route modules via database.py)
 from database import db, client
