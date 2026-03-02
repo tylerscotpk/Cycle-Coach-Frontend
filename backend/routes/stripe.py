@@ -355,3 +355,88 @@ async def cancel_subscription(request: CancelSubscriptionRequest):
         return JSONResponse(status_code=400, content={"success": False, "message": f"Failed: {str(e)}"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"success": False, "message": "An error occurred"})
+
+
+
+@router.post("/subscription/sync")
+async def sync_subscription_from_stripe(
+    session_token: Optional[str] = None,
+    authorization: Optional[str] = None,
+):
+    """Query Stripe directly by email to check if the logged-in user has an active
+    subscription. This is the self-healing fallback when webhooks don't reach us."""
+    from fastapi import Cookie, Header
+
+    # — resolve session token from cookie or header —
+    token = session_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    session = await db.user_sessions.find_one({"session_token": token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    user = await db.auth_users.find_one({"id": session["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    email = user.get("email", "").lower().strip()
+    if not email:
+        return {"synced": False, "reason": "no_email"}
+
+    # Already entitled — skip the Stripe API call
+    if user.get("subscription_status") in ENTITLED_STATUSES:
+        return {"synced": True, "already_entitled": True, "subscription_status": user["subscription_status"]}
+
+    try:
+        # 1. Find Stripe customers by email
+        customers = stripe.Customer.list(email=email, limit=5)
+        if not customers.data:
+            logger.info(f"SYNC: no Stripe customer for {email}")
+            return {"synced": False, "reason": "no_stripe_customer"}
+
+        # 2. Check all customers for active subscriptions
+        for customer in customers.data:
+            subs = stripe.Subscription.list(customer=customer.id, status="all", limit=10)
+            for sub in subs.data:
+                sub_status = sub.status  # active, trialing, canceled, past_due …
+                if sub_status in ("active", "trialing"):
+                    # Determine tier from metadata or default
+                    tier = "monthly"
+                    if sub.metadata:
+                        tier = sub.metadata.get("tier", "monthly")
+
+                    update_fields = {
+                        "subscription_status": sub_status,
+                        "stripe_subscription_id": sub.id,
+                        "stripe_customer_id": customer.id,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    if tier:
+                        update_fields["subscription_tier"] = tier
+
+                    await db.auth_users.update_one(
+                        {"id": user["id"]},
+                        {"$set": update_fields},
+                    )
+                    logger.info(
+                        f"SYNC SUCCESS: {email} → status={sub_status} "
+                        f"sub={sub.id} customer={customer.id} tier={tier}"
+                    )
+                    return {
+                        "synced": True,
+                        "subscription_status": sub_status,
+                        "subscription_tier": tier,
+                    }
+
+        logger.info(f"SYNC: Stripe customer(s) found for {email} but no active subscription")
+        return {"synced": False, "reason": "no_active_subscription"}
+
+    except stripe.StripeError as e:
+        logger.error(f"SYNC STRIPE ERROR for {email}: {e}")
+        return {"synced": False, "reason": f"stripe_error: {str(e)}"}
+    except Exception as e:
+        logger.error(f"SYNC ERROR for {email}: {e}")
+        return {"synced": False, "reason": "internal_error"}
