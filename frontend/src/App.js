@@ -161,9 +161,8 @@ function AppContent() {
           if (!sessionToken) return;
 
           // Call sync endpoint — queries Stripe API for this user's subscription
-          const syncResp = await fetch('/api/subscription/sync', {
+          const syncResp = await fetch(`${API}/api/subscription/sync`, {
             method: 'POST',
-            credentials: 'include',
             headers: { 'Authorization': `Bearer ${sessionToken}` }
           });
           const syncData = await syncResp.json();
