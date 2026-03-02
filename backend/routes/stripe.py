@@ -150,6 +150,9 @@ async def stripe_webhook(request: Request):
                 f"customer={customer_id} email={customer_email} metadata={metadata}"
             )
 
+            # Also capture client_reference_id (app user ID sent from frontend)
+            client_ref_id = session.get("client_reference_id")
+
             # Try to resolve the Stripe subscription status (may be trialing)
             sub_status = "active"
             if subscription_id:
@@ -160,20 +163,30 @@ async def stripe_webhook(request: Request):
                 except Exception as e:
                     logger.warning(f"Could not retrieve subscription {subscription_id}: {e}")
 
-            if not customer_email:
-                logger.error(f"NO EMAIL in checkout session {session_id}")
-                return {"status": "error", "message": "No customer email"}
+            customer_email_lower = (customer_email or "").lower().strip()
 
-            customer_email_lower = customer_email.lower().strip()
+            # Find user: 1) by client_reference_id, 2) by email, 3) by stripe_customer_id
+            auth_user = None
+            if client_ref_id:
+                auth_user = await db.auth_users.find_one({"id": client_ref_id})
+                if auth_user:
+                    logger.info(f"USER MATCHED by client_reference_id={client_ref_id}")
+            if not auth_user and customer_email_lower:
+                auth_user = await _find_user_by_email(customer_email_lower)
+                if auth_user:
+                    logger.info(f"USER MATCHED by email={customer_email_lower}")
+            if not auth_user and customer_id:
+                auth_user = await _find_user_by_stripe_customer(customer_id)
+                if auth_user:
+                    logger.info(f"USER MATCHED by stripe_customer_id={customer_id}")
 
-            # Find user: by email
-            auth_user = await _find_user_by_email(customer_email_lower)
             if not auth_user:
                 logger.warning(
-                    f"NO USER MATCH for email={customer_email_lower} "
+                    f"NO USER MATCH: email={customer_email_lower} "
+                    f"client_ref={client_ref_id} customer={customer_id} "
                     f"(session={session_id}). No entitlement granted."
                 )
-                return {"status": "no_user", "message": f"No registered user for {customer_email_lower}"}
+                return {"status": "no_user", "message": "No registered user found"}
 
             # Skip if already processed with same subscription
             if auth_user.get("stripe_subscription_id") == subscription_id and auth_user.get("subscription_status") in ENTITLED_STATUSES:
