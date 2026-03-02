@@ -18,7 +18,7 @@ import resend
 import stripe
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / '.env', override=True)
 
 # Shared database (also used by route modules via database.py)
 from database import db, client
