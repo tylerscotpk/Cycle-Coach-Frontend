@@ -105,7 +105,11 @@ class TestAuthCheckSubscription:
     
     def test_auth_check_without_token(self, session):
         """GET /api/auth/check without token returns has_subscription:false"""
-        response = session.get(f"{BASE_URL}/api/auth/check")
+        # Use a fresh session without any cookies
+        fresh_session = requests.Session()
+        fresh_session.headers.update({"Content-Type": "application/json"})
+        
+        response = fresh_session.get(f"{BASE_URL}/api/auth/check")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         data = response.json()
         
