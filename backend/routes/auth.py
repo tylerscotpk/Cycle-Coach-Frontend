@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'info@cyclecoach.net')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'Cycle Coach <onboarding@resend.dev>')
 
 # ============ HELPERS ============
 
