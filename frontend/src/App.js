@@ -20,6 +20,7 @@ import InfoLogin from "@/pages/InfoLogin";
 import InfoSignUp from "@/pages/InfoSignUp";
 import InfoForgotPassword from "@/pages/InfoForgotPassword";
 import InfoResetPassword from "@/pages/InfoResetPassword";
+import CheckoutSuccess from "@/pages/CheckoutSuccess";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
@@ -29,7 +30,7 @@ const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
 // Public routes (no auth required)
-const PUBLIC_ROUTES = ['/', '/info', '/about', '/pricing', '/signup', '/login', '/forgot-password', '/reset-password', '/info/contact', '/admin'];
+const PUBLIC_ROUTES = ['/', '/info', '/about', '/pricing', '/signup', '/login', '/forgot-password', '/reset-password', '/info/contact', '/admin', '/checkout-success'];
 
 function AuthProvider({ children }) {
   const [authState, setAuthState] = useState({
@@ -221,7 +222,7 @@ function AppContent() {
   // ============ ROUTING RULES ============
   
   // Rule 1: ACTIVE USER (logged in + subscription) visiting public routes → redirect to /app (except /admin)
-  if (auth.isAuthenticated && auth.hasSubscription && isPublicRoute && location.pathname !== '/admin') {
+  if (auth.isAuthenticated && auth.hasSubscription && isPublicRoute && location.pathname !== '/admin' && location.pathname !== '/checkout-success') {
     return <Navigate to="/app" replace />;
   }
 
@@ -248,6 +249,7 @@ function AppContent() {
         <Route path="/forgot-password" element={<InfoForgotPassword />} />
         <Route path="/reset-password" element={<InfoResetPassword />} />
         <Route path="/info/contact" element={<InfoContact />} />
+        <Route path="/checkout-success" element={<CheckoutSuccess />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/pricing" replace />} />
       </Routes>
