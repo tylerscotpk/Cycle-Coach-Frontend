@@ -2198,7 +2198,7 @@ class ContactRequest(BaseModel):
     message: str
 
 # Internal contact email - not exposed to frontend
-CONTACT_EMAIL = "info@cyclecoach.net"
+CONTACT_EMAIL = "cyclecoach4men@gmail.com"
 
 @api_router.post("/contact")
 async def submit_contact(request: ContactRequest):
@@ -2217,7 +2217,7 @@ async def submit_contact(request: ContactRequest):
     try:
         # Send email to internal support address
         params = {
-            "from": "Cycle Coach <onboarding@resend.dev>",
+            "from": "Cycle Coach <noreply@cyclecoach.net>",
             "to": [CONTACT_EMAIL],
             "subject": f"Cycle Coach Contact Form - {request.name}",
             "html": f"""
