@@ -58,7 +58,7 @@ const InfoHome = () => {
             A Better Way to Understand Her
           </h2>
           <p className="text-lg text-slate-400 leading-relaxed">
-            Admit it; you can't read her mind. But with Cycle Coach, you're one step closer to being able to. Women's emotions are driven by their hormones, which - you already know - change throughout the month. Climb into the driver's seat, Champ, because you're about to navigate those changes with precision.
+            Admit it; you can't read her mind. But with Cycle Coach, you're one step closer to being able to. Women's emotions are driven by their hormones, which - as you know - change throughout the month. Climb into the driver's seat, champ, because you're about to navigate those changes with precision.
           </p>
         </div>
       </section>
