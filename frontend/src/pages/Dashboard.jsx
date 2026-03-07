@@ -637,7 +637,10 @@ const Dashboard = () => {
         <div className="container mx-auto px-6 py-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-12">
-            <h1 className="text-3xl font-bold text-white">Cycle Coach</h1>
+            <div className="flex items-center gap-3">
+              <img src="https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png" alt="Cycle Coach" className="w-10 h-10 object-contain" />
+              <h1 className="text-3xl font-bold"><span className="text-white">Cycle</span><span className="text-cyan-400">Coach</span></h1>
+            </div>
             <Button
               onClick={() => window.location.href = '/privacy'}
               variant="outline"
@@ -705,7 +708,10 @@ const Dashboard = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white" data-testid="dashboard-title">Cycle Coach</h1>
+            <div className="flex items-center gap-3">
+              <img src="https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png" alt="Cycle Coach" className="w-10 h-10 object-contain" />
+              <h1 className="text-3xl font-bold" data-testid="dashboard-title"><span className="text-white">Cycle</span><span className="text-cyan-400">Coach</span></h1>
+            </div>
             {partner && <p className="text-slate-400 mt-1">Tracking {partner.partnerName}&apos;s cycle</p>}
           </div>
           <div className="flex items-center gap-3">
