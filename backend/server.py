@@ -2159,7 +2159,7 @@ RESPONSE STYLE:
 - Use bullet points with • for multiple tips
 - Actionable and specific
 - Humorous and relatable
-- **Bold** key phrases for emphasis
+- Do NOT use asterisks, markdown, or any special formatting. Write in plain text only.
 
 PERSONALIZATION RULES (CRITICAL):
 - ALWAYS use her name from the Partner Profile when giving advice
@@ -2182,7 +2182,10 @@ NO identifying details about the user. Give straight-up personalized advice."""
         # Do NOT save to database - ephemeral only
         # Do NOT log user message or response
         
-        return {"response": response}
+        # Strip any markdown formatting the LLM might still add
+        clean_response = str(response).replace("**", "").replace("__", "").replace("##", "").replace("# ", "")
+        
+        return {"response": clean_response}
         
     except Exception as e:
         logging.error(f"Anonymous chat error: {str(e)}")
