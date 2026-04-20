@@ -165,17 +165,18 @@ const AccountSettings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white" data-testid="account-settings-title">Account Settings</h1>
-            <p className="text-slate-400 mt-1">Manage your subscription and account</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white" data-testid="account-settings-title">Account Settings</h1>
+            <p className="text-slate-400 mt-1 text-sm sm:text-base">Manage your subscription and account</p>
           </div>
           <Button
             variant="outline"
-            className="border-slate-600 text-slate-300"
+            size="sm"
+            className="border-slate-600 text-slate-300 text-xs sm:text-sm"
             onClick={() => navigate('/app')}
             data-testid="back-to-dashboard-btn"
           >
@@ -186,10 +187,10 @@ const AccountSettings = () => {
         {/* Subscription Status Card */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-3" data-testid="subscription-status-title">
+            <CardTitle className="text-white flex flex-wrap items-center gap-2" data-testid="subscription-status-title">
               Subscription Status
               {subscription?.subscription_tier && (
-                <span className={`px-3 py-1 rounded-full text-sm border ${getTierBadgeColor(subscription.subscription_tier)}`}>
+                <span className={`px-3 py-1 rounded-full text-xs sm:text-sm border ${getTierBadgeColor(subscription.subscription_tier)}`}>
                   {getTierDisplayName(subscription.subscription_tier)}
                 </span>
               )}
@@ -199,7 +200,7 @@ const AccountSettings = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-slate-900/50 rounded-lg p-4">
                 <p className="text-slate-400 text-sm">Status</p>
                 <p className="text-white font-medium mt-1" data-testid="subscription-status-value">

@@ -634,19 +634,20 @@ const Dashboard = () => {
   if (!partner) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-12">
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-12">
             <div className="flex items-center gap-3">
-              <img src="https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png" alt="Cycle Coach" className="w-10 h-10 object-contain" />
-              <h1 className="text-3xl font-bold"><span className="text-white">Cycle</span><span className="text-cyan-400">Coach</span></h1>
+              <img src="https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png" alt="Cycle Coach" className="w-10 h-10 flex-shrink-0 object-contain" />
+              <h1 className="text-2xl sm:text-3xl font-bold"><span className="text-white">Cycle</span><span className="text-cyan-400">Coach</span></h1>
             </div>
             <Button
               onClick={() => window.location.href = '/privacy'}
               variant="outline"
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              size="sm"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700 text-xs sm:text-sm"
             >
-              🔒 Privacy & Data
+              🔒 Privacy
             </Button>
           </div>
 
@@ -704,21 +705,22 @@ const Dashboard = () => {
   // Main Dashboard
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="container mx-auto px-6 py-8 pb-20">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-20">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-8">
+          <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <img src="https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png" alt="Cycle Coach" className="w-10 h-10 object-contain" />
-              <h1 className="text-3xl font-bold" data-testid="dashboard-title"><span className="text-white">Cycle</span><span className="text-cyan-400">Coach</span></h1>
+              <img src="https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png" alt="Cycle Coach" className="w-10 h-10 flex-shrink-0 object-contain" />
+              <h1 className="text-2xl sm:text-3xl font-bold" data-testid="dashboard-title"><span className="text-white">Cycle</span><span className="text-cyan-400">Coach</span></h1>
             </div>
-            {partner && <p className="text-slate-400 mt-1">Tracking {partner.partnerName}&apos;s cycle</p>}
+            {partner && <p className="text-slate-400 mt-1 text-sm sm:text-base truncate">Tracking {partner.partnerName}&apos;s cycle</p>}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button
               onClick={() => window.location.href = '/account'}
               variant="outline"
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              size="sm"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700 text-xs sm:text-sm"
               data-testid="account-settings-btn"
             >
               ⚙️ Account
@@ -726,9 +728,11 @@ const Dashboard = () => {
             <Button
               onClick={() => window.location.href = '/privacy'}
               variant="outline"
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              size="sm"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700 text-xs sm:text-sm"
+              data-testid="privacy-settings-btn"
             >
-              🔒 Privacy & Data
+              🔒 Privacy
             </Button>
           </div>
         </div>

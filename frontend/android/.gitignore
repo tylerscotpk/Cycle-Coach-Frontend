@@ -90,12 +90,15 @@ lint/tmp/
 *.hprof
 
 # Cordova plugins for Capacitor
-capacitor-cordova-android-plugins
+# (Un-ignored so Android Studio builds work after cloning)
+# capacitor-cordova-android-plugins
 
 # Copied web assets
-app/src/main/assets/public
+# (Un-ignored so the built web app is included for Android Studio)
+# app/src/main/assets/public
 
 # Generated Config files
-app/src/main/assets/capacitor.config.json
-app/src/main/assets/capacitor.plugins.json
-app/src/main/res/xml/config.xml
+# (Un-ignored so Capacitor runtime config is included)
+# app/src/main/assets/capacitor.config.json
+# app/src/main/assets/capacitor.plugins.json
+# app/src/main/res/xml/config.xml

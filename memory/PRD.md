@@ -154,6 +154,11 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - AI Wingman, Phase Predictor, Push Notifications
 - Admin dashboard with backend auth
 
+### Apr 20, 2026 — Android Build Fix + Mobile UI Fixes
+- **Android Capacitor build**: Updated `android/.gitignore` to un-ignore `capacitor-cordova-android-plugins/`, `app/src/main/assets/public/`, and generated config files. Ran `npx cap sync android` and `yarn build` to regenerate all files. All 16 critical Android Studio files are now tracked in git.
+- **Mobile UI overflow fix**: Added `flex-wrap`, responsive text sizes (`text-xs sm:text-sm`), `min-w-0`, and `size="sm"` to Dashboard and AccountSettings headers. Shortened "Privacy & Data" to "Privacy" for mobile. Added responsive padding (`p-4 sm:p-6`, `px-4 sm:px-6`). Made subscription status grid stack on mobile (`grid-cols-1 sm:grid-cols-2`).
+- **Testing**: Visual verification via mobile viewport screenshots — headers, buttons, and cards render cleanly at 390px width.
+
 ---
 
 ## Backlog
@@ -161,13 +166,15 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 ### P1 — High Priority
 - [x] Fix CORS + cookie configuration for production auth (DONE Feb 28)
 - [x] Switch to same-origin relative API paths (DONE Feb 28) — root cause fix
+- [x] Fix Android Capacitor build files (DONE Apr 20) — `.gitignore` updated to include generated files
+- [x] Fix Mobile UI text wrapping/overflow (DONE Apr 20) — Dashboard & AccountSettings headers
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
 - [ ] Fix Contact Form (Resend domain verification needed by user)
 
 ### P2 — Medium Priority
 - [ ] Refactor `Dashboard.jsx` into smaller components
 - [ ] Refactor `App.js` routing with ProtectedRoute/PublicRoute wrappers
-- [ ] Complete App Store deployment with Capacitor
+- [ ] iOS App Store deployment (user needs Mac or CI/CD pipeline)
 
 ### P3 — Future
 - [ ] Additional notification triggers
