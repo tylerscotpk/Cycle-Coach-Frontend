@@ -1,4 +1,4 @@
-package com.cyclecoach.app;
+package net.cyclecoach.app;
 
 import com.getcapacitor.BridgeActivity;
 

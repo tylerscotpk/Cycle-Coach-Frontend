@@ -1,5 +1,5 @@
 {
-	"appId": "com.cyclecoach.app",
+	"appId": "net.cyclecoach.app",
 	"appName": "Cycle Coach",
 	"webDir": "build",
 	"bundledWebRuntime": false,
