@@ -5,7 +5,7 @@
  */
 
 import { LocalStorage } from './localStorageManager';
-import { calculateCycleDay, getPhaseInfo, predictNextPeriod, recalculateCycleLengths, calculateStatistics } from './cycleCalculations';
+import { calculateCycleDay, getPhaseInfo, predictNextPeriod, recalculateCycleLengths, calculateStatistics, getCycleExtensionStatus } from './cycleCalculations';
 
 // Check if notifications are supported
 export const isNotificationsSupported = () => {
@@ -97,8 +97,8 @@ export const checkPhaseReminder = () => {
   const stats = calculateStatistics(recalculated);
   const cycleLength = stats.average_length || profile.cycleLength || 28;
 
-  const cycleDay = calculateCycleDay(profile.cycleStartDate, cycleLength);
-  const phaseInfo = getPhaseInfo(cycleDay);
+  const cycleDay = calculateCycleDay(profile.cycleStartDate);
+  const phaseInfo = getPhaseInfo(cycleDay, cycleLength);
   
   // Phase transition days (one day before next phase)
   const phaseEndDays = {
@@ -173,6 +173,41 @@ export const initializeNotifications = async () => {
   return true;
 };
 
+// Check if we should show cycle extension notification (at average + 2)
+export const checkExtensionAlert = () => {
+  const settings = LocalStorage.getNotificationSettings();
+  if (!settings.phaseReminders) return null;
+
+  const profile = LocalStorage.getPartnerProfile();
+  if (!profile?.cycleStartDate) return null;
+
+  const history = LocalStorage.getCycleHistory();
+  const recalculated = recalculateCycleLengths(history);
+  const stats = calculateStatistics(recalculated);
+  const avgLength = stats.ewma_length || stats.average_length || 28;
+
+  const cycleDay = calculateCycleDay(profile.cycleStartDate);
+  const status = getCycleExtensionStatus(cycleDay, avgLength);
+
+  // Only fire at avg+2 and only once per cycle
+  if (status === 'normal') return null;
+
+  const extensionState = LocalStorage.getExtensionState();
+  if (extensionState?.alertShownForCycleStart === profile.cycleStartDate) return null;
+
+  // Mark alert as shown for this cycle
+  LocalStorage.saveExtensionState({
+    ...(extensionState || {}),
+    alertShownForCycleStart: profile.cycleStartDate,
+    confirmed: null
+  });
+
+  return {
+    title: "Cycle extended — check in! 📋",
+    body: `Day ${cycleDay} and counting. Periods can vary — confirm if her cycle has extended.`
+  };
+};
+
 // Run notification checks (call periodically or on app focus)
 export const runNotificationChecks = () => {
   // Don't run if permission not granted
@@ -181,7 +216,6 @@ export const runNotificationChecks = () => {
   // Check phase reminder
   const phaseReminder = checkPhaseReminder();
   if (phaseReminder) {
-    // Prevent duplicate notifications - check if we already showed this today
     const lastPhaseNotif = localStorage.getItem('cyclecoach_last_phase_notification');
     const today = new Date().toDateString();
     
@@ -189,6 +223,12 @@ export const runNotificationChecks = () => {
       showNotification(phaseReminder.title, { body: phaseReminder.body });
       localStorage.setItem('cyclecoach_last_phase_notification', today);
     }
+  }
+
+  // Check extension alert
+  const extensionAlert = checkExtensionAlert();
+  if (extensionAlert) {
+    showNotification(extensionAlert.title, { body: extensionAlert.body });
   }
 
   // Check reflection prompt

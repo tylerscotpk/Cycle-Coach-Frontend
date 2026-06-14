@@ -1,60 +1,137 @@
 /**
  * Client-side cycle calculations
  * No server required - all calculations happen in browser
+ * Supports EWMA-based dynamic averages, extended cycle detection, and capped UI
  */
 
-export const calculateCycleDay = (startDate, cycleLength = 28) => {
-  // Parse date parts manually to avoid timezone issues
+// Parse a date string into a local Date object (no timezone issues)
+export const parseDateLocal = (dateStr) => {
   let year, month, day;
-  
-  // Handle different formats
-  if (startDate.includes('-')) {
-    if (startDate.match(/^\d{4}-\d{2}-\d{2}/)) {
-      // YYYY-MM-DD
-      [year, month, day] = startDate.split('-').map(Number);
+  if (dateStr.includes('-')) {
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+      [year, month, day] = dateStr.split('-').map(Number);
     } else {
-      // MM-DD-YYYY
-      [month, day, year] = startDate.split('-').map(Number);
+      [month, day, year] = dateStr.split('-').map(Number);
     }
-  } else if (startDate.includes('/')) {
-    // MM/DD/YYYY
-    [month, day, year] = startDate.split('/').map(Number);
+  } else if (dateStr.includes('/')) {
+    [month, day, year] = dateStr.split('/').map(Number);
   } else {
-    // Fallback to Date constructor
-    const start = new Date(startDate);
-    year = start.getFullYear();
-    month = start.getMonth() + 1;
-    day = start.getDate();
+    const d = new Date(dateStr);
+    year = d.getFullYear();
+    month = d.getMonth() + 1;
+    day = d.getDate();
   }
-  
-  // Create date using local timezone (not UTC)
-  const start = new Date(year, month - 1, day);
-  const today = new Date();
-  
-  // Reset time to midnight for accurate day calculation
-  start.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-  
-  const daysSinceStart = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-  
-  console.log('calculateCycleDay - start date string:', startDate);
-  console.log('calculateCycleDay - parsed as:', start.toDateString());
-  console.log('calculateCycleDay - today:', today.toDateString());
-  console.log('calculateCycleDay - days since start:', daysSinceStart);
-  
-  // If start date is in the future, return 1 (shouldn't happen with validation)
-  if (daysSinceStart < 0) {
-    return 1;
-  }
-  
-  const result = (daysSinceStart % cycleLength) + 1;
-  console.log('calculateCycleDay - result:', result);
-  
-  return result;
+  return new Date(year, month - 1, day);
 };
 
-export const getPhaseInfo = (cycleDay) => {
-  if (cycleDay >= 1 && cycleDay <= 5) {
+/**
+ * Calculate the actual (continuous) cycle day — never wraps around.
+ * Returns the raw number of days since the current cycle started + 1.
+ */
+export const calculateCycleDay = (startDate) => {
+  const start = parseDateLocal(startDate);
+  const today = new Date();
+  start.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  const daysSinceStart = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  if (daysSinceStart < 0) return 1;
+  return daysSinceStart + 1;
+};
+
+/**
+ * EWMA (Exponential Weighted Moving Average) for cycle length.
+ * new_average = (alpha * latest) + ((1 - alpha) * previous_average)
+ */
+const EWMA_ALPHA = 0.3;
+
+export const calculateEWMA = (completedCycles) => {
+  if (!completedCycles || completedCycles.length === 0) return 28;
+  const lengths = completedCycles
+    .filter(c => c.cycle_length && c.cycle_length > 0)
+    .map(c => c.cycle_length);
+  if (lengths.length === 0) return 28;
+  let avg = lengths[0];
+  for (let i = 1; i < lengths.length; i++) {
+    avg = (EWMA_ALPHA * lengths[i]) + ((1 - EWMA_ALPHA) * avg);
+  }
+  return Math.round(avg);
+};
+
+/**
+ * Detect outliers: only after 6+ completed cycles.
+ * An outlier deviates > 2 standard deviations from the EWMA trend.
+ */
+export const detectOutlier = (cycleLength, completedCycles) => {
+  if (!completedCycles || completedCycles.length < 6) return false;
+  const lengths = completedCycles
+    .filter(c => c.cycle_length && c.cycle_length > 0)
+    .map(c => c.cycle_length);
+  if (lengths.length < 6) return false;
+  const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+  const variance = lengths.reduce((sum, l) => sum + Math.pow(l - mean, 2), 0) / lengths.length;
+  const stdDev = Math.sqrt(variance);
+  return Math.abs(cycleLength - mean) > 2 * stdDev;
+};
+
+/**
+ * Get the UI display day, capped at average + 7.
+ * Returns { displayDay, isCapped }
+ */
+export const getDisplayCycleDay = (actualDay, averageLength) => {
+  const cap = averageLength + 7;
+  if (actualDay > cap) {
+    return { displayDay: cap, isCapped: true };
+  }
+  return { displayDay: actualDay, isCapped: false };
+};
+
+/**
+ * Determine the cycle extension status.
+ * Returns: 'normal' | 'extended' | 'capped'
+ */
+export const getCycleExtensionStatus = (actualDay, averageLength) => {
+  if (actualDay > averageLength + 7) return 'capped';
+  if (actualDay > averageLength + 2) return 'extended';
+  return 'normal';
+};
+
+/**
+ * Get playful messages for capped cycles (average + 7)
+ */
+export const getCappedCycleMessages = () => [
+  "Tracking may have paused — her body's on its own schedule.",
+  "Could be a plot twist? If she hasn't started, she might just be running late.",
+  "Bodies don't read calendars. If her period hasn't come yet, it's probably just fashionably late.",
+  "Still waiting? Cycles can be unpredictable. No need to panic — just keep being awesome.",
+  "Her cycle went off-script. It happens! Check in with her when the time feels right.",
+];
+
+export const getPhaseInfo = (cycleDay, averageLength = 28) => {
+  // Scale phase boundaries relative to the user's average
+  const scale = averageLength / 28;
+  const menstrualEnd = 5;
+  const follicularEnd = Math.round(13 * scale);
+  const ovulationEnd = Math.round(16 * scale);
+  const earlyLutealEnd = Math.round(23 * scale);
+
+  // If past the average, stay in Late Luteal/PMS (extended)
+  if (cycleDay > averageLength) {
+    return {
+      phase: "Late Luteal/PMS",
+      phase_number: 5,
+      phase_day: cycleDay - earlyLutealEnd,
+      description: "Cycle extended — she might be running late this month.",
+      emoji: "⚠️",
+      tips: [
+        "**Stay patient.** Cycles vary — this is normal.",
+        "Keep up the **comfort items** — she may still need them.",
+        "**Don't mention it** unless she brings it up first.",
+        "**Food delivery apps** remain your best friend."
+      ]
+    };
+  }
+
+  if (cycleDay >= 1 && cycleDay <= menstrualEnd) {
     return {
       phase: "Menstrual",
       phase_number: 1,
@@ -68,11 +145,11 @@ export const getPhaseInfo = (cycleDay) => {
         "**Heating pad + backrub** = you're a goddamn hero."
       ]
     };
-  } else if (cycleDay >= 6 && cycleDay <= 13) {
+  } else if (cycleDay > menstrualEnd && cycleDay <= follicularEnd) {
     return {
       phase: "Follicular",
       phase_number: 2,
-      phase_day: cycleDay - 5,
+      phase_day: cycleDay - menstrualEnd,
       description: "The storm has passed. She's back, baby!",
       emoji: "🌸",
       tips: [
@@ -82,11 +159,11 @@ export const getPhaseInfo = (cycleDay) => {
         "Good time to bring up **that thing you've been avoiding**"
       ]
     };
-  } else if (cycleDay >= 14 && cycleDay <= 16) {
+  } else if (cycleDay > follicularEnd && cycleDay <= ovulationEnd) {
     return {
       phase: "Ovulation",
       phase_number: 3,
-      phase_day: cycleDay - 13,
+      phase_day: cycleDay - follicularEnd,
       description: "🔥 PRIME TIME 🔥 This is it chief",
       emoji: "🔥",
       tips: [
@@ -96,11 +173,11 @@ export const getPhaseInfo = (cycleDay) => {
         "Put the **phone down**. Give her your **FULL attention**."
       ]
     };
-  } else if (cycleDay >= 17 && cycleDay <= 23) {
+  } else if (cycleDay > ovulationEnd && cycleDay <= earlyLutealEnd) {
     return {
       phase: "Early Luteal",
       phase_number: 4,
-      phase_day: cycleDay - 16,
+      phase_day: cycleDay - ovulationEnd,
       description: "Chill vibes. Enjoy it while it lasts.",
       emoji: "🏠",
       tips: [
@@ -114,7 +191,7 @@ export const getPhaseInfo = (cycleDay) => {
     return {
       phase: "Late Luteal/PMS",
       phase_number: 5,
-      phase_day: cycleDay - 23,
+      phase_day: cycleDay - earlyLutealEnd,
       description: "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
       emoji: "⚠️",
       tips: [
@@ -180,6 +257,7 @@ export const calculateStatistics = (history) => {
   if (completed.length === 0) {
     return {
       average_length: 28,
+      ewma_length: 28,
       min_length: 28,
       max_length: 28,
       variability: 0,
@@ -189,12 +267,15 @@ export const calculateStatistics = (history) => {
   }
   
   const lengths = completed.map(h => h.cycle_length);
-  const average = Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
+  const simpleAvg = Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length);
+  const ewmaAvg = calculateEWMA(completed);
   const min = Math.min(...lengths);
   const max = Math.max(...lengths);
   
   return {
-    average_length: average,
+    average_length: ewmaAvg,
+    simple_average: simpleAvg,
+    ewma_length: ewmaAvg,
     min_length: min,
     max_length: max,
     variability: max - min,

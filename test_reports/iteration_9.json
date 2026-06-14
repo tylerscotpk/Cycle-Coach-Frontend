@@ -1,0 +1,52 @@
+{
+  "summary": "Frontend testing of new EWMA-based cycle tracking and extension flow logic complete. All 6 critical scenarios PASS: normal cycle day calc, extended cycle banner at avg+2, capped UI 'Day X+' at avg+7, confirm-extension flow, deny-extension flow with date reset, and EWMA average shown in Cycle History dialog (29 days EWMA vs 30 days simple avg for lengths [25,35,25,35]).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cycle History dialog", "issues": ["Radix Dialog warning in console: 'Missing Description or aria-describedby for DialogContent' — non-blocking but a11y improvement recommended"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional a11y: add DialogDescription (or aria-describedby) to Cycle History dialog to silence Radix warning"
+  ],
+  "critical_code_review_comments": [
+    "EWMA formula in cycleCalculations.js works correctly: new_avg = 0.3*latest + 0.7*previous_avg, seeded with first cycle length. Verified [25,35,25,35] -> 29 (vs simple 30).",
+    "getDisplayCycleDay caps at average+7 and is_capped flag drives 'Day X+' UI display correctly (cycleInfo.cycle_day=35, is_capped=true renders 'Day 35+').",
+    "getCycleExtensionStatus boundaries: normal (<=avg+2), extended (avg+2 < d <= avg+7), capped (d > avg+7) — Day 31 with avg 28 correctly maps to 'extended' (banner shows); Day 36 maps to 'capped'.",
+    "Extension state persistence via LocalStorage.saveExtensionState() correctly stores {confirmed, alertShownForCycleStart, cappedMessageShown, updatedAt} base64-encoded.",
+    "handleDenyExtension flow correctly: adds new cycle entry with denyDate, updates partner.cycleStartDate, clears extension state, resets to Day 1 (Day 2 when denyDate is yesterday).",
+    "Phase override in getPhaseInfo: when cycleDay > averageLength, phase forced to 'Late Luteal/PMS' with playful 'cycle extended' messaging — works as expected.",
+    "Dashboard.jsx is 1674 lines — exceeds 700-line guideline. Recommend splitting cycle-info/history/extension-banner into separate components.",
+    "Minor: Dialog cycle history dialog missing DialogDescription causing console a11y warning."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "skipped (frontend-only request)",
+    "frontend": "100% (6/6 cycle/EWMA scenarios PASSED)"
+  },
+  "test_credentials": {
+    "user": "testuser@test.com / Test1234 (active subscription) — login works, redirects to /app"
+  },
+  "seed_data_creation": "All scenarios use in-browser localStorage seeding via page.evaluate (base64-encoded JSON for cyclecoach_partner_profile, cyclecoach_cycle_history, cyclecoach_extension_state). Plain-string 'true' for cyclecoach_state_waiver_complete and cyclecoach_consent_granted.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To bypass onboarding: set localStorage 'cyclecoach_state_waiver_complete' and 'cyclecoach_consent_granted' to PLAIN STRING 'true' (NOT base64-encoded). 'cyclecoach_partner_profile', 'cyclecoach_cycle_history', 'cyclecoach_extension_state' are base64(JSON.stringify(data)). Login required first (testuser@test.com / Test1234). After setting localStorage, page.reload() to trigger Dashboard load. Cycle-day text uses data-testid='cycle-day' (e.g., 'Day 31', 'Day 35+'). Banner: data-testid='extension-banner' with 'confirm-extension-btn' and 'deny-extension-btn'. Capped message: data-testid='capped-cycle-message' with 'Internal count: Day N'. Cycle history toggle: 'toggle-cycle-history-button'.",
+  "test_results": {
+    "T1_normal_day10_follicular": "PASS - cd='Day 10', phase='Follicular', no banner/capped",
+    "T2_extended_day31_banner": "PASS - cd='Day 31', phase='Late Luteal/PMS', banner with confirm+deny buttons",
+    "T3_capped_day35plus": "PASS - cd='Day 35+', capped message visible with 'Internal count: Day 36', banner hidden (extension already confirmed)",
+    "T4_confirm_extension_flow": "PASS - banner dismissed after click, extension_state.confirmed=true persisted to localStorage",
+    "T5_deny_extension_flow": "PASS - date picker shown after deny, submitting date resets cycle to Day 2 (denyDate=1 day ago), partner.cycleStartDate updated to denyDate",
+    "T6_ewma_history_dialog": "PASS - 'Average Cycle (EWMA): 29 days' shown; 'Simple avg: 30 days' shown distinctly; cycles [25,35,25,35] yields EWMA=29.47 -> 29 (matches expected formula)"
+  },
+  "mocked_features": {
+    "has_mocked_apis": false,
+    "mocked_apis_list": []
+  }
+}

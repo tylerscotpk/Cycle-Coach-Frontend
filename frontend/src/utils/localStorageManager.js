@@ -108,6 +108,7 @@ export const LocalStorage = {
     localStorage.removeItem('cyclecoach_subscription');
     localStorage.removeItem('cyclecoach_location');
     localStorage.removeItem('cyclecoach_notification_settings');
+    localStorage.removeItem('cyclecoach_extension_state');
   },
   
   // User Location (for privacy waiver)
@@ -237,8 +238,9 @@ export const LocalStorage = {
       history: LocalStorage.getCycleHistory(),
       preferences: LocalStorage.getPreferences(),
       consent: LocalStorage.getConsent(),
+      extensionState: LocalStorage.getExtensionState(),
       exportDate: new Date().toISOString(),
-      version: '1.0'
+      version: '2.0'
     };
   },
   
@@ -248,5 +250,28 @@ export const LocalStorage = {
     if (data.history) LocalStorage.saveCycleHistory(data.history);
     if (data.preferences) LocalStorage.savePreferences(data.preferences);
     if (data.consent) LocalStorage.saveConsent(data.consent.granted);
+    if (data.extensionState) LocalStorage.saveExtensionState(data.extensionState);
+  },
+
+  // Cycle Extension State
+  saveExtensionState: (state) => {
+    const encrypted = encrypt({
+      confirmed: state.confirmed ?? null,
+      alertShownForCycleStart: state.alertShownForCycleStart ?? null,
+      cappedMessageShown: state.cappedMessageShown ?? false,
+      updatedAt: new Date().toISOString()
+    });
+    if (encrypted) {
+      localStorage.setItem('cyclecoach_extension_state', encrypted);
+    }
+  },
+
+  getExtensionState: () => {
+    const data = localStorage.getItem('cyclecoach_extension_state');
+    return data ? decrypt(data) : null;
+  },
+
+  clearExtensionState: () => {
+    localStorage.removeItem('cyclecoach_extension_state');
   }
 };

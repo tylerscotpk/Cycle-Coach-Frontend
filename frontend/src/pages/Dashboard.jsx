@@ -16,7 +16,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const API = `${BACKEND_URL}/api`;
 
 import { LocalStorage } from '../utils/localStorageManager';
-import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod } from '../utils/cycleCalculations';
+import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod, getDisplayCycleDay, getCycleExtensionStatus, getCappedCycleMessages, calculateEWMA } from '../utils/cycleCalculations';
 import { RESOURCES, getRelevantResources, getNextPhase, getPhasePrioritizedResources, getUnarchivedResources, archiveResource, getPhaseEmoji, getPhaseColor, getPhaseLabel, getPhaseDays, PHASE_LABELS } from '../utils/resourcesData';
 import { getUnseenFact } from '../utils/cycleFacts';
 import { initializeNotifications, runNotificationChecks } from '../utils/notificationService';
@@ -45,6 +45,16 @@ const Dashboard = () => {
   // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackType, setFeedbackType] = useState(null);
+
+  // Extension tracking state
+  const [extensionStatus, setExtensionStatus] = useState('normal');
+  const [showExtensionBanner, setShowExtensionBanner] = useState(false);
+  const [extensionConfirmed, setExtensionConfirmed] = useState(null);
+  const [cappedMessage, setCappedMessage] = useState('');
+  const [actualCycleDay, setActualCycleDay] = useState(null);
+  const [averageCycleLength, setAverageCycleLength] = useState(28);
+  const [showDenyDatePicker, setShowDenyDatePicker] = useState(false);
+  const [denyDate, setDenyDate] = useState('');
 
   // Setup form
   const [partnerName, setPartnerName] = useState('');
@@ -186,8 +196,13 @@ const Dashboard = () => {
 
   const loadStaticResources = (profile) => {
     try {
-      const cycleDay = calculateCycleDay(profile.cycleStartDate, profile.cycleLength || 28);
-      const phaseInfo = getPhaseInfo(cycleDay);
+      const history = LocalStorage.getCycleHistory();
+      const recalculated = recalculateCycleLengths(history);
+      const stats = calculateStatistics(recalculated);
+      const avgLength = stats.ewma_length || 28;
+
+      const cycleDay = calculateCycleDay(profile.cycleStartDate);
+      const phaseInfo = getPhaseInfo(cycleDay, avgLength);
       const nextPhase = getNextPhase(phaseInfo.phase);
       
       // Get unarchived resources prioritized by current phase
@@ -223,23 +238,54 @@ const Dashboard = () => {
 
   const loadCycleInfoLocal = (profile) => {
     try {
-      console.log('Loading cycle info from profile:', profile);
-      console.log('Cycle start date:', profile.cycleStartDate);
-      
-      const cycleDay = calculateCycleDay(profile.cycleStartDate, profile.cycleLength || 28);
-      console.log('Calculated cycle day:', cycleDay);
-      
-      const phaseInfo = getPhaseInfo(cycleDay);
+      const history = LocalStorage.getCycleHistory();
+      const recalculated = recalculateCycleLengths(history);
+      const stats = calculateStatistics(recalculated);
+      const avgLength = stats.ewma_length || 28;
+      setAverageCycleLength(avgLength);
+
+      const cycleDay = calculateCycleDay(profile.cycleStartDate);
+      setActualCycleDay(cycleDay);
+
+      const phaseInfo = getPhaseInfo(cycleDay, avgLength);
+      const { displayDay, isCapped } = getDisplayCycleDay(cycleDay, avgLength);
+      const status = getCycleExtensionStatus(cycleDay, avgLength);
+      setExtensionStatus(status);
+
       setCycleInfo({
-        cycle_day: cycleDay,
+        cycle_day: displayDay,
+        actual_day: cycleDay,
+        is_capped: isCapped,
         phase: phaseInfo.phase,
         phase_number: phaseInfo.phase_number,
         phase_day: phaseInfo.phase_day,
         description: phaseInfo.description,
         tips: phaseInfo.tips
       });
-      
-      // Set a research-backed fun fact for the current phase
+
+      // Check extension state
+      const extState = LocalStorage.getExtensionState();
+      if (status === 'extended' || status === 'capped') {
+        // Show banner if not yet confirmed/denied for this cycle
+        if (!extState || extState.alertShownForCycleStart !== profile.cycleStartDate || extState.confirmed === null) {
+          setShowExtensionBanner(true);
+          setExtensionConfirmed(null);
+        } else {
+          setExtensionConfirmed(extState.confirmed);
+          setShowExtensionBanner(false);
+        }
+      } else {
+        setShowExtensionBanner(false);
+        setExtensionConfirmed(null);
+      }
+
+      // Set capped message
+      if (status === 'capped') {
+        const messages = getCappedCycleMessages();
+        setCappedMessage(messages[Math.floor(Math.random() * messages.length)]);
+      }
+
+      // Set fun fact
       const researchFact = getUnseenFact(phaseInfo.phase);
       setFunFact({ 
         fact: researchFact.fact, 
@@ -605,6 +651,60 @@ const Dashboard = () => {
   const hasPartnerProfile = () => true;
   const hasAIWingman = () => true;
 
+  // Extension confirm/deny handlers
+  const handleConfirmExtension = () => {
+    LocalStorage.saveExtensionState({
+      confirmed: true,
+      alertShownForCycleStart: partner?.cycleStartDate,
+      cappedMessageShown: extensionStatus === 'capped'
+    });
+    setExtensionConfirmed(true);
+    setShowExtensionBanner(false);
+    toast.success('Extension confirmed. Average will update when her next period starts.');
+  };
+
+  const handleDenyExtension = () => {
+    setShowDenyDatePicker(true);
+  };
+
+  const handleSubmitDenyDate = (e) => {
+    e.preventDefault();
+    if (!denyDate || !partner) return;
+
+    const selectedDate = new Date(denyDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate > today) {
+      toast.error('Cannot set a future date');
+      return;
+    }
+
+    // Add a new cycle entry with the corrected Day 1
+    LocalStorage.addCycleEntry({
+      cycle_start_date: denyDate,
+      cycle_length: null,
+      status: 'current'
+    });
+
+    // Update partner profile
+    const updatedPartner = { ...partner, cycleStartDate: denyDate };
+    LocalStorage.savePartnerProfile(updatedPartner);
+    setPartner(updatedPartner);
+
+    // Clear extension state
+    LocalStorage.clearExtensionState();
+    setShowExtensionBanner(false);
+    setShowDenyDatePicker(false);
+    setExtensionConfirmed(null);
+    setExtensionStatus('normal');
+    setDenyDate('');
+
+    // Reload everything
+    loadCycleInfoLocal(updatedPartner);
+    loadStaticResources(updatedPartner);
+    toast.success('Cycle reset to new Day 1!');
+  };
+
   const getPhaseColor = (phase) => {
     switch (phase) {
       case 'Menstrual':
@@ -737,18 +837,95 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Extension Alert Banner */}
+        {showExtensionBanner && cycleInfo && (
+          <div className="bg-orange-500/20 border border-orange-500/40 backdrop-blur-sm p-4 sm:p-6 rounded-2xl mb-4" data-testid="extension-banner">
+            {!showDenyDatePicker ? (
+              <div>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">📋</span>
+                  <div className="flex-1">
+                    <h3 className="text-white font-semibold text-lg">Cycle Extended — Day {cycleInfo.actual_day || cycleInfo.cycle_day}</h3>
+                    <p className="text-orange-200 text-sm mt-1">
+                      Periods can vary — confirm if {partner?.partnerName || 'your partner'}&apos;s cycle has extended past the usual {averageCycleLength} days.
+                    </p>
+                    <div className="flex flex-wrap gap-3 mt-4">
+                      <Button
+                        onClick={handleConfirmExtension}
+                        className="bg-orange-500 hover:bg-orange-600 text-white"
+                        size="sm"
+                        data-testid="confirm-extension-btn"
+                      >
+                        Yes, her period hasn&apos;t started yet
+                      </Button>
+                      <Button
+                        onClick={handleDenyExtension}
+                        variant="outline"
+                        className="border-orange-400 text-orange-300 hover:bg-orange-500/20"
+                        size="sm"
+                        data-testid="deny-extension-btn"
+                      >
+                        No, it already started — enter date
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-white font-semibold mb-2">When did her period actually start?</h3>
+                <form onSubmit={handleSubmitDenyDate} className="flex flex-wrap gap-2 items-end">
+                  <Input
+                    type="date"
+                    value={denyDate}
+                    onChange={(e) => setDenyDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    required
+                    className="bg-white/20 border-white/30 text-white w-auto"
+                    data-testid="deny-date-input"
+                  />
+                  <Button type="submit" className="bg-cyan-500 hover:bg-cyan-600 text-white" size="sm" data-testid="deny-date-submit">
+                    Set as Day 1
+                  </Button>
+                  <Button onClick={() => setShowDenyDatePicker(false)} variant="ghost" size="sm" className="text-slate-300">
+                    Cancel
+                  </Button>
+                </form>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Capped Cycle Message */}
+        {extensionStatus === 'capped' && cappedMessage && !showExtensionBanner && (
+          <div className="bg-purple-500/20 border border-purple-500/30 backdrop-blur-sm p-4 rounded-2xl mb-4" data-testid="capped-cycle-message">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🤷</span>
+              <div>
+                <p className="text-purple-200 text-sm">{cappedMessage}</p>
+                <p className="text-purple-300/60 text-xs mt-1">Internal count: Day {actualCycleDay}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Current Cycle Info */}
         {cycleInfo && (
-          <div className={`bg-gradient-to-r ${getPhaseColor(cycleInfo.phase)} backdrop-blur-sm p-8 rounded-2xl border mb-8`} data-testid="cycle-info-card">
+          <div className={`bg-gradient-to-r ${getPhaseColor(cycleInfo.phase)} backdrop-blur-sm p-6 sm:p-8 rounded-2xl border mb-8`} data-testid="cycle-info-card">
             <div className="grid md:grid-cols-2 gap-8">
               <div>
                 <div className="text-sm text-slate-400 mb-2">Current Phase</div>
-                <div className="text-4xl font-bold text-white mb-4" data-testid="current-phase">{cycleInfo.phase}</div>
+                <div className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="current-phase">{cycleInfo.phase}</div>
                 <div className="text-slate-300 mb-4">{cycleInfo.description}</div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-xs text-slate-400">Overall Cycle</div>
-                    <div className="text-2xl font-bold text-white" data-testid="cycle-day">Day {cycleInfo.cycle_day}</div>
+                    <div className="text-2xl font-bold text-white" data-testid="cycle-day">
+                      Day {cycleInfo.cycle_day}{cycleInfo.is_capped ? '+' : ''}
+                    </div>
+                    {extensionStatus !== 'normal' && (
+                      <div className="text-xs text-orange-300 mt-1">Avg: {averageCycleLength} days</div>
+                    )}
                     <Button
                       onClick={() => {
                         setShowCycleHistory(!showCycleHistory);
@@ -808,8 +985,11 @@ const Dashboard = () => {
                 <div className="grid md:grid-cols-3 gap-4">
                   <Card className="bg-white/10 border-white/20">
                     <CardContent className="p-4">
-                      <div className="text-xs text-slate-300 mb-1">Average Cycle</div>
-                      <div className="text-2xl font-bold text-white">{cycleHistory.statistics.average_length} days</div>
+                      <div className="text-xs text-slate-300 mb-1">Average Cycle (EWMA)</div>
+                      <div className="text-2xl font-bold text-white">{cycleHistory.statistics.ewma_length || cycleHistory.statistics.average_length} days</div>
+                      {cycleHistory.statistics.simple_average && cycleHistory.statistics.simple_average !== cycleHistory.statistics.ewma_length && (
+                        <div className="text-xs text-slate-400 mt-1">Simple avg: {cycleHistory.statistics.simple_average} days</div>
+                      )}
                     </CardContent>
                   </Card>
                   <Card className="bg-white/10 border-white/20">
