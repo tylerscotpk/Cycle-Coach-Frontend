@@ -154,6 +154,14 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - AI Wingman, Phase Predictor, Push Notifications
 - Admin dashboard with backend auth
 
+### Jun 14, 2026 — EWMA Dynamic Cycle Tracking & Extension Flow
+- **EWMA Average**: Replaced simple average with Exponential Weighted Moving Average (`0.3 * latest + 0.7 * previous`). Recent cycles weigh more heavily; outlier detection activates after 6+ cycles.
+- **Dynamic Cycle Day**: Continuous counting past average — no more wrapping at cycle length. Day counter keeps going (Day 29, 30, 31...).
+- **Extension Banner (avg+2)**: In-app banner + push notification when cycle exceeds average by 2 days. User must confirm ("yes, hasn't started") or deny ("enter actual Day 1 date").
+- **Capped UI (avg+7)**: Day display caps at "Day 35+" (if avg=28). Playful, non-medical messages displayed. Internal count continues for data accuracy.
+- **Confirm/Deny Flow**: Confirming marks cycle as extended (EWMA updates when Day 1 logged). Denying prompts for actual start date and resets cycle.
+- **Testing**: 6/6 frontend scenarios passed (normal day, extended banner, capped UI, confirm flow, deny flow, EWMA calculation in history dialog).
+
 ### Apr 20, 2026 — Android Build Fix + Mobile UI Fixes
 - **Android Capacitor build**: Updated `android/.gitignore` to un-ignore `capacitor-cordova-android-plugins/`, `app/src/main/assets/public/`, and generated config files. Ran `npx cap sync android` and `yarn build` to regenerate all files. All 16 critical Android Studio files are now tracked in git.
 - **Mobile UI overflow fix**: Added `flex-wrap`, responsive text sizes (`text-xs sm:text-sm`), `min-w-0`, and `size="sm"` to Dashboard and AccountSettings headers. Shortened "Privacy & Data" to "Privacy" for mobile. Added responsive padding (`p-4 sm:p-6`, `px-4 sm:px-6`). Made subscription status grid stack on mobile (`grid-cols-1 sm:grid-cols-2`).
@@ -168,6 +176,7 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Switch to same-origin relative API paths (DONE Feb 28) — root cause fix
 - [x] Fix Android Capacitor build files (DONE Apr 20) — `.gitignore` updated to include generated files
 - [x] Fix Mobile UI text wrapping/overflow (DONE Apr 20) — Dashboard & AccountSettings headers
+- [x] EWMA dynamic cycle tracking with extension alerts (DONE Jun 14)
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
 - [ ] Fix Contact Form (Resend domain verification needed by user)
 
