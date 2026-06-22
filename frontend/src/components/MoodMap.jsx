@@ -1,10 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [hoveredPhase, setHoveredPhase] = useState(null);
+  const [showMismatchTooltip, setShowMismatchTooltip] = useState(false);
+
+  // One-time tooltip: check if predicted phase doesn't match MoodMap static ranges
+  useEffect(() => {
+    if (!cycleInfo || !currentCycleDay) return;
+    const storageKey = 'cyclecoach_mismatch_tooltip_shown';
+    const lastAvg = localStorage.getItem('cyclecoach_mismatch_tooltip_avg');
+    const alreadyShown = localStorage.getItem(storageKey) === 'true';
+
+    // Find which static phase the current day falls in
+    const staticPhase = phases.find(p => currentCycleDay >= p.dayRange[0] && currentCycleDay <= p.dayRange[1]);
+    const predictedPhase = cycleInfo?.phase;
+
+    // Mismatch: predicted phase name differs from what the static MoodMap would show
+    const hasMismatch = staticPhase && predictedPhase &&
+      !predictedPhase.toLowerCase().startsWith(staticPhase.name.toLowerCase().replace('pms', 'late luteal'));
+
+    const currentAvg = localStorage.getItem('cyclecoach_last_ewma_avg') || '28';
+
+    if (hasMismatch && (!alreadyShown || lastAvg !== currentAvg)) {
+      setShowMismatchTooltip(true);
+    }
+  }, [cycleInfo, currentCycleDay]);
 
   // Helper to render text with bold markdown
   const renderTipWithBold = (tip) => {
@@ -169,12 +192,48 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
         <CardHeader>
           <CardTitle className="text-white text-2xl">MoodMap</CardTitle>
           <CardDescription className="text-slate-400">Your visual guide to the cycle phases</CardDescription>
+          <p className="text-slate-500 text-xs mt-1 italic" data-testid="moodmap-info-note">
+            Your girl isn&apos;t a robot, bro — cycles shift. Phase timing can vary, especially near the edges.
+          </p>
         </CardHeader>
         <CardContent>
+          {/* Phase mismatch tooltip */}
+          {showMismatchTooltip && (
+            <div className="bg-amber-500/15 border border-amber-500/40 rounded-lg p-3 mb-4 relative" data-testid="mismatch-tooltip">
+              <button
+                onClick={() => {
+                  setShowMismatchTooltip(false);
+                  localStorage.setItem('cyclecoach_mismatch_tooltip_shown', 'true');
+                  const avg = localStorage.getItem('cyclecoach_last_ewma_avg') || '28';
+                  localStorage.setItem('cyclecoach_mismatch_tooltip_avg', avg);
+                }}
+                className="absolute top-2 right-2 text-amber-400/60 hover:text-amber-300 text-sm"
+                data-testid="dismiss-mismatch-tooltip"
+              >
+                ✕
+              </button>
+              <p className="text-amber-200 text-xs pr-4">
+                Heads up, bro — shorter cycles can shift phases earlier. Totally normal. Cycle Coach adjusts based on real data, not wishful thinking.
+              </p>
+            </div>
+          )}
           <div className="flex flex-col items-center">
             {/* Circular Donut Chart */}
             <div className="relative w-full max-w-md mx-auto mb-6">
               <svg viewBox="0 0 300 300" className="w-full h-auto">
+                {/* Phase boundary lines for sharper edges */}
+                <defs>
+                  {phases.map((phase, index) => {
+                    const nextPhase = phases[(index + 1) % phases.length];
+                    return (
+                      <linearGradient key={`grad-${index}`} id={`phase-grad-${index}`}>
+                        <stop offset="0%" stopColor={phase.color} />
+                        <stop offset="85%" stopColor={phase.color} />
+                        <stop offset="100%" stopColor={nextPhase.color} />
+                      </linearGradient>
+                    );
+                  })}
+                </defs>
                 {/* Phase segments */}
                 {phases.map((phase, index) => {
                   const { startAngle, endAngle } = getPhaseSegment(index);
@@ -185,24 +244,38 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                   
                   // Calculate emoji position at the middle of the arc
                   const midAngle = (startAngle + endAngle) / 2;
-                  const emojiRadius = (outerRadius + innerRadius) / 2; // Middle of the donut
+                  const emojiRadius = (outerRadius + innerRadius) / 2;
                   const midRad = (midAngle * Math.PI) / 180;
                   const emojiX = 150 + emojiRadius * Math.cos(midRad);
                   const emojiY = 150 + emojiRadius * Math.sin(midRad);
+
+                  // Boundary line at start of each phase
+                  const startRad = (startAngle * Math.PI) / 180;
+                  const bx1 = 150 + innerRadius * Math.cos(startRad);
+                  const by1 = 150 + innerRadius * Math.sin(startRad);
+                  const bx2 = 150 + (outerRadius + 2) * Math.cos(startRad);
+                  const by2 = 150 + (outerRadius + 2) * Math.sin(startRad);
                   
                   return (
                     <g key={phase.name}>
                       <path
                         d={createArcPath(startAngle, endAngle, outerRadius, innerRadius)}
                         fill={phase.color}
-                        fillOpacity={isActive ? 0.9 : isHovered ? 0.7 : 0.5}
-                        stroke={isActive ? "#ffffff" : phase.color}
-                        strokeWidth={isActive ? 3 : 1}
+                        fillOpacity={isActive ? 0.95 : isHovered ? 0.8 : 0.6}
+                        stroke={isActive ? "#ffffff" : "rgba(15,23,42,0.8)"}
+                        strokeWidth={isActive ? 3 : 2}
                         className="cursor-pointer transition-all duration-200"
                         onClick={() => setSelectedPhase(phase)}
                         onMouseEnter={() => setHoveredPhase(phase.name)}
                         onMouseLeave={() => setHoveredPhase(null)}
                         data-testid={`phase-${phase.name.toLowerCase().replace(' ', '-')}`}
+                      />
+                      {/* Sharp boundary line between phases */}
+                      <line
+                        x1={bx1} y1={by1} x2={bx2} y2={by2}
+                        stroke="#0f172a"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
                       />
                       {/* Emoji on the arc */}
                       <text
