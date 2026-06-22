@@ -42,7 +42,7 @@ const PartnerConsent = ({ onConsentGranted }) => {
                   <strong className="text-white">Privacy Mode:</strong> All data is stored ONLY on YOUR device. We never see it, and it never leaves your browser.
                 </li>
                 <li>
-                  <strong className="text-white">No Account Needed:</strong> No login, no tracking, no server-side storage. Your data stays with you.
+                  <strong className="text-white">Privacy-First:</strong> No tracking, no server-side storage. Your data stays with you.
                 </li>
                 <li>
                   <strong className="text-white">Legal Risks:</strong> In some regions, reproductive health data can be used as evidence. While your data stays local, be aware of the legal landscape.

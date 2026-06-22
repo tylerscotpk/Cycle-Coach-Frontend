@@ -341,6 +341,25 @@ const AccountSettings = () => {
             >
               Back to Dashboard
             </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start border-red-800/50 text-red-400 hover:bg-red-900/30 hover:text-red-300"
+              onClick={async () => {
+                try {
+                  const sessionToken = localStorage.getItem('session_token');
+                  await fetch(`${API}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${sessionToken}` }
+                  });
+                } catch (e) { /* ignore */ }
+                localStorage.removeItem('session_token');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+              }}
+              data-testid="logout-btn"
+            >
+              Log Out
+            </Button>
           </CardContent>
         </Card>
       </div>

@@ -1093,13 +1093,6 @@ const Dashboard = () => {
           </DialogContent>
         </Dialog>
 
-        {/* MoodMap Section */}
-        {cycleInfo && (
-          <div className="mb-8">
-            <MoodMap currentCycleDay={cycleInfo.cycle_day} cycleInfo={cycleInfo} />
-          </div>
-        )}
-
         {/* Research-Backed Fact Card */}
         {funFact && (
           <Card className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 backdrop-blur-sm border-cyan-500/30 mb-8" data-testid="fun-fact-card">
@@ -1137,6 +1130,13 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* MoodMap Section */}
+        {cycleInfo && (
+          <div className="mb-8">
+            <MoodMap currentCycleDay={cycleInfo.cycle_day} cycleInfo={cycleInfo} />
+          </div>
         )}
 
         {/* Tabs Section */}

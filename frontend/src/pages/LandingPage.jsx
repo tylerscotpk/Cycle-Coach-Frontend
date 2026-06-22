@@ -54,7 +54,7 @@ const LandingPage = () => {
               size="lg"
               className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70"
             >
-              Start Using (No Login Required)
+              Start Using Cycle Coach
             </Button>
           </div>
 
@@ -74,7 +74,7 @@ const LandingPage = () => {
                   </p>
                   <ul className="list-disc list-inside space-y-2 ml-2">
                     <li><strong className="text-white">Get Partner Consent:</strong> Your partner MUST consent to you tracking their cycle data. Tracking without consent is a violation of privacy and trust.</li>
-                    <li><strong className="text-white">Privacy-First Design:</strong> All data is stored ONLY on your device. No servers, no accounts, no tracking. You have complete control.</li>
+                    <li><strong className="text-white">Privacy-First Design:</strong> All data is stored ONLY on your device. No tracking. You have complete control.</li>
                     <li><strong className="text-white">No Identity Collection:</strong> We don't collect names, emails, or any personally identifiable information. The app works entirely in your browser.</li>
                     <li><strong className="text-white">AI Processing:</strong> If you use AI Wingman, messages are sent anonymously to OpenAI. Don't share identifying details in chat.</li>
                     <li><strong className="text-white">Legal Note:</strong> While your data stays local, be aware of legal risks around reproductive health data in your region.</li>
@@ -161,7 +161,7 @@ const LandingPage = () => {
             size="lg"
             className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-6 text-lg font-semibold rounded-xl shadow-lg shadow-cyan-500/50"
           >
-            Start Using - No Account Needed
+            Start Using Cycle Coach
           </Button>
         </div>
       </div>
@@ -170,3 +170,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+fault LandingPage;
