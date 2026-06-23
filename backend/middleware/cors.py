@@ -3,15 +3,22 @@ import os
 from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi.responses import Response
 
-_cors_env = os.environ.get("CORS_ORIGINS", "*")
-if _cors_env.strip() == "*":
-    ALLOW_ALL = True
-    ALLOWED_ORIGINS = set()
-else:
-    ALLOW_ALL = False
-    ALLOWED_ORIGINS = {o.strip().rstrip("/") for o in _cors_env.split(",") if o.strip()}
+# Hardcoded allowed origins — never use wildcard
+ALLOWED_ORIGINS = {
+    "https://cyclecoach.net",
+    "https://www.cyclecoach.net",
+    "capacitor://localhost",
+    "https://localhost",
+    "http://localhost",
+}
 
-# Default origin for requests without an Origin header (e.g., Capacitor native)
+# Also allow any origins from env (for preview/dev environments)
+_cors_env = os.environ.get("CORS_ORIGINS", "")
+for o in _cors_env.split(","):
+    o = o.strip().strip('"').rstrip("/")
+    if o and o != "*":
+        ALLOWED_ORIGINS.add(o)
+
 DEFAULT_ORIGIN = "https://cyclecoach.net"
 
 CORS_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
@@ -21,7 +28,7 @@ CORS_HEADERS = "Content-Type,Authorization,Cookie,X-Requested-With"
 def _origin_allowed(origin: str) -> bool:
     if not origin:
         return True  # Allow requests with no Origin (same-origin, Capacitor native, curl)
-    return ALLOW_ALL or origin.rstrip("/") in ALLOWED_ORIGINS
+    return origin.rstrip("/") in ALLOWED_ORIGINS
 
 
 class StrictCORSMiddleware:
