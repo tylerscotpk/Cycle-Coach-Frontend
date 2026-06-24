@@ -452,3 +452,50 @@ async def cancel_user_subscription(session_token: Optional[str] = Cookie(None), 
     except stripe.StripeError as e:
         logger.error(f"Stripe error cancelling subscription: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to cancel: {str(e)}")
+
+
+
+class DeletionRequest(BaseModel):
+    email: str
+
+@router.post("/account/request-deletion")
+async def request_account_deletion(request: DeletionRequest):
+    email = request.email.lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    user = await db.auth_users.find_one({"email": email}, {"_id": 0, "id": 1, "email": 1})
+    if not user:
+        # Don't reveal whether account exists — always return success
+        return {"success": True, "message": "If an account exists with that email, a deletion request has been submitted."}
+
+    # Store the deletion request
+    await db.deletion_requests.insert_one({
+        "user_id": user["id"],
+        "email": email,
+        "status": "pending",
+        "requested_at": datetime.now(timezone.utc).isoformat()
+    })
+
+    # Send notification email to admin
+    if RESEND_API_KEY:
+        try:
+            resend.api_key = RESEND_API_KEY
+            resend.Emails.send({
+                "from": SENDER_EMAIL,
+                "to": ["cyclecoach4men@gmail.com"],
+                "subject": f"Account Deletion Request - {email}",
+                "html": f"""
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2>Account Deletion Request</h2>
+                    <p><strong>Email:</strong> {email}</p>
+                    <p><strong>User ID:</strong> {user['id']}</p>
+                    <p><strong>Requested:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</p>
+                    <p>Please process this deletion request within 7 business days.</p>
+                </div>
+                """
+            })
+        except Exception as e:
+            logger.error(f"Failed to send deletion notification email: {e}")
+
+    return {"success": True, "message": "If an account exists with that email, a deletion request has been submitted."}

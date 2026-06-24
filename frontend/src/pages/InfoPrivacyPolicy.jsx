@@ -76,7 +76,7 @@ const InfoPrivacyPolicy = () => {
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">7. Data Deletion</h2>
               <p>
-                You can delete all locally stored data at any time from the Privacy &amp; Data settings page within the app. To delete your account and server-side data, contact us at cyclecoach4men@gmail.com.
+                You can delete all locally stored data at any time from the Privacy &amp; Data settings page within the app. To delete your account and server-side data, <a href="/delete-account" className="text-cyan-400 hover:text-cyan-300">submit a deletion request</a> or contact us at cyclecoach4men@gmail.com.
               </p>
             </section>
 
