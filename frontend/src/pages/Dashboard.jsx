@@ -1140,9 +1140,9 @@ const Dashboard = () => {
         )}
 
         {/* Tabs Section */}
-        <Tabs defaultValue="resources" className="space-y-6">
+        <Tabs defaultValue="chat" className="space-y-6">
           <TabsList className="bg-slate-800 border border-slate-700" tabIndex={-1}>
-            <TabsTrigger value="resources" data-testid="tab-resources">Resources</TabsTrigger>
+            {/* Resources tab archived — will revisit with manual library */}
             <TabsTrigger value="chat" data-testid="tab-ai-coach">
               AI Wingman
             </TabsTrigger>
@@ -1397,7 +1397,8 @@ const Dashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Resources Tab */}
+          {/* === ARCHIVED: Resources Tab — will revisit with manual library === */}
+          {false && (
           <TabsContent value="resources" data-testid="resources-content">
             {/* External Links Disclaimer */}
             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 mb-4 text-center">
@@ -1655,6 +1656,7 @@ const Dashboard = () => {
               </div>
             )}
           </TabsContent>
+          )}
         </Tabs>
       </div>
       
