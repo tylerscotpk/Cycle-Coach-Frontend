@@ -23,6 +23,7 @@ import InfoResetPassword from "@/pages/InfoResetPassword";
 import InfoPrivacyPolicy from "@/pages/InfoPrivacyPolicy";
 import DeleteAccount from "@/pages/DeleteAccount";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
+import AppBackground from "@/components/AppBackground";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
@@ -292,7 +293,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <AppBackground>
+          <AppContent />
+        </AppBackground>
         <Toaster />
       </AuthProvider>
     </BrowserRouter>

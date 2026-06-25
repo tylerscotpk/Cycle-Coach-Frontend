@@ -315,7 +315,7 @@ const AdminDashboard = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+      <div className="min-h-screen  flex items-center justify-center p-6">
         <div className="text-white text-lg">Verifying session...</div>
       </div>
     );
@@ -323,7 +323,7 @@ const AdminDashboard = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+      <div className="min-h-screen  flex items-center justify-center p-6">
         <Card className="bg-slate-800/90 border-slate-700 w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-white text-center">Admin Access</CardTitle>
@@ -362,7 +362,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-screen  p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">

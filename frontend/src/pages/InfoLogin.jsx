@@ -98,7 +98,7 @@ const InfoLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen ">
       <InfoNav />
       
       <section className="relative pt-32 pb-16 px-6">

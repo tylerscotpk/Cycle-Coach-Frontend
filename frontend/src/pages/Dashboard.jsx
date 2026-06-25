@@ -724,7 +724,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-white text-xl">Loading dashboard...</div>
       </div>
     );
@@ -733,7 +733,7 @@ const Dashboard = () => {
   // If no partner profile, show setup
   if (!partner) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="min-h-screen">
         <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {/* Header */}
           <div className="flex flex-wrap justify-between items-center gap-3 mb-12">
@@ -804,7 +804,7 @@ const Dashboard = () => {
 
   // Main Dashboard
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-20">
         {/* Header */}
         <div className="flex flex-wrap justify-between items-center gap-3 mb-8">

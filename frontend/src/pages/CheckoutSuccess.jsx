@@ -24,7 +24,7 @@ export default function CheckoutSuccess() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6" data-testid="checkout-success-page">
+    <div className="min-h-screen  flex items-center justify-center px-6" data-testid="checkout-success-page">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-cyan-600/5 rounded-full blur-3xl"></div>
         <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-slate-700/20 rounded-full blur-3xl"></div>

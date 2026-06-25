@@ -7,7 +7,7 @@ const CYCLE_COACH_ICON = "https://customer-assets.emergentagent.com/job_partner-
 
 const InfoHome = () => {
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen ">
       <InfoNav />
       
       {/* Hero Section */}
