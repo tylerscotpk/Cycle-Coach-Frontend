@@ -7,45 +7,15 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const [hoveredPhase, setHoveredPhase] = useState(null);
   const [showMismatchTooltip, setShowMismatchTooltip] = useState(false);
 
-  // One-time tooltip: check if predicted phase doesn't match MoodMap static ranges
-  useEffect(() => {
-    if (!cycleInfo || !currentCycleDay) return;
-    const storageKey = 'cyclecoach_mismatch_tooltip_shown';
-    const lastAvg = localStorage.getItem('cyclecoach_mismatch_tooltip_avg');
-    const alreadyShown = localStorage.getItem(storageKey) === 'true';
-
-    // Find which static phase the current day falls in
-    const staticPhase = phases.find(p => currentCycleDay >= p.dayRange[0] && currentCycleDay <= p.dayRange[1]);
-    const predictedPhase = cycleInfo?.phase;
-
-    // Mismatch: predicted phase name differs from what the static MoodMap would show
-    const hasMismatch = staticPhase && predictedPhase &&
-      !predictedPhase.toLowerCase().startsWith(staticPhase.name.toLowerCase().replace('pms', 'late luteal'));
-
-    const currentAvg = localStorage.getItem('cyclecoach_last_ewma_avg') || '28';
-
-    if (hasMismatch && (!alreadyShown || lastAvg !== currentAvg)) {
-      setShowMismatchTooltip(true);
-    }
-  }, [cycleInfo, currentCycleDay]);
-
-  // Helper to render text with bold markdown
-  const renderTipWithBold = (tip) => {
-    const parts = tip.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i}>{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-  };
-
   const phases = [
     {
       name: "Menstrual",
+      label: "MENSTRUATION",
+      num: 1,
       days: "1-5",
       dayRange: [1, 5],
-      color: "#ef4444",
+      color: "#dc2626",
+      colorLight: "#ef4444",
       description: "Red alert - literally. She's on her period.",
       emoji: "🩸",
       tips: [
@@ -61,9 +31,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     },
     {
       name: "Follicular",
+      label: "FOLLICULAR",
+      num: 2,
       days: "6-13",
       dayRange: [6, 13],
-      color: "#22c55e",
+      color: "#16a34a",
+      colorLight: "#22c55e",
       description: "The storm has passed. She's back, baby!",
       emoji: "🌸",
       tips: [
@@ -80,9 +53,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     },
     {
       name: "Ovulation",
+      label: "OVULATION",
+      num: 3,
       days: "14-16",
       dayRange: [14, 16],
-      color: "#ec4899",
+      color: "#db2777",
+      colorLight: "#ec4899",
       description: "🔥 PRIME TIME 🔥 This is it chief",
       emoji: "🔥",
       tips: [
@@ -100,9 +76,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     },
     {
       name: "Early Luteal",
+      label: "LUTEAL",
+      num: 4,
       days: "17-23",
       dayRange: [17, 23],
-      color: "#3b82f6",
+      color: "#2563eb",
+      colorLight: "#3b82f6",
       description: "Chill vibes. Enjoy it while it lasts.",
       emoji: "🏠",
       tips: [
@@ -118,9 +97,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     },
     {
       name: "PMS",
+      label: "PMS",
+      num: 5,
       days: "24-28",
       dayRange: [24, 28],
-      color: "#f97316",
+      color: "#ea580c",
+      colorLight: "#f97316",
       description: "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
       emoji: "⚠️",
       tips: [
@@ -139,65 +121,137 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     }
   ];
 
+  // One-time tooltip for phase mismatch
+  useEffect(() => {
+    if (!cycleInfo || !currentCycleDay) return;
+    const storageKey = 'cyclecoach_mismatch_tooltip_shown';
+    const lastAvg = localStorage.getItem('cyclecoach_mismatch_tooltip_avg');
+    const alreadyShown = localStorage.getItem(storageKey) === 'true';
+    const staticPhase = phases.find(p => currentCycleDay >= p.dayRange[0] && currentCycleDay <= p.dayRange[1]);
+    const predictedPhase = cycleInfo?.phase;
+    const hasMismatch = staticPhase && predictedPhase &&
+      !predictedPhase.toLowerCase().startsWith(staticPhase.name.toLowerCase().replace('pms', 'late luteal'));
+    const currentAvg = localStorage.getItem('cyclecoach_last_ewma_avg') || '28';
+    if (hasMismatch && (!alreadyShown || lastAvg !== currentAvg)) {
+      setShowMismatchTooltip(true);
+    }
+  }, [cycleInfo, currentCycleDay]);
+
+  const renderTipWithBold = (tip) => {
+    const parts = tip.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   const getCurrentPhase = () => {
     if (!currentCycleDay) return null;
-    return phases.find(phase => 
+    return phases.find(phase =>
       currentCycleDay >= phase.dayRange[0] && currentCycleDay <= phase.dayRange[1]
     );
   };
 
   const currentPhase = getCurrentPhase();
+  const CX = 200;
+  const CY = 200;
+  const OUTER_R = 155;
+  const INNER_R = 80;
+  const TOTAL_DAYS = 28;
 
-  // Calculate the angle for each phase segment
-  const getPhaseSegment = (index) => {
-    const totalDays = 28;
-    const phase = phases[index];
-    const phaseDays = phase.dayRange[1] - phase.dayRange[0] + 1;
-    const startDay = phase.dayRange[0] - 1; // 0-indexed
-    
-    const startAngle = (startDay / totalDays) * 360 - 90; // Start from top
-    const endAngle = ((startDay + phaseDays) / totalDays) * 360 - 90;
-    
-    return { startAngle, endAngle, phaseDays };
+  const getSegmentAngles = (phase) => {
+    const startDay = phase.dayRange[0] - 1;
+    const endDay = phase.dayRange[1];
+    const startAngle = (startDay / TOTAL_DAYS) * 360 - 90;
+    const endAngle = (endDay / TOTAL_DAYS) * 360 - 90;
+    return { startAngle, endAngle };
   };
 
-  // Create SVG path for donut segment
-  const createArcPath = (startAngle, endAngle, outerRadius, innerRadius) => {
-    const startRad = (startAngle * Math.PI) / 180;
-    const endRad = (endAngle * Math.PI) / 180;
-    
-    const x1 = 150 + outerRadius * Math.cos(startRad);
-    const y1 = 150 + outerRadius * Math.sin(startRad);
-    const x2 = 150 + outerRadius * Math.cos(endRad);
-    const y2 = 150 + outerRadius * Math.sin(endRad);
-    const x3 = 150 + innerRadius * Math.cos(endRad);
-    const y3 = 150 + innerRadius * Math.sin(endRad);
-    const x4 = 150 + innerRadius * Math.cos(startRad);
-    const y4 = 150 + innerRadius * Math.sin(startRad);
-    
-    const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-    
-    return `
-      M ${x1} ${y1}
-      A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}
-      L ${x3} ${y3}
-      A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}
-      Z
-    `;
+  const polarToXY = (angle, radius) => {
+    const rad = (angle * Math.PI) / 180;
+    return { x: CX + radius * Math.cos(rad), y: CY + radius * Math.sin(rad) };
   };
+
+  const createArc = (startAngle, endAngle, outerR, innerR) => {
+    const s1 = polarToXY(startAngle, outerR);
+    const e1 = polarToXY(endAngle, outerR);
+    const s2 = polarToXY(endAngle, innerR);
+    const e2 = polarToXY(startAngle, innerR);
+    const large = endAngle - startAngle > 180 ? 1 : 0;
+    return `M ${s1.x} ${s1.y} A ${outerR} ${outerR} 0 ${large} 1 ${e1.x} ${e1.y} L ${s2.x} ${s2.y} A ${innerR} ${innerR} 0 ${large} 0 ${e2.x} ${e2.y} Z`;
+  };
+
+  // SVG icon paths for each phase
+  const PhaseIcon = ({ type, x, y, size = 22 }) => {
+    const s = size;
+    const hs = s / 2;
+    switch (type) {
+      case 'drop':
+        return (
+          <path d={`M ${x} ${y - hs} C ${x - hs * 0.7} ${y - hs * 0.1} ${x - hs} ${y + hs * 0.3} ${x} ${y + hs} C ${x + hs} ${y + hs * 0.3} ${x + hs * 0.7} ${y - hs * 0.1} ${x} ${y - hs} Z`}
+            fill="none" stroke="white" strokeWidth="1.8" />
+        );
+      case 'leaf':
+        return (
+          <g transform={`translate(${x - hs}, ${y - hs})`}>
+            <path d={`M ${s * 0.2} ${s * 0.8} C ${s * 0.2} ${s * 0.3} ${s * 0.5} ${s * 0.1} ${s * 0.8} ${s * 0.2} C ${s * 0.7} ${s * 0.5} ${s * 0.5} ${s * 0.7} ${s * 0.2} ${s * 0.8} Z`}
+              fill="none" stroke="white" strokeWidth="1.8" />
+            <line x1={s * 0.2} y1={s * 0.8} x2={s * 0.55} y2={s * 0.45} stroke="white" strokeWidth="1.5" />
+          </g>
+        );
+      case 'target':
+        return (
+          <g>
+            <circle cx={x} cy={y} r={hs * 0.85} fill="none" stroke="white" strokeWidth="1.8" />
+            <circle cx={x} cy={y} r={hs * 0.45} fill="none" stroke="white" strokeWidth="1.5" />
+            <circle cx={x} cy={y} r={2} fill="white" />
+            <line x1={x} y1={y - hs} x2={x} y2={y - hs * 0.85} stroke="white" strokeWidth="1.5" />
+            <line x1={x} y1={y + hs} x2={x} y2={y + hs * 0.85} stroke="white" strokeWidth="1.5" />
+            <line x1={x - hs} y1={y} x2={x - hs * 0.85} y2={y} stroke="white" strokeWidth="1.5" />
+            <line x1={x + hs} y1={y} x2={x + hs * 0.85} y2={y} stroke="white" strokeWidth="1.5" />
+          </g>
+        );
+      case 'house':
+        return (
+          <g transform={`translate(${x - hs}, ${y - hs})`}>
+            <path d={`M ${s * 0.5} ${s * 0.15} L ${s * 0.1} ${s * 0.5} L ${s * 0.25} ${s * 0.5} L ${s * 0.25} ${s * 0.85} L ${s * 0.75} ${s * 0.85} L ${s * 0.75} ${s * 0.5} L ${s * 0.9} ${s * 0.5} Z`}
+              fill="none" stroke="white" strokeWidth="1.8" strokeLinejoin="round" />
+            <rect x={s * 0.4} y={s * 0.55} width={s * 0.2} height={s * 0.3} fill="none" stroke="white" strokeWidth="1.5" />
+          </g>
+        );
+      case 'shield':
+        return (
+          <g transform={`translate(${x - hs}, ${y - hs})`}>
+            <path d={`M ${s * 0.5} ${s * 0.1} L ${s * 0.15} ${s * 0.25} L ${s * 0.15} ${s * 0.55} C ${s * 0.15} ${s * 0.75} ${s * 0.35} ${s * 0.85} ${s * 0.5} ${s * 0.92} C ${s * 0.65} ${s * 0.85} ${s * 0.85} ${s * 0.75} ${s * 0.85} ${s * 0.55} L ${s * 0.85} ${s * 0.25} Z`}
+              fill="none" stroke="white" strokeWidth="1.8" />
+            <polyline points={`${s * 0.35},${s * 0.52} ${s * 0.45},${s * 0.62} ${s * 0.65},${s * 0.38}`}
+              fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </g>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const iconTypes = ['drop', 'leaf', 'target', 'house', 'shield'];
+
+  // Dashed outer ring arcs
+  const dashedRingR = OUTER_R + 18;
+  const dashedCircumference = 2 * Math.PI * dashedRingR;
 
   return (
     <>
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700" data-testid="moodmap-card">
+      <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-700/50" data-testid="moodmap-card">
         <CardHeader>
-          <CardTitle className="text-white text-2xl">MoodMap</CardTitle>
+          <CardTitle className="text-white text-2xl font-bold tracking-tight">MoodMap</CardTitle>
           <CardDescription className="text-slate-400">Your visual guide to the cycle phases</CardDescription>
           <p className="text-slate-500 text-xs mt-1 italic" data-testid="moodmap-info-note">
             Your girl isn&apos;t a robot, bro — cycles shift. Phase timing can vary, especially near the edges.
           </p>
         </CardHeader>
         <CardContent>
-          {/* Phase mismatch tooltip */}
           {showMismatchTooltip && (
             <div className="bg-amber-500/15 border border-amber-500/40 rounded-lg p-3 mb-4 relative" data-testid="mismatch-tooltip">
               <button
@@ -217,98 +271,142 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
               </p>
             </div>
           )}
+
           <div className="flex flex-col items-center">
-            {/* Circular Donut Chart */}
             <div className="relative w-full max-w-md mx-auto mb-6">
-              <svg viewBox="0 0 300 300" className="w-full h-auto">
-                {/* Phase boundary lines for sharper edges */}
+              <svg viewBox="0 0 400 400" className="w-full h-auto">
                 <defs>
-                  {phases.map((phase, index) => {
-                    const nextPhase = phases[(index + 1) % phases.length];
-                    return (
-                      <linearGradient key={`grad-${index}`} id={`phase-grad-${index}`}>
-                        <stop offset="0%" stopColor={phase.color} />
-                        <stop offset="85%" stopColor={phase.color} />
-                        <stop offset="100%" stopColor={nextPhase.color} />
-                      </linearGradient>
-                    );
-                  })}
+                  {phases.map((phase, i) => (
+                    <radialGradient key={`rg-${i}`} id={`rg-${i}`} cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor={phase.colorLight} stopOpacity="0.9" />
+                      <stop offset="100%" stopColor={phase.color} stopOpacity="1" />
+                    </radialGradient>
+                  ))}
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <polygon points="0 0, 8 3, 0 6" fill="#22d3ee" fillOpacity="0.6" />
+                  </marker>
                 </defs>
+
+                {/* Outer dashed tactical ring */}
+                <circle cx={CX} cy={CY} r={dashedRingR} fill="none" stroke="#334155" strokeWidth="1.5"
+                  strokeDasharray="8 6" opacity="0.5" />
+
+                {/* Directional arrow arcs */}
+                {[45, 135, 225, 315].map((angle, i) => {
+                  const a1 = angle - 20;
+                  const a2 = angle + 20;
+                  const r = dashedRingR;
+                  const p1 = polarToXY(a1, r);
+                  const p2 = polarToXY(a2, r);
+                  return (
+                    <path key={`arr-${i}`}
+                      d={`M ${p1.x} ${p1.y} A ${r} ${r} 0 0 1 ${p2.x} ${p2.y}`}
+                      fill="none" stroke="#22d3ee" strokeWidth="2" opacity="0.5"
+                      markerEnd="url(#arrow)" />
+                  );
+                })}
+
                 {/* Phase segments */}
                 {phases.map((phase, index) => {
-                  const { startAngle, endAngle } = getPhaseSegment(index);
+                  const { startAngle, endAngle } = getSegmentAngles(phase);
                   const isActive = currentPhase?.name === phase.name;
                   const isHovered = hoveredPhase === phase.name;
-                  const outerRadius = isHovered ? 145 : isActive ? 140 : 135;
-                  const innerRadius = 70;
-                  
-                  // Calculate emoji position at the middle of the arc
-                  const midAngle = (startAngle + endAngle) / 2;
-                  const emojiRadius = (outerRadius + innerRadius) / 2;
-                  const midRad = (midAngle * Math.PI) / 180;
-                  const emojiX = 150 + emojiRadius * Math.cos(midRad);
-                  const emojiY = 150 + emojiRadius * Math.sin(midRad);
+                  const outerR = isHovered ? OUTER_R + 6 : isActive ? OUTER_R + 3 : OUTER_R;
 
-                  // Boundary line at start of each phase
-                  const startRad = (startAngle * Math.PI) / 180;
-                  const bx1 = 150 + innerRadius * Math.cos(startRad);
-                  const by1 = 150 + innerRadius * Math.sin(startRad);
-                  const bx2 = 150 + (outerRadius + 2) * Math.cos(startRad);
-                  const by2 = 150 + (outerRadius + 2) * Math.sin(startRad);
-                  
+                  // Icon + label position
+                  const midAngle = (startAngle + endAngle) / 2;
+                  const iconR = (outerR + INNER_R) / 2 - 2;
+                  const iconPos = polarToXY(midAngle, iconR);
+                  const labelR = iconR + 2;
+                  const labelPos = polarToXY(midAngle, labelR);
+
+                  // Boundary line
+                  const bStart = polarToXY(startAngle, INNER_R);
+                  const bEnd = polarToXY(startAngle, outerR + 1);
+
                   return (
-                    <g key={phase.name}>
+                    <g key={phase.name}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedPhase(phase)}
+                      onMouseEnter={() => setHoveredPhase(phase.name)}
+                      onMouseLeave={() => setHoveredPhase(null)}
+                      data-testid={`phase-${phase.name.toLowerCase().replace(' ', '-')}`}
+                    >
+                      {/* Segment */}
                       <path
-                        d={createArcPath(startAngle, endAngle, outerRadius, innerRadius)}
-                        fill={phase.color}
-                        fillOpacity={isActive ? 0.95 : isHovered ? 0.8 : 0.6}
-                        stroke={isActive ? "#ffffff" : "rgba(15,23,42,0.8)"}
-                        strokeWidth={isActive ? 3 : 2}
-                        className="cursor-pointer transition-all duration-200"
-                        onClick={() => setSelectedPhase(phase)}
-                        onMouseEnter={() => setHoveredPhase(phase.name)}
-                        onMouseLeave={() => setHoveredPhase(null)}
-                        data-testid={`phase-${phase.name.toLowerCase().replace(' ', '-')}`}
+                        d={createArc(startAngle, endAngle, outerR, INNER_R)}
+                        fill={`url(#rg-${index})`}
+                        fillOpacity={isActive ? 1 : isHovered ? 0.9 : 0.85}
+                        stroke={isActive ? "#ffffff" : "#0f172a"}
+                        strokeWidth={isActive ? 3 : 3}
+                        className="transition-all duration-200"
                       />
-                      {/* Sharp boundary line between phases */}
-                      <line
-                        x1={bx1} y1={by1} x2={bx2} y2={by2}
-                        stroke="#0f172a"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
+
+                      {/* Boundary divider */}
+                      <line x1={bStart.x} y1={bStart.y} x2={bEnd.x} y2={bEnd.y}
+                        stroke="#0f172a" strokeWidth="3.5" />
+
+                      {/* Icon */}
+                      <PhaseIcon type={iconTypes[index]}
+                        x={iconPos.x}
+                        y={iconPos.y - 10}
+                        size={22}
                       />
-                      {/* Emoji on the arc */}
-                      <text
-                        x={emojiX}
-                        y={emojiY}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize="24"
+
+                      {/* Number */}
+                      <text x={iconPos.x} y={iconPos.y + 8}
+                        textAnchor="middle" dominantBaseline="middle"
+                        fill="white" fontSize="13" fontWeight="bold" fontFamily="system-ui, sans-serif"
                         className="pointer-events-none"
                       >
-                        {phase.emoji}
+                        {phase.num}
+                      </text>
+
+                      {/* Label */}
+                      <text x={iconPos.x} y={iconPos.y + 22}
+                        textAnchor="middle" dominantBaseline="middle"
+                        fill="white" fontSize="8.5" fontWeight="700" fontFamily="system-ui, sans-serif"
+                        letterSpacing="0.5"
+                        className="pointer-events-none"
+                      >
+                        {phase.label}
                       </text>
                     </g>
                   );
                 })}
-                
-                {/* Center content */}
-                <g>
-                  <circle cx="150" cy="150" r="65" fill="#1e293b" />
-                  {currentPhase && (
-                    <>
-                      <text x="150" y="135" textAnchor="middle" fontSize="40">
-                        {currentPhase.emoji}
-                      </text>
-                      <text x="150" y="165" textAnchor="middle" fontSize="16" fill="#ffffff" fontWeight="bold">
-                        {currentPhase.name}
-                      </text>
-                      <text x="150" y="180" textAnchor="middle" fontSize="12" fill="#94a3b8">
-                        Day {currentCycleDay}
-                      </text>
-                    </>
-                  )}
+
+                {/* Center hub */}
+                <circle cx={CX} cy={CY} r={INNER_R - 2} fill="#0f172a" stroke="#22d3ee" strokeWidth="2.5" />
+
+                {/* Center shield + chart icon */}
+                <g transform={`translate(${CX - 22}, ${CY - 26})`}>
+                  {/* Shield outline */}
+                  <path d="M 22 2 L 6 10 L 6 24 C 6 34 14 40 22 44 C 30 40 38 34 38 24 L 38 10 Z"
+                    fill="#0f172a" stroke="#22d3ee" strokeWidth="2" />
+                  {/* Bar chart inside shield */}
+                  <rect x="13" y="28" width="4" height="8" fill="#22d3ee" rx="1" />
+                  <rect x="19" y="22" width="4" height="14" fill="#22d3ee" rx="1" />
+                  <rect x="25" y="16" width="4" height="20" fill="#22d3ee" rx="1" />
+                  {/* Upward arrow */}
+                  <polyline points="14,20 22,12 30,20" fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </g>
+
+                {/* Current phase text below center */}
+                {currentPhase && (
+                  <>
+                    <text x={CX} y={CY + 30} textAnchor="middle" fill="#94a3b8" fontSize="10"
+                      fontFamily="system-ui, sans-serif" className="pointer-events-none">
+                      Day {currentCycleDay}
+                    </text>
+                  </>
+                )}
               </svg>
             </div>
 
@@ -321,28 +419,27 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                     key={phase.name}
                     onClick={() => setSelectedPhase(phase)}
                     className={`flex items-center gap-3 p-3 rounded-lg transition-colors w-full ${
-                      isCurrentPhase 
-                        ? 'bg-slate-600/70 ring-2 ring-white/30 hover:bg-slate-600' 
-                        : 'bg-slate-700/50 hover:bg-slate-700'
+                      isCurrentPhase
+                        ? 'bg-slate-700/80 ring-2 ring-white/30 hover:bg-slate-600'
+                        : 'bg-slate-800/60 hover:bg-slate-700/60'
                     }`}
                   >
-                    <div 
-                      className="w-4 h-4 rounded-full flex-shrink-0" 
+                    <div
+                      className="w-4 h-4 rounded-full flex-shrink-0 ring-1 ring-white/20"
                       style={{ backgroundColor: phase.color }}
                     />
-                    <div className={`text-sm font-medium ${isCurrentPhase ? 'text-white' : 'text-slate-300'}`}>
-                      {phase.name}: Days {phase.days}
+                    <div className={`text-sm font-semibold tracking-wide ${isCurrentPhase ? 'text-white' : 'text-slate-300'}`}>
+                      {phase.num}. {phase.label}: Days {phase.days}
                     </div>
                     {isCurrentPhase && (
-                      <span className="ml-auto text-xs text-cyan-400 font-semibold">Active</span>
+                      <span className="ml-auto text-xs text-cyan-400 font-bold uppercase tracking-wider">Active</span>
                     )}
                   </button>
                 );
               })}
             </div>
 
-            {/* Quick info */}
-            <div className="text-center text-slate-400 text-sm mt-4">
+            <div className="text-center text-slate-500 text-sm mt-4">
               Tap any segment or phase to see detailed tips
             </div>
           </div>
