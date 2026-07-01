@@ -10,12 +10,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const phases = [
     {
       name: "Menstrual",
-      label: "MENSTRUATION",
       num: 1,
-      days: "1-5",
+      days: "1\u20135",
       dayRange: [1, 5],
       color: "#dc2626",
       colorLight: "#ef4444",
+      iconType: "drop",
       description: "Red alert - literally. She's on her period.",
       emoji: "🩸",
       tips: [
@@ -31,12 +31,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     },
     {
       name: "Follicular",
-      label: "FOLLICULAR",
       num: 2,
-      days: "6-13",
+      days: "6\u201313",
       dayRange: [6, 13],
       color: "#16a34a",
       colorLight: "#22c55e",
+      iconType: "flower",
       description: "The storm has passed. She's back, baby!",
       emoji: "🌸",
       tips: [
@@ -53,12 +53,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     },
     {
       name: "Ovulation",
-      label: "OVULATION",
       num: 3,
-      days: "14-16",
+      days: "14\u201316",
       dayRange: [14, 16],
       color: "#db2777",
       colorLight: "#ec4899",
+      iconType: "flame",
       description: "🔥 PRIME TIME 🔥 This is it chief",
       emoji: "🔥",
       tips: [
@@ -66,7 +66,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
         "She's ovulating = **nature's horny button is pressed**. Biology is on your side.",
         "Tell her she looks **hot**. Then tell her again. Then one more time.",
         "**Plan something romantic tonight** (you know exactly why)",
-        "This is when she's most likely to say **yes to anything** 😏 - make your move",
+        "This is when she's most likely to say **yes to anything** — make your move",
         "Do NOT, I repeat, **DO NOT** mess this up with **lazy boyfriend energy**",
         "Put the **phone down**. Give her your **FULL attention**. Be present.",
         "Think of it like **playoff mode** - this is your time to shine, champion",
@@ -75,13 +75,13 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       ]
     },
     {
-      name: "Early Luteal",
-      label: "LUTEAL",
+      name: "Luteal",
       num: 4,
-      days: "17-23",
+      days: "17\u201323",
       dayRange: [17, 23],
       color: "#2563eb",
       colorLight: "#3b82f6",
+      iconType: "house",
       description: "Chill vibes. Enjoy it while it lasts.",
       emoji: "🏠",
       tips: [
@@ -96,13 +96,13 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       ]
     },
     {
-      name: "PMS",
-      label: "PMS",
+      name: "Pms",
       num: 5,
-      days: "24-28",
+      days: "24\u201328",
       dayRange: [24, 28],
       color: "#ea580c",
       colorLight: "#f97316",
+      iconType: "droplet",
       description: "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
       emoji: "⚠️",
       tips: [
@@ -183,37 +183,36 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
     return `M ${s1.x} ${s1.y} A ${outerR} ${outerR} 0 ${large} 1 ${e1.x} ${e1.y} L ${s2.x} ${s2.y} A ${innerR} ${innerR} 0 ${large} 0 ${e2.x} ${e2.y} Z`;
   };
 
-  // SVG icon paths for each phase
-  const PhaseIcon = ({ type, x, y, size = 22 }) => {
+  // SVG icon components — updated: PMS=droplet, Follicular=flower, Ovulation=flame
+  const PhaseIcon = ({ type, x, y, size = 24 }) => {
     const s = size;
     const hs = s / 2;
     switch (type) {
-      case 'drop':
+      case 'drop': // Menstrual — water drop
         return (
           <path d={`M ${x} ${y - hs} C ${x - hs * 0.7} ${y - hs * 0.1} ${x - hs} ${y + hs * 0.3} ${x} ${y + hs} C ${x + hs} ${y + hs * 0.3} ${x + hs * 0.7} ${y - hs * 0.1} ${x} ${y - hs} Z`}
             fill="none" stroke="white" strokeWidth="1.8" />
         );
-      case 'leaf':
-        return (
-          <g transform={`translate(${x - hs}, ${y - hs})`}>
-            <path d={`M ${s * 0.2} ${s * 0.8} C ${s * 0.2} ${s * 0.3} ${s * 0.5} ${s * 0.1} ${s * 0.8} ${s * 0.2} C ${s * 0.7} ${s * 0.5} ${s * 0.5} ${s * 0.7} ${s * 0.2} ${s * 0.8} Z`}
-              fill="none" stroke="white" strokeWidth="1.8" />
-            <line x1={s * 0.2} y1={s * 0.8} x2={s * 0.55} y2={s * 0.45} stroke="white" strokeWidth="1.5" />
-          </g>
-        );
-      case 'target':
+      case 'flower': // Follicular — flower with petals
         return (
           <g>
-            <circle cx={x} cy={y} r={hs * 0.85} fill="none" stroke="white" strokeWidth="1.8" />
-            <circle cx={x} cy={y} r={hs * 0.45} fill="none" stroke="white" strokeWidth="1.5" />
-            <circle cx={x} cy={y} r={2} fill="white" />
-            <line x1={x} y1={y - hs} x2={x} y2={y - hs * 0.85} stroke="white" strokeWidth="1.5" />
-            <line x1={x} y1={y + hs} x2={x} y2={y + hs * 0.85} stroke="white" strokeWidth="1.5" />
-            <line x1={x - hs} y1={y} x2={x - hs * 0.85} y2={y} stroke="white" strokeWidth="1.5" />
-            <line x1={x + hs} y1={y} x2={x + hs * 0.85} y2={y} stroke="white" strokeWidth="1.5" />
+            {[0, 72, 144, 216, 288].map((angle, i) => {
+              const rad = (angle * Math.PI) / 180;
+              const px = x + Math.cos(rad) * hs * 0.55;
+              const py = y + Math.sin(rad) * hs * 0.55;
+              return <ellipse key={i} cx={px} cy={py} rx={hs * 0.35} ry={hs * 0.55}
+                transform={`rotate(${angle} ${px} ${py})`}
+                fill="none" stroke="white" strokeWidth="1.5" />;
+            })}
+            <circle cx={x} cy={y} r={hs * 0.25} fill="white" opacity="0.9" />
           </g>
         );
-      case 'house':
+      case 'flame': // Ovulation — flame
+        return (
+          <path d={`M ${x} ${y + hs} C ${x - hs * 0.6} ${y + hs * 0.2} ${x - hs * 0.7} ${y - hs * 0.3} ${x - hs * 0.15} ${y - hs * 0.7} C ${x - hs * 0.3} ${y - hs * 0.1} ${x - hs * 0.1} ${y + hs * 0.1} ${x} ${y - hs} C ${x + hs * 0.1} ${y + hs * 0.1} ${x + hs * 0.3} ${y - hs * 0.1} ${x + hs * 0.15} ${y - hs * 0.7} C ${x + hs * 0.7} ${y - hs * 0.3} ${x + hs * 0.6} ${y + hs * 0.2} ${x} ${y + hs} Z`}
+            fill="none" stroke="white" strokeWidth="1.8" />
+        );
+      case 'house': // Luteal — house
         return (
           <g transform={`translate(${x - hs}, ${y - hs})`}>
             <path d={`M ${s * 0.5} ${s * 0.15} L ${s * 0.1} ${s * 0.5} L ${s * 0.25} ${s * 0.5} L ${s * 0.25} ${s * 0.85} L ${s * 0.75} ${s * 0.85} L ${s * 0.75} ${s * 0.5} L ${s * 0.9} ${s * 0.5} Z`}
@@ -221,25 +220,17 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
             <rect x={s * 0.4} y={s * 0.55} width={s * 0.2} height={s * 0.3} fill="none" stroke="white" strokeWidth="1.5" />
           </g>
         );
-      case 'shield':
+      case 'droplet': // PMS — single droplet
         return (
-          <g transform={`translate(${x - hs}, ${y - hs})`}>
-            <path d={`M ${s * 0.5} ${s * 0.1} L ${s * 0.15} ${s * 0.25} L ${s * 0.15} ${s * 0.55} C ${s * 0.15} ${s * 0.75} ${s * 0.35} ${s * 0.85} ${s * 0.5} ${s * 0.92} C ${s * 0.65} ${s * 0.85} ${s * 0.85} ${s * 0.75} ${s * 0.85} ${s * 0.55} L ${s * 0.85} ${s * 0.25} Z`}
-              fill="none" stroke="white" strokeWidth="1.8" />
-            <polyline points={`${s * 0.35},${s * 0.52} ${s * 0.45},${s * 0.62} ${s * 0.65},${s * 0.38}`}
-              fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </g>
+          <path d={`M ${x} ${y - hs * 0.9} Q ${x + hs * 0.65} ${y + hs * 0.15} ${x} ${y + hs * 0.9} Q ${x - hs * 0.65} ${y + hs * 0.15} ${x} ${y - hs * 0.9} Z`}
+            fill="none" stroke="white" strokeWidth="1.8" />
         );
       default:
         return null;
     }
   };
 
-  const iconTypes = ['drop', 'leaf', 'target', 'house', 'shield'];
-
-  // Dashed outer ring arcs
   const dashedRingR = OUTER_R + 18;
-  const dashedCircumference = 2 * Math.PI * dashedRingR;
 
   return (
     <>
@@ -282,13 +273,6 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                       <stop offset="100%" stopColor={phase.color} stopOpacity="1" />
                     </radialGradient>
                   ))}
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="2" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
                   <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
                     <polygon points="0 0, 8 3, 0 6" fill="#22d3ee" fillOpacity="0.6" />
                   </marker>
@@ -313,23 +297,24 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                   );
                 })}
 
-                {/* Phase segments */}
+                {/* Phase segments — icons only, no text/numbers on wheel */}
                 {phases.map((phase, index) => {
                   const { startAngle, endAngle } = getSegmentAngles(phase);
                   const isActive = currentPhase?.name === phase.name;
                   const isHovered = hoveredPhase === phase.name;
                   const outerR = isHovered ? OUTER_R + 6 : isActive ? OUTER_R + 3 : OUTER_R;
 
-                  // Icon + label position
                   const midAngle = (startAngle + endAngle) / 2;
-                  const iconR = (outerR + INNER_R) / 2 - 2;
+                  const iconR = (outerR + INNER_R) / 2;
                   const iconPos = polarToXY(midAngle, iconR);
-                  const labelR = iconR + 2;
-                  const labelPos = polarToXY(midAngle, labelR);
 
                   // Boundary line
                   const bStart = polarToXY(startAngle, INNER_R);
                   const bEnd = polarToXY(startAngle, outerR + 1);
+
+                  // Hover tooltip position (just outside the segment)
+                  const tooltipR = outerR + 22;
+                  const tooltipPos = polarToXY(midAngle, tooltipR);
 
                   return (
                     <g key={phase.name}
@@ -343,7 +328,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                       <path
                         d={createArc(startAngle, endAngle, outerR, INNER_R)}
                         fill={`url(#rg-${index})`}
-                        fillOpacity={isActive ? 1 : isHovered ? 0.9 : 0.85}
+                        fillOpacity={isActive ? 1 : isHovered ? 0.95 : 0.85}
                         stroke={isActive ? "#ffffff" : "#0f172a"}
                         strokeWidth={isActive ? 3 : 3}
                         className="transition-all duration-200"
@@ -353,31 +338,24 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                       <line x1={bStart.x} y1={bStart.y} x2={bEnd.x} y2={bEnd.y}
                         stroke="#0f172a" strokeWidth="3.5" />
 
-                      {/* Icon */}
-                      <PhaseIcon type={iconTypes[index]}
-                        x={iconPos.x}
-                        y={iconPos.y - 10}
-                        size={22}
-                      />
+                      {/* Icon only — no text/numbers */}
+                      <PhaseIcon type={phase.iconType} x={iconPos.x} y={iconPos.y} size={26} />
 
-                      {/* Number */}
-                      <text x={iconPos.x} y={iconPos.y + 8}
-                        textAnchor="middle" dominantBaseline="middle"
-                        fill="white" fontSize="13" fontWeight="bold" fontFamily="system-ui, sans-serif"
-                        className="pointer-events-none"
-                      >
-                        {phase.num}
-                      </text>
-
-                      {/* Label */}
-                      <text x={iconPos.x} y={iconPos.y + 22}
-                        textAnchor="middle" dominantBaseline="middle"
-                        fill="white" fontSize="8.5" fontWeight="700" fontFamily="system-ui, sans-serif"
-                        letterSpacing="0.5"
-                        className="pointer-events-none"
-                      >
-                        {phase.label}
-                      </text>
+                      {/* Desktop hover tooltip */}
+                      {isHovered && (
+                        <g className="pointer-events-none hidden md:block">
+                          <rect
+                            x={tooltipPos.x - 40} y={tooltipPos.y - 12}
+                            width="80" height="24" rx="6"
+                            fill="#0f172a" fillOpacity="0.9" stroke="#334155" strokeWidth="1"
+                          />
+                          <text x={tooltipPos.x} y={tooltipPos.y + 2}
+                            textAnchor="middle" dominantBaseline="middle"
+                            fill="white" fontSize="11" fontWeight="600" fontFamily="system-ui, sans-serif">
+                            {phase.name}
+                          </text>
+                        </g>
+                      )}
                     </g>
                   );
                 })}
@@ -387,30 +365,24 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
 
                 {/* Center shield + chart icon */}
                 <g transform={`translate(${CX - 22}, ${CY - 26})`}>
-                  {/* Shield outline */}
                   <path d="M 22 2 L 6 10 L 6 24 C 6 34 14 40 22 44 C 30 40 38 34 38 24 L 38 10 Z"
                     fill="#0f172a" stroke="#22d3ee" strokeWidth="2" />
-                  {/* Bar chart inside shield */}
                   <rect x="13" y="28" width="4" height="8" fill="#22d3ee" rx="1" />
                   <rect x="19" y="22" width="4" height="14" fill="#22d3ee" rx="1" />
                   <rect x="25" y="16" width="4" height="20" fill="#22d3ee" rx="1" />
-                  {/* Upward arrow */}
                   <polyline points="14,20 22,12 30,20" fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </g>
 
-                {/* Current phase text below center */}
                 {currentPhase && (
-                  <>
-                    <text x={CX} y={CY + 30} textAnchor="middle" fill="#94a3b8" fontSize="10"
-                      fontFamily="system-ui, sans-serif" className="pointer-events-none">
-                      Day {currentCycleDay}
-                    </text>
-                  </>
+                  <text x={CX} y={CY + 30} textAnchor="middle" fill="#94a3b8" fontSize="10"
+                    fontFamily="system-ui, sans-serif" className="pointer-events-none">
+                    Day {currentCycleDay}
+                  </text>
                 )}
               </svg>
             </div>
 
-            {/* Legend */}
+            {/* Legend — first-letter capitalization */}
             <div className="w-full max-w-md space-y-2">
               {phases.map((phase) => {
                 const isCurrentPhase = currentPhase?.name === phase.name;
@@ -428,8 +400,8 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                       className="w-4 h-4 rounded-full flex-shrink-0 ring-1 ring-white/20"
                       style={{ backgroundColor: phase.color }}
                     />
-                    <div className={`text-sm font-semibold tracking-wide ${isCurrentPhase ? 'text-white' : 'text-slate-300'}`}>
-                      {phase.num}. {phase.label}: Days {phase.days}
+                    <div className={`text-sm font-semibold ${isCurrentPhase ? 'text-white' : 'text-slate-300'}`}>
+                      {phase.num}. {phase.name}: Days {phase.days}
                     </div>
                     {isCurrentPhase && (
                       <span className="ml-auto text-xs text-cyan-400 font-bold uppercase tracking-wider">Active</span>
@@ -446,14 +418,18 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
         </CardContent>
       </Card>
 
-      {/* Phase Details Dialog */}
+      {/* Phase Details Dialog — icons & style match the wheel */}
       <Dialog open={selectedPhase !== null} onOpenChange={() => setSelectedPhase(null)}>
         <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="phase-dialog">
           {selectedPhase && (
             <>
               <DialogHeader>
                 <DialogTitle className="text-2xl flex items-center gap-3">
-                  <span className="text-4xl">{selectedPhase.emoji}</span>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: selectedPhase.color }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                      <PhaseIcon type={selectedPhase.iconType} x={12} y={12} size={18} />
+                    </svg>
+                  </div>
                   <div>
                     <div>{selectedPhase.name}</div>
                     <div className="text-sm text-slate-400 font-normal">Days {selectedPhase.days}</div>

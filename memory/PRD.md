@@ -154,6 +154,14 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - AI Wingman, Phase Predictor, Push Notifications
 - Admin dashboard with backend auth
 
+### Jun 30, 2026 — Subscription Overhaul: Trial + Basic/Advanced
+- **7-day free trial**: Auto-activates on signup, no payment required. Full access to all features including AI Wingman. `plan_type: "trial"`, `trial_ends_at` tracked in DB.
+- **New pricing tiers**: Basic ($9/mo) — core features, no AI Wingman. Advanced ($19/mo) — everything + AI Wingman.
+- **Removed legacy plans**: Monthly ($3), Quarterly ($8), Annual ($30) pricing removed from frontend. Old Stripe Payment Links replaced with placeholders.
+- **Feature gating**: AI Wingman locked behind Advanced plan. Trial users get full access. Basic users see upgrade prompt.
+- **Trial banner**: Dashboard shows "Free Trial — X days left" with "View Plans" button.
+- **Trial expiration**: When trial expires, `hasSubscription` returns false, user redirected to pricing page.
+
 ### Jun 14, 2026 — EWMA Dynamic Cycle Tracking & Extension Flow
 - **EWMA Average**: Replaced simple average with Exponential Weighted Moving Average (`0.3 * latest + 0.7 * previous`). Recent cycles weigh more heavily; outlier detection activates after 6+ cycles.
 - **Dynamic Cycle Day**: Continuous counting past average — no more wrapping at cycle length. Day counter keeps going (Day 29, 30, 31...).
@@ -173,12 +181,13 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 
 ### P1 — High Priority
 - [x] Fix CORS + cookie configuration for production auth (DONE Feb 28)
-- [x] Switch to same-origin relative API paths (DONE Feb 28) — root cause fix
-- [x] Fix Android Capacitor build files (DONE Apr 20) — `.gitignore` updated to include generated files
-- [x] Fix Mobile UI text wrapping/overflow (DONE Apr 20) — Dashboard & AccountSettings headers
+- [x] Switch to same-origin relative API paths (DONE Feb 28)
+- [x] Fix Android Capacitor build files (DONE Apr 20)
+- [x] Fix Mobile UI text wrapping/overflow (DONE Apr 20)
 - [x] EWMA dynamic cycle tracking with extension alerts (DONE Jun 14)
+- [x] Subscription overhaul: 7-day trial + Basic/Advanced (DONE Jun 30)
+- [ ] Connect real Stripe Payment Links for Basic ($9/mo) and Advanced ($19/mo)
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
-- [ ] Fix Contact Form (Resend domain verification needed by user)
 
 ### P2 — Medium Priority
 - [ ] Refactor `Dashboard.jsx` into smaller components

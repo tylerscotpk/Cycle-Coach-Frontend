@@ -98,26 +98,24 @@ const AccountSettings = () => {
 
   const getTierDisplayName = (tier) => {
     const names = {
-      'monthly': 'Monthly Training Plan',
-      'quarterly': 'Quarter by Quarter',
-      'annual': 'Full Season Strategy',
-      'yearly': 'Full Season Strategy',
-      'lifetime': 'Lifetime Access',
-      'grandfathered': 'Lifetime Access (Grandfathered)',
+      'trial': 'Free Trial',
       'basic': 'Basic',
-      'premium': 'Premium'
+      'advanced': 'Advanced',
+      'monthly': 'Monthly (Legacy)',
+      'quarterly': 'Quarterly (Legacy)',
+      'annual': 'Annual (Legacy)',
     };
     return names[tier] || tier || 'Unknown';
   };
 
   const getTierBadgeColor = (tier) => {
     const colors = {
+      'trial': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+      'basic': 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+      'advanced': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
       'monthly': 'bg-green-500/20 text-green-400 border-green-500/30',
       'quarterly': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
       'annual': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      'yearly': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      'lifetime': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-      'grandfathered': 'bg-purple-500/20 text-purple-400 border-purple-500/30'
     };
     return colors[tier] || 'bg-slate-500/20 text-slate-400 border-slate-500/30';
   };
@@ -208,6 +206,10 @@ const AccountSettings = () => {
                     <span className="text-orange-400">Cancels {formatDate(subscription?.cancels_at)}</span>
                   ) : subscription?.subscription_status === 'active' ? (
                     <span className="text-green-400">Active</span>
+                  ) : subscription?.subscription_status === 'trialing' || subscription?.plan_type === 'trial' ? (
+                    <span className="text-cyan-400">
+                      Free Trial{subscription?.trial_ends_at ? ` — ends ${formatDate(subscription.trial_ends_at)}` : ''}
+                    </span>
                   ) : (
                     <span className="text-slate-400">{subscription?.subscription_status || 'None'}</span>
                   )}

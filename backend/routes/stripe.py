@@ -30,7 +30,7 @@ async def send_purchase_confirmation_email(email: str, tier: str):
     if not RESEND_API_KEY:
         logger.warning("RESEND_API_KEY not configured - skipping purchase confirmation email")
         return False
-    tier_names = {"monthly": "Monthly Training Plan", "quarterly": "Quarter by Quarter", "annual": "Full Season Strategy"}
+    tier_names = {"basic": "Basic Plan", "advanced": "Advanced Plan"}
     tier_name = tier_names.get(tier, tier.title())
     try:
         params = {
@@ -143,7 +143,7 @@ async def stripe_webhook(request: Request):
                 or session.get("customer_details", {}).get("email")
             )
             metadata = session.get("metadata", {})
-            tier = metadata.get("tier", "monthly")
+            tier = metadata.get("tier", "basic")
 
             logger.info(
                 f"CHECKOUT SESSION: id={session_id} sub={subscription_id} "
@@ -198,6 +198,7 @@ async def stripe_webhook(request: Request):
             await _activate_user(auth_user, {
                 "subscription_status": entitlement_status,
                 "subscription_tier": tier,
+                "plan_type": tier,
                 "stripe_subscription_id": subscription_id,
                 "stripe_customer_id": customer_id,
                 "stripe_session_id": session_id,
@@ -431,9 +432,9 @@ async def sync_subscription_from_stripe(
                 sub_status = sub.status  # active, trialing, canceled, past_due …
                 if sub_status in ("active", "trialing"):
                     # Determine tier from metadata or default
-                    tier = "monthly"
+                    tier = "basic"
                     if sub.metadata:
-                        tier = sub.metadata.get("tier", "monthly")
+                        tier = sub.metadata.get("tier", "basic")
 
                     update_fields = {
                         "subscription_status": sub_status,

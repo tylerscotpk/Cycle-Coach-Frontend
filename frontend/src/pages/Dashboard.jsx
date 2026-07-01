@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import MoodMap from '@/components/MoodMap';
 import FeedbackModal from '@/components/FeedbackModal';
+import PartnerProfile from '@/components/PartnerProfile';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -41,6 +42,19 @@ const Dashboard = () => {
   
   // Subscription tier state (for feedback prompts)
   const [subscriptionTier, setSubscriptionTier] = useState(null);
+
+  // Derive plan type from stored user data
+  const getUserPlanType = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (!userData) return 'none';
+      const user = JSON.parse(userData);
+      return user.plan_type || user.subscription_tier || 'none';
+    } catch { return 'none'; }
+  };
+  const [planType, setPlanType] = useState(getUserPlanType);
+
+  const hasAIAccess = planType === 'trial' || planType === 'advanced';
   
   // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -55,6 +69,8 @@ const Dashboard = () => {
   const [averageCycleLength, setAverageCycleLength] = useState(28);
   const [showDenyDatePicker, setShowDenyDatePicker] = useState(false);
   const [denyDate, setDenyDate] = useState('');
+  const [personalizedTips, setPersonalizedTips] = useState([]);
+  const [loadingPersonalizedTips, setLoadingPersonalizedTips] = useState(false);
 
   // Setup form
   const [partnerName, setPartnerName] = useState('');
@@ -152,6 +168,7 @@ const Dashboard = () => {
       if (tierData) {
         setSubscriptionTier(tierData);
       }
+      setPlanType(getUserPlanType());
       
       // LOCAL-ONLY: Load from localStorage
       const profile = LocalStorage.getPartnerProfile();
@@ -310,6 +327,46 @@ const Dashboard = () => {
     });
   };
 
+  // Fetch AI-personalized tips (Advanced plan only)
+  const fetchPersonalizedTips = async () => {
+    if (!hasAIAccess || planType === 'basic' || !cycleInfo || !partner) return;
+    setLoadingPersonalizedTips(true);
+    try {
+      const partnerContext = {
+        partner_name: partner.partnerName,
+        cycle_length: partner.cycleLength || 28,
+        preferences: partner.preferences || {}
+      };
+      // Get recent chat history from localStorage
+      const chatHistoryRaw = localStorage.getItem('cyclecoach_chat_history');
+      let chatHistory = [];
+      try {
+        chatHistory = chatHistoryRaw ? JSON.parse(chatHistoryRaw) : [];
+      } catch { chatHistory = []; }
+
+      const response = await fetch(`${API}/api/tips/personalized`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cycle_day: cycleInfo.actual_day || cycleInfo.cycle_day,
+          phase: cycleInfo.phase,
+          partner_profile: partnerContext,
+          chat_history: chatHistory.slice(-15)
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.tips && data.tips.length > 0) {
+          setPersonalizedTips(data.tips);
+        }
+      }
+    } catch (e) {
+      console.error('Personalized tips error:', e);
+    } finally {
+      setLoadingPersonalizedTips(false);
+    }
+  };
+
   const handleCreatePartner = (e) => {
     e.preventDefault();
     try {
@@ -379,6 +436,17 @@ const Dashboard = () => {
         };
         return newHistory;
       });
+
+      // Persist chat for personalized tips (Advanced feature)
+      try {
+        const stored = JSON.parse(localStorage.getItem('cyclecoach_chat_history') || '[]');
+        stored.push(
+          { role: 'user', text: userMsg, date: new Date().toISOString(), cycle_day: cycleInfo?.cycle_day },
+          { role: 'assistant', text: response.data.response, date: new Date().toISOString() }
+        );
+        // Keep last 50 messages
+        localStorage.setItem('cyclecoach_chat_history', JSON.stringify(stored.slice(-50)));
+      } catch {}
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
@@ -837,6 +905,39 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Trial Banner */}
+        {planType === 'trial' && (() => {
+          try {
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            const trialEnd = userData.trial_ends_at ? new Date(userData.trial_ends_at) : null;
+            if (!trialEnd) return null;
+            const now = new Date();
+            const daysLeft = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
+            return (
+              <div className="bg-cyan-500/15 border border-cyan-500/30 backdrop-blur-sm p-4 rounded-2xl mb-4" data-testid="trial-banner">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🎯</span>
+                    <div>
+                      <span className="text-white font-semibold text-sm">Free Trial — {daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span>
+                      <p className="text-cyan-300/70 text-xs mt-0.5">All features unlocked including AI Wingman</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => window.location.href = '/pricing'}
+                    variant="outline"
+                    size="sm"
+                    className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 text-xs"
+                    data-testid="trial-upgrade-btn"
+                  >
+                    View Plans
+                  </Button>
+                </div>
+              </div>
+            );
+          } catch { return null; }
+        })()}
+
         {/* Extension Alert Banner */}
         {showExtensionBanner && cycleInfo && (
           <div className="bg-orange-500/20 border border-orange-500/40 backdrop-blur-sm p-4 sm:p-6 rounded-2xl mb-4" data-testid="extension-banner">
@@ -967,6 +1068,43 @@ const Dashboard = () => {
                     </li>
                   ))}
                 </ul>
+
+                {/* Personalized tips — Advanced only */}
+                {hasAIAccess && planType !== 'basic' && (
+                  <div className="mt-4">
+                    {personalizedTips.length > 0 ? (
+                      <>
+                        <div className="text-xs text-emerald-400 font-semibold mb-2 flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          Personalized for You
+                        </div>
+                        <ul className="space-y-2">
+                          {personalizedTips.map((tip, idx) => (
+                            <li key={`p-${idx}`} className="flex gap-2 text-slate-200 text-sm" data-testid={`personalized-tip-${idx}`}>
+                              <span className="text-emerald-400">•</span>
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : !loadingPersonalizedTips ? (
+                      <button
+                        onClick={fetchPersonalizedTips}
+                        className="text-xs text-emerald-400/70 hover:text-emerald-400 mt-2 flex items-center gap-1"
+                        data-testid="load-personalized-tips"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Get AI-personalized tips
+                      </button>
+                    ) : (
+                      <p className="text-xs text-slate-500 mt-2">Generating personalized tips...</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1153,6 +1291,7 @@ const Dashboard = () => {
 
           {/* AI Wingman Tab */}
           <TabsContent value="chat" data-testid="ai-coach-content">
+            {hasAIAccess ? (
             <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
                 <CardHeader>
                   <CardTitle className="text-white">Your AI Wingman</CardTitle>
@@ -1209,192 +1348,31 @@ const Dashboard = () => {
                   </form>
                 </CardContent>
               </Card>
+            ) : (
+              <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+                <CardContent className="p-8 text-center">
+                  <div className="text-5xl mb-4">🔒</div>
+                  <h3 className="text-white text-xl font-bold mb-2">AI Wingman — Advanced Plan</h3>
+                  <p className="text-slate-400 mb-6">Get personalized, AI-powered relationship advice 24/7. Upgrade to Advanced to unlock your AI Wingman.</p>
+                  <Button
+                    onClick={() => window.location.href = '/pricing'}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-6"
+                    data-testid="upgrade-to-advanced-btn"
+                  >
+                    Upgrade to Advanced — $19/mo
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Partner Profile Tab */}
           <TabsContent value="profile" data-testid="partner-profile-content">
-            <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white">Partner Profile</CardTitle>
-                <CardDescription className="text-slate-400">
-                  Track her preferences so you never forget what she likes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Left Column - Preferences */}
-                  <div className="space-y-4">
-                    <h3 className="text-white font-semibold text-lg mb-3">Preferences</h3>
-                    <div>
-                      <Label htmlFor="coffee-order" className="text-white">Coffee Order</Label>
-                      <Input
-                        id="coffee-order"
-                        data-testid="coffee-order-input"
-                        placeholder="e.g., Iced oat milk latte, extra shot"
-                        defaultValue={partner.preferences?.coffee_order || ''}
-                        onBlur={(e) => updatePreference('coffee_order', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="ice-cream" className="text-white">Favorite Ice Cream</Label>
-                      <Input
-                        id="ice-cream"
-                        data-testid="ice-cream-input"
-                        placeholder="e.g., Mint chocolate chip"
-                        defaultValue={partner.preferences?.ice_cream || ''}
-                        onBlur={(e) => updatePreference('ice_cream', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="comfort-food" className="text-white">Comfort Food</Label>
-                      <Input
-                        id="comfort-food"
-                        data-testid="comfort-food-input"
-                        placeholder="e.g., Pizza, Mac & cheese, Sushi"
-                        defaultValue={partner.preferences?.comfort_food || ''}
-                        onBlur={(e) => updatePreference('comfort_food', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="love-language" className="text-white">Love Language</Label>
-                      <Input
-                        id="love-language"
-                        data-testid="love-language-input"
-                        placeholder="e.g., Quality time, Acts of service"
-                        defaultValue={partner.preferences?.love_language || ''}
-                        onBlur={(e) => updatePreference('love_language', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="stressed-preference" className="text-white">When Stressed, She Wants</Label>
-                      <Input
-                        id="stressed-preference"
-                        data-testid="stressed-preference-input"
-                        placeholder="e.g., Space to decompress, Cuddles and talk"
-                        defaultValue={partner.preferences?.stressed_preference || ''}
-                        onBlur={(e) => updatePreference('stressed_preference', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="gift-ideas" className="text-white">Gift Ideas</Label>
-                      <Input
-                        id="gift-ideas"
-                        data-testid="gift-ideas-input"
-                        placeholder="e.g., Books, Candles, Jewelry"
-                        defaultValue={partner.preferences?.gift_ideas || ''}
-                        onBlur={(e) => updatePreference('gift_ideas', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="date-ideas" className="text-white">Favorite Date Ideas</Label>
-                      <Input
-                        id="date-ideas"
-                        data-testid="date-ideas-input"
-                        placeholder="e.g., Hiking, Cooking together, Wine tasting"
-                        defaultValue={partner.preferences?.date_ideas || ''}
-                        onBlur={(e) => updatePreference('date_ideas', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right Column - Entertainment */}
-                  <div className="space-y-4">
-                    <h3 className="text-white font-semibold text-lg mb-3">Entertainment</h3>
-                    <div>
-                      <Label htmlFor="movie-genre" className="text-white">Movie Genres</Label>
-                      <Input
-                        id="movie-genre"
-                        data-testid="movie-genre-input"
-                        placeholder="e.g., Rom-coms, Horror, Drama"
-                        defaultValue={partner.preferences?.movie_genre || ''}
-                        onBlur={(e) => updatePreference('movie_genre', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="favorite-movies" className="text-white">Favorite Movies</Label>
-                      <Input
-                        id="favorite-movies"
-                        data-testid="favorite-movies-input"
-                        placeholder="e.g., The Notebook, Inception, The Shawshank Redemption"
-                        defaultValue={partner.preferences?.favorite_movies || ''}
-                        onBlur={(e) => updatePreference('favorite_movies', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="tv-series" className="text-white">Favorite TV Series</Label>
-                      <Input
-                        id="tv-series"
-                        data-testid="tv-series-input"
-                        placeholder="e.g., Friends, Stranger Things, The Office"
-                        defaultValue={partner.preferences?.tv_series || ''}
-                        onBlur={(e) => updatePreference('tv_series', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="music-artists" className="text-white">Favorite Music Artists</Label>
-                      <Input
-                        id="music-artists"
-                        data-testid="music-artists-input"
-                        placeholder="e.g., Taylor Swift, The Weeknd, Billie Eilish"
-                        defaultValue={partner.preferences?.music_artists || ''}
-                        onBlur={(e) => updatePreference('music_artists', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="music-genres" className="text-white">Music Genres</Label>
-                      <Input
-                        id="music-genres"
-                        data-testid="music-genres-input"
-                        placeholder="e.g., Pop, R&B, Indie, Country"
-                        defaultValue={partner.preferences?.music_genres || ''}
-                        onBlur={(e) => updatePreference('music_genres', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="podcast-shows" className="text-white">Podcasts She Listens To</Label>
-                      <Input
-                        id="podcast-shows"
-                        data-testid="podcast-shows-input"
-                        placeholder="e.g., Crime Junkie, The Daily, Call Her Daddy"
-                        defaultValue={partner.preferences?.podcast_shows || ''}
-                        onBlur={(e) => updatePreference('podcast_shows', e.target.value)}
-                        className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-                  <p className="text-cyan-400 text-sm">
-                    💡 <strong>Pro Tip:</strong> The AI Wingman uses this info to give you personalized recommendations. 
-                    Ask things like &quot;What movie should we watch tonight?&quot; or &quot;Any new albums she&apos;d like?&quot;
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <PartnerProfile
+              partner={partner}
+              updatePreference={updatePreference}
+              hasAIAccess={hasAIAccess}
+            />
           </TabsContent>
 
           {/* === ARCHIVED: Resources Tab — will revisit with manual library === */}

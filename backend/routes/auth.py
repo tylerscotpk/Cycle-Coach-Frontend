@@ -115,18 +115,23 @@ async def register_user(request: RegisterRequest, response: Response):
         user_id = str(uuid.uuid4())
         password_hash = hash_password(request.password)
 
+        now = datetime.now(timezone.utc)
+        trial_end = now + timedelta(days=7)
+
         auth_user = {
             "id": user_id,
             "email": email,
             "phone": request.phone.strip() if request.phone else None,
             "password_hash": password_hash,
             "is_active": True,
-            "subscription_status": None,
+            "subscription_status": "trialing",
             "subscription_id": None,
-            "subscription_tier": None,
-            "trial_ends_at": None,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "subscription_tier": "trial",
+            "plan_type": "trial",
+            "trial_start_date": now.isoformat(),
+            "trial_ends_at": trial_end.isoformat(),
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
         }
         await db.auth_users.insert_one(auth_user)
 
@@ -151,7 +156,7 @@ async def register_user(request: RegisterRequest, response: Response):
         return {
             "success": True,
             "message": "Account created successfully",
-            "user": {"id": user_id, "email": email, "has_subscription": False},
+            "user": {"id": user_id, "email": email, "has_subscription": True, "plan_type": "trial"},
             "session_token": session_token
         }
     except HTTPException:
@@ -197,11 +202,20 @@ async def login_user(request: LoginRequest, response: Response):
         has_subscription = False
         subscription_status = user.get("subscription_status")
         trial_ends_at = user.get("trial_ends_at")
-        if subscription_status in ("active", "trialing", "cancelling"):
+        plan_type = user.get("plan_type", "none")
+
+        if subscription_status in ("active", "cancelling"):
             has_subscription = True
-        elif trial_ends_at:
-            trial_end = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00')) if isinstance(trial_ends_at, str) else trial_ends_at
-            if trial_end > datetime.now(timezone.utc):
+        elif subscription_status == "trialing" or plan_type == "trial":
+            if trial_ends_at:
+                trial_end = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00')) if isinstance(trial_ends_at, str) else trial_ends_at
+                if trial_end > datetime.now(timezone.utc):
+                    has_subscription = True
+                    plan_type = "trial"
+                else:
+                    plan_type = "expired"
+                    subscription_status = "expired"
+            else:
                 has_subscription = True
 
         logger.info(f"User logged in: {user.get('email')}")
@@ -214,7 +228,9 @@ async def login_user(request: LoginRequest, response: Response):
                 "email": user.get("email"),
                 "has_subscription": has_subscription,
                 "subscription_status": subscription_status,
-                "subscription_tier": user.get("subscription_tier")
+                "plan_type": plan_type,
+                "subscription_tier": user.get("subscription_tier"),
+                "trial_ends_at": trial_ends_at,
             },
             "session_token": session_token
         }
@@ -345,16 +361,24 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
         has_subscription = False
         subscription_status = user.get("subscription_status")
         trial_ends_at = user.get("trial_ends_at")
+        plan_type = user.get("plan_type", "none")
 
-        if subscription_status in ("active", "trialing", "cancelling"):
+        if subscription_status in ("active", "cancelling"):
             has_subscription = True
-        elif trial_ends_at:
-            try:
-                trial_end = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00')) if isinstance(trial_ends_at, str) else trial_ends_at
-                if trial_end > datetime.now(timezone.utc):
-                    has_subscription = True
-            except Exception:
-                pass
+        elif subscription_status == "trialing" or plan_type == "trial":
+            if trial_ends_at:
+                try:
+                    trial_end = datetime.fromisoformat(trial_ends_at.replace('Z', '+00:00')) if isinstance(trial_ends_at, str) else trial_ends_at
+                    if trial_end > datetime.now(timezone.utc):
+                        has_subscription = True
+                        plan_type = "trial"
+                    else:
+                        plan_type = "expired"
+                        subscription_status = "expired"
+                except Exception:
+                    pass
+            else:
+                has_subscription = True
 
         return {
             "authenticated": True,
@@ -364,6 +388,8 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
                 "email": user.get("email"),
                 "subscription_status": subscription_status,
                 "subscription_tier": user.get("subscription_tier"),
+                "plan_type": plan_type,
+                "trial_ends_at": trial_ends_at,
                 "stripe_subscription_id": user.get("stripe_subscription_id"),
                 "cancels_at": user.get("cancels_at")
             }
@@ -394,6 +420,9 @@ async def get_account_subscription(session_token: Optional[str] = Cookie(None), 
         "email": user.get("email"),
         "subscription_status": user.get("subscription_status"),
         "subscription_tier": user.get("subscription_tier"),
+        "plan_type": user.get("plan_type"),
+        "trial_ends_at": user.get("trial_ends_at"),
+        "trial_start_date": user.get("trial_start_date"),
         "stripe_subscription_id": user.get("stripe_subscription_id"),
         "cancels_at": user.get("cancels_at"),
         "created_at": user.get("created_at"),

@@ -2116,39 +2116,21 @@ async def anonymous_chat(request: AnonymousChatRequest):
                 partner_context += f"Her typical cycle length: {pp.cycle_length} days\n"
             if pp.preferences:
                 prefs = pp.preferences
-                # Food & Drinks
-                if prefs.get('coffee_order'):
-                    partner_context += f"Her coffee order: {prefs['coffee_order']}\n"
-                if prefs.get('comfort_food'):
-                    partner_context += f"Her comfort food: {prefs['comfort_food']}\n"
-                if prefs.get('ice_cream'):
-                    partner_context += f"Favorite ice cream: {prefs['ice_cream']}\n"
-                # Emotional Preferences
-                if prefs.get('love_language'):
-                    partner_context += f"Her love language: {prefs['love_language']}\n"
-                if prefs.get('stressed_preference'):
-                    partner_context += f"When stressed, she wants: {prefs['stressed_preference']}\n"
-                # Gifts & Activities
-                if prefs.get('gift_ideas'):
-                    partner_context += f"Gift ideas that work: {prefs['gift_ideas']}\n"
-                if prefs.get('date_ideas'):
-                    partner_context += f"Favorite date activities: {prefs['date_ideas']}\n"
-                # Entertainment - Movies & TV
-                if prefs.get('movie_genre'):
-                    partner_context += f"Movie genres she likes: {prefs['movie_genre']}\n"
-                if prefs.get('favorite_movies'):
-                    partner_context += f"Her favorite movies: {prefs['favorite_movies']}\n"
-                if prefs.get('tv_series'):
-                    partner_context += f"TV series she loves: {prefs['tv_series']}\n"
-                # Entertainment - Music & Podcasts
-                if prefs.get('music_artists'):
-                    partner_context += f"Music artists she likes: {prefs['music_artists']}\n"
-                if prefs.get('music_genres'):
-                    partner_context += f"Music genres: {prefs['music_genres']}\n"
-                if prefs.get('podcast_shows'):
-                    partner_context += f"Podcasts she listens to: {prefs['podcast_shows']}\n"
+                for key, value in prefs.items():
+                    if value and key != '_custom_categories' and not key.startswith('_'):
+                        label = key.replace('_', ' ').title()
+                        partner_context += f"{label}: {value}\n"
             if partner_context:
                 partner_context = f"\nPartner Profile (ALWAYS reference these details in your advice - use her name, specific preferences, etc.):\n{partner_context}\n"
+
+        # Build chat history context for personalized tips (Advanced users)
+        chat_history_context = ""
+        if hasattr(request, 'chat_history') and request.chat_history:
+            chat_history_context = "\nRecent conversation history (use this to personalize advice and spot patterns):\n"
+            for msg in request.chat_history[-10:]:
+                role = msg.get('role', 'user')
+                text = msg.get('text', '')[:200]
+                chat_history_context += f"- {role}: {text}\n"
         
         # Create ephemeral AI chat (no history persistence)
         system_prompt = f"""You're the ultimate relationship wingman - like texting your wise older bro at 2am.
@@ -2190,6 +2172,78 @@ NO identifying details about the user. Give straight-up personalized advice."""
     except Exception as e:
         logging.error(f"Anonymous chat error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process chat message")
+
+
+
+class PersonalizedTipsRequest(BaseModel):
+    cycle_day: int
+    phase: str
+    partner_profile: Optional[PartnerProfileContext] = None
+    chat_history: Optional[list] = None
+
+@api_router.post("/tips/personalized")
+async def get_personalized_tips(request: PersonalizedTipsRequest):
+    """Generate AI-personalized tips based on partner profile and chat history.
+    Advanced plan only — called from frontend with plan_type check."""
+    try:
+        partner_context = ""
+        if request.partner_profile:
+            pp = request.partner_profile
+            if pp.partner_name:
+                partner_context += f"Partner's name: {pp.partner_name}\n"
+            if pp.preferences:
+                for key, value in pp.preferences.items():
+                    if value and key != '_custom_categories' and not key.startswith('_'):
+                        label = key.replace('_', ' ').title()
+                        partner_context += f"{label}: {value}\n"
+
+        history_context = ""
+        if request.chat_history:
+            history_context = "Recent things the user shared in past conversations:\n"
+            for msg in request.chat_history[-15:]:
+                if msg.get('role') == 'user':
+                    history_context += f"- \"{msg.get('text', '')[:150]}\"\n"
+
+        prompt = f"""Generate exactly 4 personalized relationship tips for a man whose partner is on Day {request.cycle_day} ({request.phase} phase).
+
+{partner_context}
+{history_context}
+
+RULES:
+- Each tip MUST reference something specific from the Partner Profile or chat history
+- Start at least one tip with "Based on what you shared..." or similar attribution
+- If you see patterns from chat history, mention them: "You mentioned last time that..."
+- Be specific and actionable, not generic
+- Tone: confident, direct, bro-friendly
+- No asterisks or markdown — plain text only
+- Format: Return exactly 4 tips, one per line, numbered 1-4
+- Keep each tip to 1-2 sentences max"""
+
+        import secrets
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"tips_{secrets.token_hex(4)}",
+            system_message="You generate personalized relationship tips. Be specific, direct, and reference the user's data."
+        ).with_model("openai", "gpt-5")
+
+        response = await chat.send_message(UserMessage(text=prompt))
+        clean = str(response).replace("**", "").replace("__", "").replace("##", "")
+        
+        # Parse numbered tips
+        tips = []
+        for line in clean.strip().split('\n'):
+            line = line.strip()
+            if line and (line[0].isdigit() or line.startswith('-')):
+                tip = line.lstrip('0123456789.-) ').strip()
+                if tip:
+                    tips.append(tip)
+
+        return {"tips": tips[:4] if tips else [clean]}
+
+    except Exception as e:
+        logging.error(f"Personalized tips error: {str(e)}")
+        return {"tips": []}
+
 
 # ============================================================
 # CONTACT FORM ENDPOINT
