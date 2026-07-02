@@ -96,7 +96,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       ]
     },
     {
-      name: "Pms",
+      name: "PMS",
       num: 5,
       days: "24\u201328",
       dayRange: [24, 28],
@@ -401,7 +401,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                       style={{ backgroundColor: phase.color }}
                     />
                     <div className={`text-sm font-semibold ${isCurrentPhase ? 'text-white' : 'text-slate-300'}`}>
-                      {phase.num}. {phase.name}: Days {phase.days}
+                      {phase.name}: Days {phase.days}
                     </div>
                     {isCurrentPhase && (
                       <span className="ml-auto text-xs text-cyan-400 font-bold uppercase tracking-wider">Active</span>
