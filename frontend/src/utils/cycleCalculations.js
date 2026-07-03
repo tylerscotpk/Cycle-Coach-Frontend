@@ -151,7 +151,7 @@ export const getPhaseInfo = (cycleDay, averageLength = 28) => {
       phase_number: 2,
       phase_day: cycleDay - menstrualEnd,
       description: "The storm has passed. She's back, baby!",
-      emoji: "🌸",
+      emoji: "🌷",
       tips: [
         "**Book that fancy restaurant** NOW while she's saying yes to everything",
         "She'll actually want to **leave the house** - capitalize on this window",

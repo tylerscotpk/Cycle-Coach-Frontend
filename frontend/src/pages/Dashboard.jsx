@@ -277,6 +277,7 @@ const Dashboard = () => {
         phase_number: phaseInfo.phase_number,
         phase_day: phaseInfo.phase_day,
         description: phaseInfo.description,
+        emoji: phaseInfo.emoji,
         tips: phaseInfo.tips
       });
 
@@ -1060,7 +1061,10 @@ const Dashboard = () => {
             <div className="grid md:grid-cols-2 gap-8">
               <div>
                 <div className="text-sm text-slate-400 mb-2">Current Phase</div>
-                <div className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="current-phase">{cycleInfo.phase}</div>
+                <div className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="current-phase">
+                  {cycleInfo.emoji && <span className="mr-2">{cycleInfo.emoji}</span>}
+                  {cycleInfo.phase}
+                </div>
                 <div className="text-slate-300 mb-4">{cycleInfo.description}</div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

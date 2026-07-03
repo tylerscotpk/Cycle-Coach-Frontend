@@ -38,7 +38,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       colorLight: "#22c55e",
       iconType: "flower",
       description: "The storm has passed. She's back, baby!",
-      emoji: "🌸",
+      emoji: "🌷",
       tips: [
         "**Book that fancy restaurant** NOW while she's saying yes to everything",
         "She'll actually want to **leave the house** - capitalize on this window",
@@ -338,8 +338,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                       <line x1={bStart.x} y1={bStart.y} x2={bEnd.x} y2={bEnd.y}
                         stroke="#0f172a" strokeWidth="3.5" />
 
-                      {/* Icon only — no text/numbers */}
-                      <PhaseIcon type={phase.iconType} x={iconPos.x} y={iconPos.y} size={26} />
+                      {/* Emoji icon on wheel */}
+                      <text x={iconPos.x} y={iconPos.y + 2}
+                        textAnchor="middle" dominantBaseline="middle"
+                        fontSize="26" className="pointer-events-none">
+                        {phase.emoji}
+                      </text>
 
                       {/* Desktop hover tooltip */}
                       {isHovered && (
@@ -425,11 +429,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
             <>
               <DialogHeader>
                 <DialogTitle className="text-2xl flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: selectedPhase.color }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24">
-                      <PhaseIcon type={selectedPhase.iconType} x={12} y={12} size={18} />
-                    </svg>
-                  </div>
+                  <span className="text-4xl">{selectedPhase.emoji}</span>
                   <div>
                     <div>{selectedPhase.name}</div>
                     <div className="text-sm text-slate-400 font-normal">Days {selectedPhase.days}</div>
