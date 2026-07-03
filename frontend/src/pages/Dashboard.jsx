@@ -116,6 +116,7 @@ const Dashboard = () => {
     
     try {
       const response = await fetch(`${API}/api/feedback/check/${encodeURIComponent(tier.email)}`);
+      if (!response.ok) return;
       const result = await response.json();
       
       if (result.should_prompt && result.prompt_type) {

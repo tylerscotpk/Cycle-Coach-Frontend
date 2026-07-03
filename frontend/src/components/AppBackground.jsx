@@ -29,8 +29,8 @@ const AppBackground = ({ children, className = "" }) => {
           {/* Dashed curved lines — scattered asymmetrically */}
           <path d="M 60 280 Q 200 150 400 300" fill="none" stroke="#0e7490" strokeWidth="1.5" strokeDasharray="8 6" opacity="0.2" />
           <path d="M -40 500 Q 250 350 500 520" fill="none" stroke="#22d3ee" strokeWidth="1" strokeDasharray="6 8" opacity="0.15" />
-          <path d="M 70% 10% Q 80% 25% 95% 15%" fill="none" stroke="#0e7490" strokeWidth="1.5" strokeDasharray="10 6" opacity="0.18" />
-          <path d="M 85% 60% Q 75% 80% 95% 90%" fill="none" stroke="#22d3ee" strokeWidth="1" strokeDasharray="6 10" opacity="0.12" />
+          <path d="M 1050 80 Q 1200 200 1420 120" fill="none" stroke="#0e7490" strokeWidth="1.5" strokeDasharray="10 6" opacity="0.18" />
+          <path d="M 1275 480 Q 1125 640 1420 720" fill="none" stroke="#22d3ee" strokeWidth="1" strokeDasharray="6 10" opacity="0.12" />
 
           {/* X marks — scattered at varying sizes */}
           <g opacity="0.18" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round">
@@ -46,9 +46,9 @@ const AppBackground = ({ children, className = "" }) => {
 
           {/* Percentage-based X marks for responsiveness */}
           <g opacity="0.15" stroke="#22d3ee" strokeWidth="1.2" strokeLinecap="round">
-            <g transform="translate(70%, 20%)"><line x1="-6" y1="-6" x2="6" y2="6" /><line x1="6" y1="-6" x2="-6" y2="6" /></g>
-            <g transform="translate(90%, 40%)"><line x1="-4" y1="-4" x2="4" y2="4" /><line x1="4" y1="-4" x2="-4" y2="4" /></g>
-            <g transform="translate(20%, 70%)"><line x1="-7" y1="-7" x2="7" y2="7" /><line x1="7" y1="-7" x2="-7" y2="7" /></g>
+            <g transform="translate(1050, 160)"><line x1="-6" y1="-6" x2="6" y2="6" /><line x1="6" y1="-6" x2="-6" y2="6" /></g>
+            <g transform="translate(1350, 320)"><line x1="-4" y1="-4" x2="4" y2="4" /><line x1="4" y1="-4" x2="-4" y2="4" /></g>
+            <g transform="translate(300, 560)"><line x1="-7" y1="-7" x2="7" y2="7" /><line x1="7" y1="-7" x2="-7" y2="7" /></g>
           </g>
 
           {/* Circle outlines — scattered */}
@@ -61,10 +61,10 @@ const AppBackground = ({ children, className = "" }) => {
           <circle cx="650" cy="100" r="6" fill="none" stroke="#94a3b8" strokeWidth="1" opacity="0.15" />
 
           {/* Diagonal stripe accent — bottom left corner */}
-          <rect x="0" y="85%" width="180" height="15%" fill="url(#diagstripes)" opacity="0.5" />
+          <rect x="0" y="680" width="180" height="120" fill="url(#diagstripes)" opacity="0.5" />
 
           {/* Diagonal stripe accent — bottom right corner */}
-          <rect x="85%" y="80%" width="15%" height="20%" fill="url(#diagstripes)" opacity="0.4" />
+          <rect x="1275" y="640" width="225" height="160" fill="url(#diagstripes)" opacity="0.4" />
         </svg>
       </div>
 

@@ -1614,61 +1614,51 @@ async def submit_feedback(request: FeedbackInput):
 async def check_feedback_status(email: str):
     """Check if user should be prompted for feedback based on their subscription status"""
     email = email.lower().strip()
-    
-    # Get user's license info
-    license = await db.license_keys.find_one(
-        {"customer_email": email, "is_active": True},
-        {"_id": 0}
+
+    # Get user from auth_users
+    user = await db.auth_users.find_one(
+        {"email": email},
+        {"_id": 0, "id": 1, "plan_type": 1, "subscription_status": 1, "trial_start_date": 1, "created_at": 1}
     )
-    
-    if not license:
-        return {"should_prompt": False, "reason": "no_active_license"}
-    
+
+    if not user:
+        return {"should_prompt": False, "reason": "no_user"}
+
     # Check existing feedback
     existing_feedback = await db.feedback.find(
         {"email": email},
-        {"_id": 0, "feedback_type": 1, "created_at": 1}
+        {"_id": 0, "feedback_type": 1}
     ).to_list(100)
-    
-    feedback_types_given = [f["feedback_type"] for f in existing_feedback]
-    
-    # Calculate days since subscription started
-    created_at = license.get("created_at")
+
+    feedback_types_given = [f.get("feedback_type") for f in existing_feedback]
+
+    # Calculate days since account created
+    days_active = 0
+    created_at = user.get("created_at")
     if created_at:
-        start_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-        days_active = (datetime.now(timezone.utc) - start_date).days
-    else:
-        days_active = 0
-    
-    is_trial = license.get("is_trial", False)
-    tier = license.get("subscription_tier", "free_training")
-    
-    # Determine if we should prompt
+        try:
+            start_date = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
+            days_active = (datetime.now(timezone.utc) - start_date).days
+        except Exception:
+            pass
+
+    plan_type = user.get("plan_type", "none")
+    is_trial = plan_type == "trial"
+
     prompts_needed = []
-    
-    # Day 7 feedback (only for trial users)
-    if is_trial and days_active >= 7 and "trial_day7" not in feedback_types_given:
-        prompts_needed.append("trial_day7")
-    
-    # Conversion feedback (when user converted from trial to paid)
-    # Check if they had a trial before and now have a paid subscription
-    if not is_trial and tier in ["winning", "elite"]:
-        # Check if they already gave conversion feedback
-        if "conversion" not in feedback_types_given:
-            # Check if this is a recent conversion (within last 2 days)
-            converted_at = license.get("converted_at") or license.get("created_at")
-            if converted_at:
-                convert_date = datetime.fromisoformat(converted_at.replace('Z', '+00:00'))
-                days_since_conversion = (datetime.now(timezone.utc) - convert_date).days
-                if days_since_conversion <= 2:
-                    prompts_needed.append("conversion")
-    
+
+    if is_trial and days_active >= 4 and "trial_midpoint" not in feedback_types_given:
+        prompts_needed.append("trial_midpoint")
+
+    if not is_trial and plan_type in ("basic", "advanced") and "general" not in feedback_types_given and days_active >= 14:
+        prompts_needed.append("general")
+
     return {
         "should_prompt": len(prompts_needed) > 0,
         "prompt_type": prompts_needed[0] if prompts_needed else None,
         "days_active": days_active,
-        "is_trial": license.get("is_trial", False),
-        "tier": license.get("subscription_tier", "unknown")
+        "is_trial": is_trial,
+        "tier": plan_type
     }
 
 # ============ ADMIN AUTHENTICATION ============
