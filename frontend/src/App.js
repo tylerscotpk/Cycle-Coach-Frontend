@@ -22,6 +22,7 @@ import InfoForgotPassword from "@/pages/InfoForgotPassword";
 import InfoResetPassword from "@/pages/InfoResetPassword";
 import InfoPrivacyPolicy from "@/pages/InfoPrivacyPolicy";
 import DeleteAccount from "@/pages/DeleteAccount";
+import VerifyEmail from "@/pages/VerifyEmail";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import AppBackground from "@/components/AppBackground";
 
@@ -33,7 +34,7 @@ const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
 // Public routes (no auth required)
-const PUBLIC_ROUTES = ['/', '/info', '/about', '/pricing', '/signup', '/login', '/forgot-password', '/reset-password', '/info/contact', '/admin', '/checkout-success', '/privacy-policy', '/delete-account'];
+const PUBLIC_ROUTES = ['/', '/info', '/about', '/pricing', '/signup', '/login', '/forgot-password', '/reset-password', '/info/contact', '/admin', '/checkout-success', '/privacy-policy', '/delete-account', '/verify-email'];
 
 function AuthProvider({ children }) {
   const [authState, setAuthState] = useState({
@@ -225,7 +226,7 @@ function AppContent() {
   // ============ ROUTING RULES ============
   
   // Rule 1: ACTIVE USER (logged in + subscription) visiting public routes → redirect to /app (except /admin)
-  if (auth.isAuthenticated && auth.hasSubscription && isPublicRoute && location.pathname !== '/admin' && location.pathname !== '/checkout-success' && location.pathname !== '/privacy-policy' && location.pathname !== '/delete-account') {
+  if (auth.isAuthenticated && auth.hasSubscription && isPublicRoute && location.pathname !== '/admin' && location.pathname !== '/checkout-success' && location.pathname !== '/privacy-policy' && location.pathname !== '/delete-account' && location.pathname !== '/verify-email' && location.pathname !== '/pricing') {
     return <Navigate to="/app" replace />;
   }
 
@@ -254,6 +255,7 @@ function AppContent() {
         <Route path="/info/contact" element={<InfoContact />} />
         <Route path="/privacy-policy" element={<InfoPrivacyPolicy />} />
         <Route path="/delete-account" element={<DeleteAccount />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/checkout-success" element={<CheckoutSuccess />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/pricing" replace />} />
@@ -277,6 +279,7 @@ function AppContent() {
         <Route path="/privacy" element={<PrivacySettings />} />
         <Route path="/privacy-policy" element={<InfoPrivacyPolicy />} />
         <Route path="/delete-account" element={<DeleteAccount />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/account" element={<AccountSettings />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/predictor" element={<PhasePredictor />} />

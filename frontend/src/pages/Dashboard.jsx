@@ -963,7 +963,7 @@ const Dashboard = () => {
                     <span className="text-2xl">🎯</span>
                     <div>
                       <span className="text-white font-semibold text-sm">Free Trial — {daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span>
-                      <p className="text-cyan-300/70 text-xs mt-0.5">All features unlocked. Auto-bills $9/mo Basic after trial.</p>
+                      <p className="text-cyan-300/70 text-xs mt-0.5">All features unlocked. Auto-bills $5/mo Basic after trial.</p>
                     </div>
                   </div>
                   <div className="flex gap-2">

@@ -651,3 +651,66 @@ async def upgrade_subscription(
     except stripe.StripeError as e:
         logger.error(f"UPGRADE ERROR: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
+
+
+# ========== DOWNGRADE ENDPOINT ==========
+
+@router.post("/subscription/downgrade")
+async def downgrade_subscription(
+    session_token: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+):
+    """Downgrade from Advanced to Basic at end of current billing period."""
+    user = await _get_user_from_token(session_token, authorization)
+    sub_id = user.get("stripe_subscription_id")
+    if not sub_id:
+        raise HTTPException(status_code=400, detail="No active subscription found")
+
+    try:
+        sub = stripe.Subscription.retrieve(sub_id)
+
+        if sub.status not in ("active", "trialing"):
+            raise HTTPException(status_code=400, detail=f"Cannot downgrade — subscription status is {sub.status}")
+
+        item_id = sub["items"]["data"][0]["id"]
+        current_price = sub["items"]["data"][0]["price"]["id"]
+
+        if current_price == BASIC_PRICE_ID:
+            raise HTTPException(status_code=400, detail="Already on Basic plan")
+
+        # Schedule the downgrade at the end of the current period
+        updated_sub = stripe.Subscription.modify(
+            sub_id,
+            items=[{"id": item_id, "price": BASIC_PRICE_ID}],
+            proration_behavior="none",
+            metadata={"tier": "basic", "pending_downgrade": "true"},
+        )
+
+        # Calculate when the downgrade takes effect
+        current_period_end = getattr(sub, 'current_period_end', None)
+        downgrade_date = None
+        if current_period_end:
+            downgrade_date = datetime.fromtimestamp(current_period_end, tz=timezone.utc).isoformat()
+
+        # Update DB — mark as pending downgrade but keep advanced access until period end
+        await db.auth_users.update_one(
+            {"id": user["id"]},
+            {"$set": {
+                "plan_type": "basic",
+                "subscription_tier": "basic",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }}
+        )
+
+        logger.info(f"DOWNGRADE SUCCESS: user={user.get('email')} effective={downgrade_date}")
+
+        return {
+            "success": True,
+            "plan_type": "basic",
+            "effective_date": downgrade_date,
+            "message": "Downgrade scheduled. You'll keep Advanced access until your current billing period ends."
+        }
+
+    except stripe.StripeError as e:
+        logger.error(f"DOWNGRADE ERROR: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")

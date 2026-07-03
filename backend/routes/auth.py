@@ -31,6 +31,43 @@ def generate_reset_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+async def send_verification_email(email: str, token: str):
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not configured - skipping verification email")
+        return False
+    try:
+        # Use the frontend origin for the verification link
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://cyclecoach.net')
+        verify_link = f"{frontend_url}/verify-email?token={token}"
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [email],
+            "subject": "Verify your Cycle Coach account",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #0a0f2e 0%, #1e293b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="margin: 0;">Verify Your Email</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">One step away from Cycle Coach</p>
+                </div>
+                <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <p>Click the button below to verify your email and activate your account.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{verify_link}" style="background: #06b6d4; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Verify Email</a>
+                    </div>
+                    <p style="color: #64748b; font-size: 12px;">If you didn't create this account, you can ignore this email.</p>
+                </div>
+            </div>
+            """
+        }
+        resend.api_key = RESEND_API_KEY
+        resend.Emails.send(params)
+        logger.info(f"Verification email sent to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        return False
+
+
 async def send_welcome_email(email: str):
     if not RESEND_API_KEY:
         logger.warning("RESEND_API_KEY not configured - skipping welcome email")
@@ -116,6 +153,7 @@ async def register_user(request: RegisterRequest, response: Response):
         password_hash = hash_password(request.password)
 
         now = datetime.now(timezone.utc)
+        verification_token = secrets.token_urlsafe(32)
 
         auth_user = {
             "id": user_id,
@@ -123,6 +161,8 @@ async def register_user(request: RegisterRequest, response: Response):
             "phone": request.phone.strip() if request.phone else None,
             "password_hash": password_hash,
             "is_active": True,
+            "email_verified": False,
+            "verification_token": verification_token,
             "subscription_status": None,
             "subscription_id": None,
             "subscription_tier": None,
@@ -150,7 +190,7 @@ async def register_user(request: RegisterRequest, response: Response):
         )
 
         logger.info(f"New user registered: {email}")
-        asyncio.create_task(send_welcome_email(email))
+        asyncio.create_task(send_verification_email(email, verification_token))
 
         return {
             "success": True,
@@ -230,6 +270,7 @@ async def login_user(request: LoginRequest, response: Response):
                 "plan_type": plan_type,
                 "subscription_tier": user.get("subscription_tier"),
                 "trial_ends_at": trial_ends_at,
+                "email_verified": user.get("email_verified", True),
             },
             "session_token": session_token
         }
@@ -389,6 +430,7 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
                 "subscription_tier": user.get("subscription_tier"),
                 "plan_type": plan_type,
                 "trial_ends_at": trial_ends_at,
+                "email_verified": user.get("email_verified", True),
                 "stripe_subscription_id": user.get("stripe_subscription_id"),
                 "cancels_at": user.get("cancels_at")
             }
@@ -527,3 +569,54 @@ async def request_account_deletion(request: DeletionRequest):
             logger.error(f"Failed to send deletion notification email: {e}")
 
     return {"success": True, "message": "If an account exists with that email, a deletion request has been submitted."}
+
+
+# ============ EMAIL VERIFICATION ============
+
+@router.get("/auth/verify-email")
+async def verify_email(token: str):
+    if not token:
+        raise HTTPException(status_code=400, detail="Verification token is required")
+
+    user = await db.auth_users.find_one({"verification_token": token}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+    if user.get("email_verified"):
+        return {"success": True, "message": "Email already verified", "already_verified": True}
+
+    await db.auth_users.update_one(
+        {"id": user["id"]},
+        {"$set": {"email_verified": True, "verification_token": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    # Send welcome email now that they're verified
+    asyncio.create_task(send_welcome_email(user["email"]))
+
+    logger.info(f"Email verified for: {user['email']}")
+    return {"success": True, "message": "Email verified successfully", "user_id": user["id"], "email": user["email"]}
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str
+
+@router.post("/auth/resend-verification")
+async def resend_verification(request: ResendVerificationRequest):
+    email = request.email.lower().strip()
+    user = await db.auth_users.find_one({"email": email}, {"_id": 0})
+
+    if not user:
+        return {"success": True, "message": "If an account exists, a verification email has been sent."}
+
+    if user.get("email_verified"):
+        return {"success": True, "message": "Email already verified", "already_verified": True}
+
+    # Generate a new token
+    new_token = secrets.token_urlsafe(32)
+    await db.auth_users.update_one(
+        {"id": user["id"]},
+        {"$set": {"verification_token": new_token}}
+    )
+
+    await send_verification_email(email, new_token)
+    return {"success": True, "message": "If an account exists, a verification email has been sent."}
