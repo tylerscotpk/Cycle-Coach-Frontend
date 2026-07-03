@@ -75,11 +75,10 @@ const InfoPricing = () => {
           cancel_url: `${origin}/pricing`,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to create checkout');
-      }
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Failed to create checkout');
+      }
       window.location.href = data.checkout_url;
     } catch (err) {
       toast.error(err.message || 'Something went wrong');
@@ -120,11 +119,10 @@ const InfoPricing = () => {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${sessionToken}` },
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Upgrade failed');
-      }
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Upgrade failed');
+      }
       const updated = { ...user, plan_type: 'advanced', subscription_tier: 'advanced' };
       localStorage.setItem('user', JSON.stringify(updated));
       setUser(updated);
@@ -145,11 +143,10 @@ const InfoPricing = () => {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${sessionToken}` },
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Downgrade failed');
-      }
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Downgrade failed');
+      }
       setDowngradeDate(data.effective_date ? new Date(data.effective_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '');
       const updated = { ...user, plan_type: 'basic', subscription_tier: 'basic' };
       localStorage.setItem('user', JSON.stringify(updated));

@@ -14,7 +14,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
-const API = `${BACKEND_URL}/api`;
+const API = BACKEND_URL;
 
 import { LocalStorage } from '../utils/localStorageManager';
 import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod, getDisplayCycleDay, getCycleExtensionStatus, getCappedCycleMessages, calculateEWMA } from '../utils/cycleCalculations';
@@ -115,7 +115,7 @@ const Dashboard = () => {
     if (!tier?.email) return;
     
     try {
-      const response = await fetch(`${API}/feedback/check/${encodeURIComponent(tier.email)}`);
+      const response = await fetch(`${API}/api/feedback/check/${encodeURIComponent(tier.email)}`);
       const result = await response.json();
       
       if (result.should_prompt && result.prompt_type) {
@@ -419,7 +419,7 @@ const Dashboard = () => {
       } : null;
 
       const response = await axios.post(
-        `${API}/chat/anonymous`,
+        `${API}/api/chat/anonymous`,
         {
           message: userMsg,
           cycle_day: cycleInfo?.cycle_day,
@@ -741,11 +741,10 @@ const Dashboard = () => {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${sessionToken}` },
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Upgrade failed');
-      }
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Upgrade failed');
+      }
       // Update local state
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       user.plan_type = 'advanced';
