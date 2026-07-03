@@ -116,7 +116,6 @@ async def register_user(request: RegisterRequest, response: Response):
         password_hash = hash_password(request.password)
 
         now = datetime.now(timezone.utc)
-        trial_end = now + timedelta(days=7)
 
         auth_user = {
             "id": user_id,
@@ -124,12 +123,12 @@ async def register_user(request: RegisterRequest, response: Response):
             "phone": request.phone.strip() if request.phone else None,
             "password_hash": password_hash,
             "is_active": True,
-            "subscription_status": "trialing",
+            "subscription_status": None,
             "subscription_id": None,
-            "subscription_tier": "trial",
-            "plan_type": "trial",
-            "trial_start_date": now.isoformat(),
-            "trial_ends_at": trial_end.isoformat(),
+            "subscription_tier": None,
+            "plan_type": "none",
+            "trial_start_date": None,
+            "trial_ends_at": None,
             "created_at": now.isoformat(),
             "updated_at": now.isoformat()
         }
@@ -156,7 +155,7 @@ async def register_user(request: RegisterRequest, response: Response):
         return {
             "success": True,
             "message": "Account created successfully",
-            "user": {"id": user_id, "email": email, "has_subscription": True, "plan_type": "trial"},
+            "user": {"id": user_id, "email": email, "has_subscription": False, "plan_type": "none"},
             "session_token": session_token
         }
     except HTTPException:

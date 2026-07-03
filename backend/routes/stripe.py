@@ -1,4 +1,4 @@
-"""Stripe routes: /api/webhook/stripe, /api/cancel-subscription, /api/subscription/sync"""
+"""Stripe routes: /api/webhook/stripe, /api/cancel-subscription, /api/subscription/sync, /api/subscription/create-checkout, /api/subscription/upgrade"""
 from fastapi import APIRouter, HTTPException, Request, Cookie, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -22,6 +22,15 @@ stripe.api_key = STRIPE_API_KEY
 
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'info@cyclecoach.net')
+
+# Price IDs
+BASIC_PRICE_ID = "price_1Tp7MMISn9QYeFgUNM6enfS2"
+ADVANCED_PRICE_ID = "price_1Tp7R9ISn9QYeFgU6Rxkc8Td"
+
+PRICE_TO_PLAN = {
+    BASIC_PRICE_ID: "basic",
+    ADVANCED_PRICE_ID: "advanced",
+}
 
 ENTITLED_STATUSES = {"active", "trialing", "cancelling"}
 
@@ -155,11 +164,22 @@ async def stripe_webhook(request: Request):
 
             # Try to resolve the Stripe subscription status (may be trialing)
             sub_status = "active"
+            resolved_plan_type = tier  # fallback to metadata tier
+            trial_ends_at_iso = None
             if subscription_id:
                 try:
                     sub_obj = stripe.Subscription.retrieve(subscription_id)
                     sub_status = sub_obj.get("status", "active") if isinstance(sub_obj, dict) else sub_obj.status
-                    logger.info(f"SUBSCRIPTION STATUS from Stripe API: {sub_status}")
+                    # Resolve plan_type from actual price ID
+                    items = sub_obj.get("items", {}).get("data", []) if isinstance(sub_obj, dict) else sub_obj.items.data
+                    if items:
+                        price_id = items[0].get("price", {}).get("id", "") if isinstance(items[0], dict) else items[0].price.id
+                        resolved_plan_type = PRICE_TO_PLAN.get(price_id, tier)
+                    # Capture trial end date
+                    trial_end = sub_obj.get("trial_end") if isinstance(sub_obj, dict) else getattr(sub_obj, "trial_end", None)
+                    if trial_end:
+                        trial_ends_at_iso = datetime.fromtimestamp(trial_end, tz=timezone.utc).isoformat()
+                    logger.info(f"SUBSCRIPTION STATUS from Stripe API: {sub_status} plan={resolved_plan_type} trial_end={trial_ends_at_iso}")
                 except Exception as e:
                     logger.warning(f"Could not retrieve subscription {subscription_id}: {e}")
 
@@ -195,14 +215,25 @@ async def stripe_webhook(request: Request):
 
             entitlement_status = sub_status if sub_status in ENTITLED_STATUSES else "active"
 
-            await _activate_user(auth_user, {
+            # For trialing: plan_type stays as resolved (basic during trial)
+            # When trial ends and converts, webhook fires subscription.updated → sets to active
+            plan_type_value = resolved_plan_type
+            if sub_status == "trialing":
+                plan_type_value = "trial"
+
+            update_fields = {
                 "subscription_status": entitlement_status,
-                "subscription_tier": tier,
-                "plan_type": tier,
+                "subscription_tier": resolved_plan_type,
+                "plan_type": plan_type_value,
                 "stripe_subscription_id": subscription_id,
                 "stripe_customer_id": customer_id,
                 "stripe_session_id": session_id,
-            }, "checkout.session.completed")
+            }
+            if trial_ends_at_iso:
+                update_fields["trial_ends_at"] = trial_ends_at_iso
+                update_fields["trial_start_date"] = datetime.now(timezone.utc).isoformat()
+
+            await _activate_user(auth_user, update_fields, "checkout.session.completed")
 
             # Send confirmation email AFTER entitlement persisted
             email_ok = await send_purchase_confirmation_email(customer_email_lower, tier)
@@ -252,10 +283,20 @@ async def stripe_webhook(request: Request):
 
             if auth_user:
                 update = {"stripe_customer_id": customer_id}
+
+                # Resolve plan_type from price ID
+                items = subscription.get("items", {}).get("data", [])
+                price_id = items[0].get("price", {}).get("id", "") if items else ""
+                resolved_tier = PRICE_TO_PLAN.get(price_id, auth_user.get("subscription_tier", "basic"))
+
                 if status == "active":
                     update["subscription_status"] = "active"
+                    update["plan_type"] = resolved_tier
+                    update["subscription_tier"] = resolved_tier
                 elif status == "trialing":
                     update["subscription_status"] = "trialing"
+                    update["plan_type"] = "trial"
+                    update["subscription_tier"] = resolved_tier
                 elif status in ("canceled", "unpaid"):
                     update["subscription_status"] = "cancelled"
                 elif status == "past_due":
@@ -468,3 +509,145 @@ async def sync_subscription_from_stripe(
     except Exception as e:
         logger.error(f"SYNC ERROR for {email}: {e}")
         return {"synced": False, "reason": "internal_error"}
+
+
+# ========== CHECKOUT SESSION CREATION ==========
+
+class CreateCheckoutRequest(BaseModel):
+    plan: str  # "trial", "basic", "advanced"
+    success_url: str
+    cancel_url: str
+
+
+async def _get_user_from_token(session_token=None, authorization=None):
+    token = session_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    session = await db.user_sessions.find_one({"session_token": token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    user = await db.auth_users.find_one({"id": session["user_id"]}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.post("/subscription/create-checkout")
+async def create_checkout_session(
+    request: CreateCheckoutRequest,
+    session_token: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+):
+    user = await _get_user_from_token(session_token, authorization)
+    email = user.get("email", "")
+    user_id = user.get("id", "")
+
+    if request.plan == "trial":
+        price_id = BASIC_PRICE_ID
+        metadata = {"tier": "basic", "flow": "trial"}
+        subscription_data = {
+            "trial_period_days": 7,
+            "metadata": {"tier": "basic", "flow": "trial"},
+        }
+    elif request.plan == "basic":
+        price_id = BASIC_PRICE_ID
+        metadata = {"tier": "basic", "flow": "direct"}
+        subscription_data = {"metadata": {"tier": "basic", "flow": "direct"}}
+    elif request.plan == "advanced":
+        price_id = ADVANCED_PRICE_ID
+        metadata = {"tier": "advanced", "flow": "direct"}
+        subscription_data = {"metadata": {"tier": "advanced", "flow": "direct"}}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+
+    try:
+        checkout_params = {
+            "mode": "subscription",
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "success_url": request.success_url,
+            "cancel_url": request.cancel_url,
+            "client_reference_id": user_id,
+            "customer_email": email,
+            "payment_method_collection": "always",
+            "metadata": metadata,
+            "subscription_data": subscription_data,
+        }
+
+        session = stripe.checkout.Session.create(**checkout_params)
+        logger.info(f"CHECKOUT CREATED: plan={request.plan} user={email} session={session.id}")
+        return {"checkout_url": session.url, "session_id": session.id}
+
+    except stripe.StripeError as e:
+        logger.error(f"CHECKOUT ERROR: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
+
+
+# ========== UPGRADE ENDPOINT ==========
+
+@router.post("/subscription/upgrade")
+async def upgrade_subscription(
+    session_token: Optional[str] = Cookie(None),
+    authorization: Optional[str] = Header(None),
+):
+    """Upgrade from Basic to Advanced.
+    - Trial users: swap price with proration_behavior='none'
+    - Paid Basic users: swap price with proration_behavior='create_prorations'
+    """
+    user = await _get_user_from_token(session_token, authorization)
+    sub_id = user.get("stripe_subscription_id")
+    if not sub_id:
+        raise HTTPException(status_code=400, detail="No active subscription found")
+
+    try:
+        sub = stripe.Subscription.retrieve(sub_id)
+
+        if sub.status not in ("active", "trialing"):
+            raise HTTPException(status_code=400, detail=f"Cannot upgrade — subscription status is {sub.status}")
+
+        # Find the current subscription item
+        if not sub.get("items") or not sub["items"].get("data"):
+            raise HTTPException(status_code=400, detail="No subscription items found")
+
+        item_id = sub["items"]["data"][0]["id"]
+        current_price = sub["items"]["data"][0]["price"]["id"]
+
+        if current_price == ADVANCED_PRICE_ID:
+            raise HTTPException(status_code=400, detail="Already on Advanced plan")
+
+        is_trialing = sub.status == "trialing"
+        proration = "none" if is_trialing else "create_prorations"
+
+        # Swap the price
+        updated_sub = stripe.Subscription.modify(
+            sub_id,
+            items=[{"id": item_id, "price": ADVANCED_PRICE_ID}],
+            proration_behavior=proration,
+            metadata={"tier": "advanced"},
+        )
+
+        # Update DB immediately (webhook will also fire)
+        await db.auth_users.update_one(
+            {"id": user["id"]},
+            {"$set": {
+                "plan_type": "advanced",
+                "subscription_tier": "advanced",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }}
+        )
+
+        new_status = updated_sub.status
+        logger.info(f"UPGRADE SUCCESS: user={user.get('email')} trial={is_trialing} proration={proration} status={new_status}")
+
+        return {
+            "success": True,
+            "plan_type": "advanced",
+            "was_trialing": is_trialing,
+            "proration_behavior": proration,
+            "subscription_status": new_status,
+        }
+
+    except stripe.StripeError as e:
+        logger.error(f"UPGRADE ERROR: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")

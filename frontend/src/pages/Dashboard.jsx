@@ -719,6 +719,48 @@ const Dashboard = () => {
   const hasPartnerProfile = () => true;
   const hasAIWingman = () => true;
 
+  // In-app upgrade from Basic → Advanced
+  const [upgrading, setUpgrading] = useState(false);
+  const handleUpgradeToAdvanced = async () => {
+    const sessionToken = localStorage.getItem('session_token');
+    if (!sessionToken) { window.location.href = '/pricing'; return; }
+
+    // If no Stripe subscription (e.g., old user), redirect to pricing
+    try {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!userData.stripe_subscription_id && planType !== 'trial') {
+        window.location.href = '/pricing';
+        return;
+      }
+    } catch {}
+
+    setUpgrading(true);
+    try {
+      const res = await fetch(`${API}/api/subscription/upgrade`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Upgrade failed');
+      }
+      const data = await res.json();
+      // Update local state
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      user.plan_type = 'advanced';
+      user.subscription_tier = 'advanced';
+      localStorage.setItem('user', JSON.stringify(user));
+      setPlanType('advanced');
+      toast.success(data.was_trialing
+        ? 'Upgraded to Advanced! Your trial continues with full AI access.'
+        : 'Upgraded to Advanced! Prorated charge applied.');
+    } catch (err) {
+      toast.error(err.message || 'Upgrade failed');
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
   // Extension confirm/deny handlers
   const handleConfirmExtension = () => {
     LocalStorage.saveExtensionState({
@@ -920,18 +962,20 @@ const Dashboard = () => {
                     <span className="text-2xl">🎯</span>
                     <div>
                       <span className="text-white font-semibold text-sm">Free Trial — {daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span>
-                      <p className="text-cyan-300/70 text-xs mt-0.5">All features unlocked including AI Wingman</p>
+                      <p className="text-cyan-300/70 text-xs mt-0.5">All features unlocked. Auto-bills $9/mo Basic after trial.</p>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => window.location.href = '/pricing'}
-                    variant="outline"
-                    size="sm"
-                    className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 text-xs"
-                    data-testid="trial-upgrade-btn"
-                  >
-                    View Plans
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleUpgradeToAdvanced}
+                      disabled={upgrading}
+                      size="sm"
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs"
+                      data-testid="trial-upgrade-btn"
+                    >
+                      {upgrading ? '...' : 'Upgrade to Advanced'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
@@ -1355,11 +1399,12 @@ const Dashboard = () => {
                   <h3 className="text-white text-xl font-bold mb-2">AI Wingman — Advanced Plan</h3>
                   <p className="text-slate-400 mb-6">Get personalized, AI-powered relationship advice 24/7. Upgrade to Advanced to unlock your AI Wingman.</p>
                   <Button
-                    onClick={() => window.location.href = '/pricing'}
+                    onClick={handleUpgradeToAdvanced}
+                    disabled={upgrading}
                     className="bg-emerald-500 hover:bg-emerald-600 text-white px-6"
                     data-testid="upgrade-to-advanced-btn"
                   >
-                    Upgrade to Advanced — $19/mo
+                    {upgrading ? 'Upgrading...' : 'Upgrade to Advanced — $8/mo'}
                   </Button>
                 </CardContent>
               </Card>
