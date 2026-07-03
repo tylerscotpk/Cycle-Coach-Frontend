@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { LocalStorage } from '../utils/localStorageManager';
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
@@ -45,9 +46,7 @@ const InfoNav = () => {
         });
       }
     } catch (e) {}
-    localStorage.removeItem('session_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('pending_plan');
+    LocalStorage.clearOnLogout();
     window.location.href = '/';
   };
 

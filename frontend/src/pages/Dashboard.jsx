@@ -164,6 +164,12 @@ const Dashboard = () => {
 
   const loadData = () => {
     try {
+      // Ensure LocalStorage is initialized with current user ID
+      try {
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (userData.id) LocalStorage.setUser(userData.id);
+      } catch {}
+
       // Load subscription tier info
       const tierData = LocalStorage.getSubscriptionTier();
       if (tierData) {
@@ -340,11 +346,7 @@ const Dashboard = () => {
         preferences: partner.preferences || {}
       };
       // Get recent chat history from localStorage
-      const chatHistoryRaw = localStorage.getItem('cyclecoach_chat_history');
-      let chatHistory = [];
-      try {
-        chatHistory = chatHistoryRaw ? JSON.parse(chatHistoryRaw) : [];
-      } catch { chatHistory = []; }
+      const chatHistory = LocalStorage.getChatHistory();
 
       const response = await fetch(`${API}/api/tips/personalized`, {
         method: 'POST',
@@ -439,15 +441,14 @@ const Dashboard = () => {
         return newHistory;
       });
 
-      // Persist chat for personalized tips (Advanced feature)
+      // Persist chat for personalized tips
       try {
-        const stored = JSON.parse(localStorage.getItem('cyclecoach_chat_history') || '[]');
+        const stored = LocalStorage.getChatHistory();
         stored.push(
           { role: 'user', text: userMsg, date: new Date().toISOString(), cycle_day: cycleInfo?.cycle_day },
           { role: 'assistant', text: response.data.response, date: new Date().toISOString() }
         );
-        // Keep last 50 messages
-        localStorage.setItem('cyclecoach_chat_history', JSON.stringify(stored.slice(-50)));
+        LocalStorage.saveChatHistory(stored.slice(-50));
       } catch {}
     } catch (error) {
       console.error('Error sending message:', error);

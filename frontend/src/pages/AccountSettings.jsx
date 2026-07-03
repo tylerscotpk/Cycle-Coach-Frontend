@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { LocalStorage } from '../utils/localStorageManager';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -412,8 +413,7 @@ const AccountSettings = () => {
                     headers: { 'Authorization': `Bearer ${sessionToken}` }
                   });
                 } catch (e) { /* ignore */ }
-                localStorage.removeItem('session_token');
-                localStorage.removeItem('user');
+                LocalStorage.clearOnLogout();
                 window.location.href = '/login';
               }}
               data-testid="logout-btn"

@@ -25,6 +25,7 @@ import DeleteAccount from "@/pages/DeleteAccount";
 import VerifyEmail from "@/pages/VerifyEmail";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import AppBackground from "@/components/AppBackground";
+import { LocalStorage } from "@/utils/localStorageManager";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
@@ -68,6 +69,7 @@ function AuthProvider({ children }) {
       const result = await response.json();
 
       if (result.authenticated) {
+        LocalStorage.setUser(result.user.id);
         setAuthState({
           isLoading: false,
           isAuthenticated: true,
@@ -114,9 +116,7 @@ function AuthProvider({ children }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('session_token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('pending_plan');
+      LocalStorage.clearOnLogout();
       setAuthState({
         isLoading: false,
         isAuthenticated: false,
@@ -142,11 +142,13 @@ function AppContent() {
 
   useEffect(() => {
     if (auth.isAuthenticated && auth.hasSubscription) {
-      const locationSetup = localStorage.getItem('cyclecoach_state_waiver_complete') === 'true';
+      const uid = auth.user?.id;
+      if (uid) LocalStorage.setUser(uid);
+      const locationSetup = localStorage.getItem(uid ? `cyclecoach_state_waiver_complete_${uid}` : 'cyclecoach_state_waiver_complete') === 'true';
       setHasLocationSetup(locationSetup);
       
       if (locationSetup) {
-        const consent = localStorage.getItem('cyclecoach_consent_granted') === 'true';
+        const consent = localStorage.getItem(uid ? `cyclecoach_consent_granted_${uid}` : 'cyclecoach_consent_granted') === 'true';
         setHasConsent(consent);
       }
     }
@@ -201,12 +203,14 @@ function AppContent() {
   }, [auth.isAuthenticated, auth.hasSubscription]);
 
   const handleLocationComplete = () => {
-    localStorage.setItem('cyclecoach_state_waiver_complete', 'true');
+    const uid = auth.user?.id;
+    localStorage.setItem(uid ? `cyclecoach_state_waiver_complete_${uid}` : 'cyclecoach_state_waiver_complete', 'true');
     setHasLocationSetup(true);
   };
 
   const handleConsentGranted = () => {
-    localStorage.setItem('cyclecoach_consent_granted', 'true');
+    const uid = auth.user?.id;
+    localStorage.setItem(uid ? `cyclecoach_consent_granted_${uid}` : 'cyclecoach_consent_granted', 'true');
     setHasConsent(true);
   };
 

@@ -216,12 +216,14 @@ export const runNotificationChecks = () => {
   // Check phase reminder
   const phaseReminder = checkPhaseReminder();
   if (phaseReminder) {
-    const lastPhaseNotif = localStorage.getItem('cyclecoach_last_phase_notification');
+    const uid = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').id || ''; } catch { return ''; } })();
+    const notifKey = uid ? `cyclecoach_last_phase_notification_${uid}` : 'cyclecoach_last_phase_notification';
+    const lastPhaseNotif = localStorage.getItem(notifKey);
     const today = new Date().toDateString();
     
     if (lastPhaseNotif !== today) {
       showNotification(phaseReminder.title, { body: phaseReminder.body });
-      localStorage.setItem('cyclecoach_last_phase_notification', today);
+      localStorage.setItem(notifKey, today);
     }
   }
 

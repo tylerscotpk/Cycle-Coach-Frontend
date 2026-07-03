@@ -1,6 +1,6 @@
 /**
  * Privacy-First Local Storage Manager
- * All data stays on user's device - no server, no tracking
+ * All data stays on user's device — namespaced per user ID for data isolation.
  */
 
 // Simple encryption (in production, use Web Crypto API)
@@ -22,33 +22,89 @@ const decrypt = (encryptedData) => {
   }
 };
 
+// Internal user ID for key namespacing
+let _userId = null;
+
+const _key = (name) => {
+  if (!_userId) {
+    // Try to read userId from the 'user' object in localStorage
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) _userId = JSON.parse(raw).id;
+    } catch {}
+  }
+  return _userId ? `cyclecoach_${name}_${_userId}` : `cyclecoach_${name}`;
+};
+
+// Old un-namespaced key (for migration)
+const _oldKey = (name) => `cyclecoach_${name}`;
+
+// All managed key suffixes
+const ALL_KEYS = [
+  'partner_profile', 'cycle_history', 'preferences', 'consent',
+  'chat_history', 'license', 'subscription', 'location',
+  'notification_settings', 'extension_state',
+];
+
+// Migrate data from old un-namespaced keys to new namespaced keys
+const _migrateIfNeeded = () => {
+  if (!_userId) return;
+  const migrationFlag = `cyclecoach_migrated_${_userId}`;
+  if (localStorage.getItem(migrationFlag)) return;
+
+  for (const suffix of ALL_KEYS) {
+    const oldK = _oldKey(suffix);
+    const newK = _key(suffix);
+    const oldData = localStorage.getItem(oldK);
+    const newData = localStorage.getItem(newK);
+    // Only migrate if old data exists and new data doesn't
+    if (oldData && !newData) {
+      localStorage.setItem(newK, oldData);
+    }
+  }
+  // Also migrate non-encrypted keys
+  const boolKeys = ['cyclecoach_state_waiver_complete', 'cyclecoach_consent_granted'];
+  for (const k of boolKeys) {
+    const old = localStorage.getItem(k);
+    if (old && !localStorage.getItem(`${k}_${_userId}`)) {
+      localStorage.setItem(`${k}_${_userId}`, old);
+    }
+  }
+
+  localStorage.setItem(migrationFlag, 'true');
+};
+
 export const LocalStorage = {
+  // Initialize with user ID — call on login/auth check
+  setUser: (userId) => {
+    _userId = userId;
+    _migrateIfNeeded();
+  },
+
+  getUserId: () => _userId,
+
   // Partner Profile
   savePartnerProfile: (profile) => {
     const encrypted = encrypt(profile);
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_partner_profile', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('partner_profile'), encrypted);
   },
-  
+
   getPartnerProfile: () => {
-    const data = localStorage.getItem('cyclecoach_partner_profile');
+    const data = localStorage.getItem(_key('partner_profile'));
     return data ? decrypt(data) : null;
   },
-  
+
   // Cycle History
   saveCycleHistory: (history) => {
     const encrypted = encrypt(history);
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_cycle_history', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('cycle_history'), encrypted);
   },
-  
+
   getCycleHistory: () => {
-    const data = localStorage.getItem('cyclecoach_cycle_history');
+    const data = localStorage.getItem(_key('cycle_history'));
     return data ? decrypt(data) : [];
   },
-  
+
   // Add cycle entry
   addCycleEntry: (entry) => {
     const history = LocalStorage.getCycleHistory();
@@ -58,27 +114,25 @@ export const LocalStorage = {
     });
     LocalStorage.saveCycleHistory(history);
   },
-  
+
   // Delete cycle entry
   deleteCycleEntry: (entryId) => {
     const history = LocalStorage.getCycleHistory();
     const filtered = history.filter(e => e.id !== entryId);
     LocalStorage.saveCycleHistory(filtered);
   },
-  
+
   // Preferences
   savePreferences: (prefs) => {
     const encrypted = encrypt(prefs);
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_preferences', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('preferences'), encrypted);
   },
-  
+
   getPreferences: () => {
-    const data = localStorage.getItem('cyclecoach_preferences');
+    const data = localStorage.getItem(_key('preferences'));
     return data ? decrypt(data) : {};
   },
-  
+
   // Partner Consent
   saveConsent: (consent) => {
     const consentRecord = {
@@ -87,30 +141,39 @@ export const LocalStorage = {
       acknowledgedRisks: true
     };
     const encrypted = encrypt(consentRecord);
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_consent', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('consent'), encrypted);
   },
-  
+
   getConsent: () => {
-    const data = localStorage.getItem('cyclecoach_consent');
+    const data = localStorage.getItem(_key('consent'));
     return data ? decrypt(data) : null;
   },
-  
-  // Clear all data
+
+  // Clear all data for current user
   clearAllData: () => {
-    localStorage.removeItem('cyclecoach_partner_profile');
-    localStorage.removeItem('cyclecoach_cycle_history');
-    localStorage.removeItem('cyclecoach_preferences');
-    localStorage.removeItem('cyclecoach_consent');
-    localStorage.removeItem('cyclecoach_chat_history');
-    localStorage.removeItem('cyclecoach_license');
-    localStorage.removeItem('cyclecoach_subscription');
-    localStorage.removeItem('cyclecoach_location');
-    localStorage.removeItem('cyclecoach_notification_settings');
-    localStorage.removeItem('cyclecoach_extension_state');
+    for (const suffix of ALL_KEYS) {
+      localStorage.removeItem(_key(suffix));
+    }
+    // Also clear bool keys
+    if (_userId) {
+      localStorage.removeItem(`cyclecoach_state_waiver_complete_${_userId}`);
+      localStorage.removeItem(`cyclecoach_consent_granted_${_userId}`);
+      localStorage.removeItem(`cyclecoach_mismatch_tooltip_shown_${_userId}`);
+      localStorage.removeItem(`cyclecoach_mismatch_tooltip_avg_${_userId}`);
+      localStorage.removeItem(`cyclecoach_last_ewma_avg_${_userId}`);
+      localStorage.removeItem(`cyclecoach_last_phase_notification_${_userId}`);
+    }
   },
-  
+
+  // Clear everything on logout (user-specific data + session)
+  clearOnLogout: () => {
+    LocalStorage.clearAllData();
+    localStorage.removeItem('session_token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('pending_plan');
+    _userId = null;
+  },
+
   // User Location (for privacy waiver)
   saveUserLocation: (locationData) => {
     const encrypted = encrypt({
@@ -118,21 +181,18 @@ export const LocalStorage = {
       state: locationData.state,
       savedAt: new Date().toISOString()
     });
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_location', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('location'), encrypted);
   },
-  
+
   getUserLocation: () => {
-    const data = localStorage.getItem('cyclecoach_location');
+    const data = localStorage.getItem(_key('location'));
     return data ? decrypt(data) : null;
   },
-  
+
   hasCompletedLocationSetup: () => {
-    const location = localStorage.getItem('cyclecoach_location');
-    return location !== null;
+    return localStorage.getItem(_key('location')) !== null;
   },
-  
+
   // Notification Settings
   saveNotificationSettings: (settings) => {
     const encrypted = encrypt({
@@ -141,24 +201,15 @@ export const LocalStorage = {
       ratingPrompts: settings.ratingPrompts ?? true,
       savedAt: new Date().toISOString()
     });
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_notification_settings', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('notification_settings'), encrypted);
   },
-  
+
   getNotificationSettings: () => {
-    const data = localStorage.getItem('cyclecoach_notification_settings');
-    if (data) {
-      return decrypt(data);
-    }
-    // Default: all notifications ON
-    return {
-      phaseReminders: true,
-      reflectionPrompts: true,
-      ratingPrompts: true
-    };
+    const data = localStorage.getItem(_key('notification_settings'));
+    if (data) return decrypt(data);
+    return { phaseReminders: true, reflectionPrompts: true, ratingPrompts: true };
   },
-  
+
   // License Key Management
   saveLicenseKey: (key) => {
     const licenseData = {
@@ -167,23 +218,21 @@ export const LocalStorage = {
       isValid: true
     };
     const encrypted = encrypt(licenseData);
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_license', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('license'), encrypted);
   },
-  
+
   getLicenseKey: () => {
-    const data = localStorage.getItem('cyclecoach_license');
+    const data = localStorage.getItem(_key('license'));
     return data ? decrypt(data) : null;
   },
-  
+
   isUnlocked: () => {
-    const license = localStorage.getItem('cyclecoach_license');
+    const license = localStorage.getItem(_key('license'));
     if (!license) return false;
     const data = decrypt(license);
     return data?.isValid === true;
   },
-  
+
   // Subscription Tier Management
   saveSubscriptionTier: (tierData) => {
     const encrypted = encrypt({
@@ -198,27 +247,24 @@ export const LocalStorage = {
       is_cancelled: tierData.is_cancelled,
       savedAt: new Date().toISOString()
     });
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_subscription', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('subscription'), encrypted);
   },
-  
+
   getSubscriptionTier: () => {
-    const data = localStorage.getItem('cyclecoach_subscription');
+    const data = localStorage.getItem(_key('subscription'));
     return data ? decrypt(data) : null;
   },
-  
-  // Check if user has premium features
+
   hasPartnerProfile: () => {
     const tier = LocalStorage.getSubscriptionTier();
     return tier?.has_partner_profile === true;
   },
-  
+
   hasAIWingman: () => {
     const tier = LocalStorage.getSubscriptionTier();
     return tier?.has_ai_wingman === true;
   },
-  
+
   getTierName: () => {
     const tier = LocalStorage.getSubscriptionTier();
     if (!tier) return null;
@@ -230,7 +276,7 @@ export const LocalStorage = {
       default: return 'Free Trial';
     }
   },
-  
+
   // Export data (for backup)
   exportAllData: () => {
     return {
@@ -243,7 +289,7 @@ export const LocalStorage = {
       version: '2.0'
     };
   },
-  
+
   // Import data (from backup)
   importData: (data) => {
     if (data.profile) LocalStorage.savePartnerProfile(data.profile);
@@ -261,17 +307,27 @@ export const LocalStorage = {
       cappedMessageShown: state.cappedMessageShown ?? false,
       updatedAt: new Date().toISOString()
     });
-    if (encrypted) {
-      localStorage.setItem('cyclecoach_extension_state', encrypted);
-    }
+    if (encrypted) localStorage.setItem(_key('extension_state'), encrypted);
   },
 
   getExtensionState: () => {
-    const data = localStorage.getItem('cyclecoach_extension_state');
+    const data = localStorage.getItem(_key('extension_state'));
     return data ? decrypt(data) : null;
   },
 
   clearExtensionState: () => {
-    localStorage.removeItem('cyclecoach_extension_state');
-  }
+    localStorage.removeItem(_key('extension_state'));
+  },
+
+  // Chat history (for personalized tips)
+  saveChatHistory: (history) => {
+    localStorage.setItem(_key('chat_history'), JSON.stringify(history));
+  },
+
+  getChatHistory: () => {
+    try {
+      const data = localStorage.getItem(_key('chat_history'));
+      return data ? JSON.parse(data) : [];
+    } catch { return []; }
+  },
 };

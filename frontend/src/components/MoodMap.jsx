@@ -125,13 +125,15 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   useEffect(() => {
     if (!cycleInfo || !currentCycleDay) return;
     const storageKey = 'cyclecoach_mismatch_tooltip_shown';
-    const lastAvg = localStorage.getItem('cyclecoach_mismatch_tooltip_avg');
-    const alreadyShown = localStorage.getItem(storageKey) === 'true';
+    const uid = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').id || ''; } catch { return ''; } })();
+    const sk = uid ? `${storageKey}_${uid}` : storageKey;
+    const lastAvg = localStorage.getItem(uid ? `cyclecoach_mismatch_tooltip_avg_${uid}` : 'cyclecoach_mismatch_tooltip_avg');
+    const alreadyShown = localStorage.getItem(sk) === 'true';
     const staticPhase = phases.find(p => currentCycleDay >= p.dayRange[0] && currentCycleDay <= p.dayRange[1]);
     const predictedPhase = cycleInfo?.phase;
     const hasMismatch = staticPhase && predictedPhase &&
       !predictedPhase.toLowerCase().startsWith(staticPhase.name.toLowerCase().replace('pms', 'late luteal'));
-    const currentAvg = localStorage.getItem('cyclecoach_last_ewma_avg') || '28';
+    const currentAvg = localStorage.getItem(uid ? `cyclecoach_last_ewma_avg_${uid}` : 'cyclecoach_last_ewma_avg') || '28';
     if (hasMismatch && (!alreadyShown || lastAvg !== currentAvg)) {
       setShowMismatchTooltip(true);
     }
@@ -248,9 +250,10 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
               <button
                 onClick={() => {
                   setShowMismatchTooltip(false);
-                  localStorage.setItem('cyclecoach_mismatch_tooltip_shown', 'true');
-                  const avg = localStorage.getItem('cyclecoach_last_ewma_avg') || '28';
-                  localStorage.setItem('cyclecoach_mismatch_tooltip_avg', avg);
+                  const uid2 = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').id || ''; } catch { return ''; } })();
+                  localStorage.setItem(uid2 ? `cyclecoach_mismatch_tooltip_shown_${uid2}` : 'cyclecoach_mismatch_tooltip_shown', 'true');
+                  const avg = localStorage.getItem(uid2 ? `cyclecoach_last_ewma_avg_${uid2}` : 'cyclecoach_last_ewma_avg') || '28';
+                  localStorage.setItem(uid2 ? `cyclecoach_mismatch_tooltip_avg_${uid2}` : 'cyclecoach_mismatch_tooltip_avg', avg);
                 }}
                 className="absolute top-2 right-2 text-amber-400/60 hover:text-amber-300 text-sm"
                 data-testid="dismiss-mismatch-tooltip"
