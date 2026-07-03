@@ -115,22 +115,24 @@ const InfoPricing = () => {
     setActionLoading(true);
     const sessionToken = localStorage.getItem('session_token');
     try {
-      const res = await fetch(`${API}/api/subscription/upgrade`, {
+      const origin = window.location.origin;
+      const res = await fetch(`${API}/api/subscription/create-checkout`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${sessionToken}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          plan: 'advanced',
+          success_url: `${origin}/checkout-success?plan=advanced`,
+          cancel_url: `${origin}/pricing`,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Upgrade failed');
-      }
-      const updated = { ...user, plan_type: 'advanced', subscription_tier: 'advanced' };
-      localStorage.setItem('user', JSON.stringify(updated));
-      setUser(updated);
-      setShowUpgradeModal(false);
-      setShowUpgradeSuccess(true);
+      if (!res.ok) throw new Error(data.detail || 'Upgrade failed');
+      window.location.href = data.checkout_url;
     } catch (err) {
       toast.error(err.message);
-    } finally {
       setActionLoading(false);
     }
   };

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import MoodMap from '@/components/MoodMap';
 import FeedbackModal from '@/components/FeedbackModal';
 import PartnerProfile from '@/components/PartnerProfile';
@@ -720,43 +720,38 @@ const Dashboard = () => {
   const hasPartnerProfile = () => true;
   const hasAIWingman = () => true;
 
-  // In-app upgrade from Basic → Advanced
+  // In-app upgrade — redirects to Stripe Checkout (no auto-upgrade)
   const [upgrading, setUpgrading] = useState(false);
-  const handleUpgradeToAdvanced = async () => {
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const handleUpgradeToAdvanced = () => {
+    setShowUpgradeModal(true);
+  };
+
+  const handleUpgradeCheckout = async () => {
     const sessionToken = localStorage.getItem('session_token');
     if (!sessionToken) { window.location.href = '/pricing'; return; }
 
-    // If no Stripe subscription (e.g., old user), redirect to pricing
-    try {
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!userData.stripe_subscription_id && planType !== 'trial') {
-        window.location.href = '/pricing';
-        return;
-      }
-    } catch {}
-
     setUpgrading(true);
     try {
-      const res = await fetch(`${API}/api/subscription/upgrade`, {
+      const origin = window.location.origin;
+      const res = await fetch(`${API}/api/subscription/create-checkout`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${sessionToken}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          plan: 'advanced',
+          success_url: `${origin}/checkout-success?plan=advanced`,
+          cancel_url: `${origin}/app`,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Upgrade failed');
-      }
-      // Update local state
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      user.plan_type = 'advanced';
-      user.subscription_tier = 'advanced';
-      localStorage.setItem('user', JSON.stringify(user));
-      setPlanType('advanced');
-      toast.success(data.was_trialing
-        ? 'Upgraded to Advanced! Your trial continues with full AI access.'
-        : 'Upgraded to Advanced! Prorated charge applied.');
+      if (!res.ok) throw new Error(data.detail || 'Failed to create checkout');
+      window.location.href = data.checkout_url;
     } catch (err) {
-      toast.error(err.message || 'Upgrade failed');
-    } finally {
+      toast.error(err.message || 'Something went wrong');
       setUpgrading(false);
     }
   };
@@ -1694,6 +1689,40 @@ const Dashboard = () => {
         email={subscriptionTier?.email}
         subscriptionTier={subscriptionTier?.tier}
       />
+
+      {/* Upgrade to Advanced Modal */}
+      <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-lg" data-testid="upgrade-modal">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-white">Upgrade to Advanced</DialogTitle>
+            <DialogDescription className="text-slate-400">Unlock AI-powered relationship coaching</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <p className="text-slate-400 text-sm">Advanced adds:</p>
+            {['AI Wingman — personalized advice 24/7', 'Real-time relationship guidance', 'AI-driven phase recommendations', 'Personalized tips based on your data'].map((f, i) => (
+              <div key={i} className="flex items-center gap-2 text-emerald-300 text-sm">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {f}
+              </div>
+            ))}
+            <div className="bg-slate-700/50 rounded-lg p-4 mt-4">
+              <p className="text-white font-semibold">Advanced — $8/month</p>
+              <p className="text-slate-400 text-xs mt-1">You&apos;ll be redirected to Stripe to complete payment.</p>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <Button onClick={handleUpgradeCheckout} disabled={upgrading}
+              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white" data-testid="confirm-upgrade-btn">
+              {upgrading ? 'Redirecting to Stripe...' : 'Upgrade Now — $8/mo'}
+            </Button>
+            <Button variant="outline" className="border-slate-600 text-slate-300" onClick={() => setShowUpgradeModal(false)}>
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
