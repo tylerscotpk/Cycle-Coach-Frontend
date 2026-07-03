@@ -22,6 +22,8 @@ const AccountSettings = () => {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
+  const [downgrading, setDowngrading] = useState(false);
 
   useEffect(() => {
     loadSubscriptionData();
@@ -84,6 +86,44 @@ const AccountSettings = () => {
       toast.error('Failed to cancel subscription. Please try again.');
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleDowngrade = async () => {
+    setDowngrading(true);
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      const response = await fetch(`${API}/api/subscription/downgrade`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setSubscription(prev => ({
+          ...prev,
+          subscription_tier: 'basic',
+          plan_type: 'basic',
+        }));
+        setShowDowngradeModal(false);
+        const effectiveDate = result.effective_date
+          ? formatDate(result.effective_date)
+          : 'the end of your current billing period';
+        toast.success(`Downgrade scheduled. You'll keep Advanced access until ${effectiveDate}.`);
+        // Update localStorage
+        try {
+          const user = JSON.parse(localStorage.getItem('user') || '{}');
+          user.plan_type = 'basic';
+          user.subscription_tier = 'basic';
+          localStorage.setItem('user', JSON.stringify(user));
+        } catch {}
+      } else {
+        toast.error(result.detail || 'Failed to downgrade. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error downgrading:', error);
+      toast.error('Failed to downgrade. Please try again.');
+    } finally {
+      setDowngrading(false);
     }
   };
 
@@ -264,6 +304,24 @@ const AccountSettings = () => {
               </div>
             )}
 
+            {/* Downgrade Button — Advanced users only */}
+            {(subscription?.subscription_tier === 'advanced' || subscription?.plan_type === 'advanced') &&
+             subscription?.subscription_status === 'active' && (
+              <div className="pt-4 border-t border-slate-700">
+                <Button
+                  onClick={() => setShowDowngradeModal(true)}
+                  variant="outline"
+                  className="border-orange-600/50 text-orange-400 hover:bg-orange-600/20"
+                  data-testid="downgrade-btn"
+                >
+                  Downgrade to Basic
+                </Button>
+                <p className="text-slate-500 text-xs mt-2">
+                  Switch to Basic ($5/mo). Takes effect at the end of your current billing period.
+                </p>
+              </div>
+            )}
+
             {/* Cancel Button */}
             {canCancel() && (
               <div className="pt-4 border-t border-slate-700">
@@ -401,6 +459,53 @@ const AccountSettings = () => {
               data-testid="cancel-modal-confirm-btn"
             >
               {cancelling ? 'Cancelling...' : 'Yes, Cancel Subscription'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Downgrade Modal */}
+      <AlertDialog open={showDowngradeModal} onOpenChange={setShowDowngradeModal}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white text-xl">
+              Downgrade to Basic?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-slate-300 space-y-3">
+                <p>
+                  You&apos;re currently on the <span className="text-emerald-400 font-medium">Advanced</span> plan ($8/mo).
+                  Downgrading moves you to <span className="text-cyan-400 font-medium">Basic</span> ($5/mo).
+                </p>
+                <div className="bg-slate-900/50 rounded-lg p-4">
+                  <p className="text-red-400 text-sm font-medium mb-2">You&apos;ll lose access to:</p>
+                  <ul className="text-slate-300 text-sm space-y-1">
+                    <li>• AI Wingman — personalized advice 24/7</li>
+                    <li>• Real-time relationship guidance</li>
+                    <li>• AI-driven phase recommendations</li>
+                    <li>• Personalized tips based on your data</li>
+                  </ul>
+                </div>
+                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3">
+                  <p className="text-cyan-300 text-sm">
+                    The downgrade takes effect at the end of your current billing period.
+                    You&apos;ll keep full Advanced access until then.
+                  </p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-600 text-slate-300">
+              Keep Advanced
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDowngrade}
+              disabled={downgrading}
+              className="bg-orange-600 text-white hover:bg-orange-700"
+              data-testid="downgrade-confirm-btn"
+            >
+              {downgrading ? 'Processing...' : 'Confirm Downgrade to Basic'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
