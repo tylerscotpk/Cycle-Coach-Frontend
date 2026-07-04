@@ -137,22 +137,19 @@ function AuthProvider({ children }) {
 function AppContent() {
   const location = useLocation();
   const auth = useAuth();
-  const [hasLocationSetup, setHasLocationSetup] = useState(false);
-  const [hasConsent, setHasConsent] = useState(false);
+  const [, forceRender] = useState(0);
 
-  useEffect(() => {
-    if (auth.isAuthenticated && auth.hasSubscription) {
-      const uid = auth.user?.id;
-      if (uid) LocalStorage.setUser(uid);
-      const locationSetup = localStorage.getItem(uid ? `cyclecoach_state_waiver_complete_${uid}` : 'cyclecoach_state_waiver_complete') === 'true';
-      setHasLocationSetup(locationSetup);
-      
-      if (locationSetup) {
-        const consent = localStorage.getItem(uid ? `cyclecoach_consent_granted_${uid}` : 'cyclecoach_consent_granted') === 'true';
-        setHasConsent(consent);
-      }
-    }
-  }, [auth.isAuthenticated, auth.hasSubscription]);
+  // Set user ID for LocalStorage namespace as soon as auth is available
+  const uid = auth.isAuthenticated && auth.hasSubscription ? auth.user?.id : null;
+  if (uid) LocalStorage.setUser(uid);
+
+  // Read onboarding flags synchronously — no useEffect delay, no stale initial state
+  const hasLocationSetup = uid
+    ? localStorage.getItem(`cyclecoach_state_waiver_complete_${uid}`) === 'true'
+    : false;
+  const hasConsent = hasLocationSetup && uid
+    ? localStorage.getItem(`cyclecoach_consent_granted_${uid}`) === 'true'
+    : false;
 
   // Poll for subscription status after Stripe payment return
   useEffect(() => {
@@ -203,15 +200,13 @@ function AppContent() {
   }, [auth.isAuthenticated, auth.hasSubscription]);
 
   const handleLocationComplete = () => {
-    const uid = auth.user?.id;
-    localStorage.setItem(uid ? `cyclecoach_state_waiver_complete_${uid}` : 'cyclecoach_state_waiver_complete', 'true');
-    setHasLocationSetup(true);
+    if (uid) localStorage.setItem(`cyclecoach_state_waiver_complete_${uid}`, 'true');
+    forceRender(n => n + 1);
   };
 
   const handleConsentGranted = () => {
-    const uid = auth.user?.id;
-    localStorage.setItem(uid ? `cyclecoach_consent_granted_${uid}` : 'cyclecoach_consent_granted', 'true');
-    setHasConsent(true);
+    if (uid) localStorage.setItem(`cyclecoach_consent_granted_${uid}`, 'true');
+    forceRender(n => n + 1);
   };
 
   const isPublicRoute = PUBLIC_ROUTES.some(route => 

@@ -178,7 +178,11 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - **Downgrade Flow**: Already existed (Advanced → Basic); added safe JSON parsing to the handler.
 - **Testing**: 11/11 backend tests passed, frontend UI verified. All changes confirmed working.
 
-### Jul 4, 2026 (update) — Admin Auth Guards + Lifetime Stat Card
+### Jul 4, 2026 (update 2) — Onboarding Re-prompt Bug Fix
+- **Root Cause**: Two issues: (1) `clearAllData()` in `clearOnLogout` explicitly deleted `cyclecoach_state_waiver_complete_${uid}` and `cyclecoach_consent_granted_${uid}`, so onboarding flags were wiped on every logout. (2) In `AppContent`, onboarding flags were read in a `useEffect` (runs AFTER render), so the first render always showed the waiver screen before the effect could correct the state.
+- **Fix**: (1) Removed onboarding flag deletion from `clearAllData` — these are compliance acknowledgments that persist across sessions. (2) Replaced async `useEffect` flag reading with synchronous `localStorage.getItem()` during render — flags are now read before any routing decision is made.
+- **Files changed**: `localStorageManager.js` (clearAllData), `App.js` (AppContent onboarding logic)
+- **Testing**: Verified full cycle — complete onboarding → logout → re-login → dashboard loads directly (no waiver/consent re-prompt).
 - **Backend Auth Guards**: Added `require_admin` dependency (validates admin session token from `admin_sessions` collection with expiry check). Applied to all 11 protected admin endpoints: `/admin/stats`, `/admin/users`, `/admin/feedback`, `/admin/grant-key`, `/admin/grant-lifetime`, `/admin/archive-user`, `/admin/unarchive-user`, `/admin/cancel-user`, `/admin/restore-user`, `/trial/requests`, `/trial/approve`, `/trial/reject`. Login/verify/logout remain public.
 - **Frontend Auth Headers**: All admin dashboard fetch calls now include `Authorization: Bearer <token>` header. Auto-logout on 401 response.
 - **Lifetime Stat Card**: Added "Lifetime" count to `/api/admin/stats` (queries `subscription_tier: "grandfathered"`). Frontend shows 5 stat cards: Free Trial, Basic, Advanced, Lifetime, Cancelled — totals now reconcile.

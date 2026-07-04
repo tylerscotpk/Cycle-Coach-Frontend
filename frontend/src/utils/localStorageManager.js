@@ -31,7 +31,7 @@ const _key = (name) => {
     try {
       const raw = localStorage.getItem('user');
       if (raw) _userId = JSON.parse(raw).id;
-    } catch {}
+    } catch { /* ignore parse error */ }
   }
   return _userId ? `cyclecoach_${name}_${_userId}` : `cyclecoach_${name}`;
 };
@@ -149,15 +149,12 @@ export const LocalStorage = {
     return data ? decrypt(data) : null;
   },
 
-  // Clear all data for current user
+  // Clear all app data for current user (preserves onboarding flags)
   clearAllData: () => {
     for (const suffix of ALL_KEYS) {
       localStorage.removeItem(_key(suffix));
     }
-    // Also clear bool keys
     if (_userId) {
-      localStorage.removeItem(`cyclecoach_state_waiver_complete_${_userId}`);
-      localStorage.removeItem(`cyclecoach_consent_granted_${_userId}`);
       localStorage.removeItem(`cyclecoach_mismatch_tooltip_shown_${_userId}`);
       localStorage.removeItem(`cyclecoach_mismatch_tooltip_avg_${_userId}`);
       localStorage.removeItem(`cyclecoach_last_ewma_avg_${_userId}`);
