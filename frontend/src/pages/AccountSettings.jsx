@@ -172,6 +172,8 @@ const AccountSettings = () => {
 
   const getBillingAmount = (tier) => {
     const prices = {
+      'basic': '$5',
+      'advanced': '$8',
       'monthly': '$3',
       'quarterly': '$8',
       'annual': '$30',
@@ -184,6 +186,8 @@ const AccountSettings = () => {
 
   const getBillingCycle = (tier) => {
     const cycles = {
+      'basic': 'per month',
+      'advanced': 'per month',
       'monthly': 'per month',
       'quarterly': 'every 3 months',
       'annual': 'per year',
