@@ -170,10 +170,13 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - **Confirm/Deny Flow**: Confirming marks cycle as extended (EWMA updates when Day 1 logged). Denying prompts for actual start date and resets cycle.
 - **Testing**: 6/6 frontend scenarios passed (normal day, extended banner, capped UI, confirm flow, deny flow, EWMA calculation in history dialog).
 
-### Apr 20, 2026 — Android Build Fix + Mobile UI Fixes
-- **Android Capacitor build**: Updated `android/.gitignore` to un-ignore `capacitor-cordova-android-plugins/`, `app/src/main/assets/public/`, and generated config files. Ran `npx cap sync android` and `yarn build` to regenerate all files. All 16 critical Android Studio files are now tracked in git.
-- **Mobile UI overflow fix**: Added `flex-wrap`, responsive text sizes (`text-xs sm:text-sm`), `min-w-0`, and `size="sm"` to Dashboard and AccountSettings headers. Shortened "Privacy & Data" to "Privacy" for mobile. Added responsive padding (`p-4 sm:p-6`, `px-4 sm:px-6`). Made subscription status grid stack on mobile (`grid-cols-1 sm:grid-cols-2`).
-- **Testing**: Visual verification via mobile viewport screenshots — headers, buttons, and cards render cleanly at 390px width.
+### Jul 4, 2026 — Bug Fix + Admin Dashboard Overhaul + PWA Icons
+- **Cancel Subscription Bug Fix**: Replaced `AlertDialogAction` with regular `Button` in cancel/downgrade modals to prevent Radix auto-close from aborting async fetch. Added safe `try/catch` around `response.json()` parsing. This was the 3rd occurrence of the recurring response-body double-read pattern.
+- **Admin Dashboard Overhaul**: Removed legacy "Trial Requests" tab. Updated filter buttons to: All Users | Free Trial | Basic | Advanced | Cancelled | No Plan. Stats cards show Free Trial, Basic, Advanced, Cancelled counts. User rows display tier badge + status badge. Added "Grant Lifetime Access" button with confirmation modal — sets user to `grandfathered` tier and cancels any active Stripe subscription.
+- **Backend Admin Endpoints**: Updated `/api/admin/stats` to return new tier counts. Added `plan_type` and `no_plan` query params to `/api/admin/users`. Added `POST /api/admin/grant-lifetime/{email}` endpoint.
+- **PWA Icons**: Generated and added `icon-192.png` (192x192) and `icon-512.png` (512x512) to resolve manifest console error.
+- **Downgrade Flow**: Already existed (Advanced → Basic); added safe JSON parsing to the handler.
+- **Testing**: 11/11 backend tests passed, frontend UI verified. All changes confirmed working.
 
 ---
 
@@ -186,10 +189,14 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Fix Mobile UI text wrapping/overflow (DONE Apr 20)
 - [x] EWMA dynamic cycle tracking with extension alerts (DONE Jun 14)
 - [x] Subscription overhaul: 7-day trial + Basic/Advanced (DONE Jun 30)
-- [ ] Connect real Stripe Payment Links for Basic ($9/mo) and Advanced ($19/mo)
+- [x] Cancel subscription bug fix (DONE Jul 4)
+- [x] Admin dashboard overhaul for new tier structure (DONE Jul 4)
+- [x] PWA icon fix (DONE Jul 4)
+- [ ] Connect real Stripe Payment Links for Basic ($5/mo) and Advanced ($8/mo)
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
 
 ### P2 — Medium Priority
+- [ ] Add auth guards to admin API endpoints (currently frontend-only protection)
 - [ ] Refactor `Dashboard.jsx` into smaller components
 - [ ] Refactor `App.js` routing with ProtectedRoute/PublicRoute wrappers
 - [ ] iOS App Store deployment (user needs Mac or CI/CD pipeline)

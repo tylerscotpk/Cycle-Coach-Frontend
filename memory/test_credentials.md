@@ -14,3 +14,7 @@
 - Email: ts_peterson@yahoo.com
 - Password: (user-set, unknown to agent)
 - Subscription: active
+
+## Admin Dashboard
+- URL: /admin
+- Password: cyclecoach2024
