@@ -3,22 +3,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
 const AdminDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [requests, setRequests] = useState([]);
   const [users, setUsers] = useState([]);
-  const [stats, setStats] = useState({ requests: {}, users: {} });
+  const [stats, setStats] = useState({ users: {} });
   const [loading, setLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [requestFilter, setRequestFilter] = useState('pending');
-  const [userFilter, setUserFilter] = useState('monthly');
-  const [activeTab, setActiveTab] = useState('requests');
+  const [userFilter, setUserFilter] = useState('all');
+  const [lifetimeTarget, setLifetimeTarget] = useState(null);
+  const [grantingLifetime, setGrantingLifetime] = useState(false);
 
-  // Check for existing admin session on mount
   useEffect(() => {
     const verifySession = async () => {
       const token = sessionStorage.getItem('admin_token');
@@ -26,9 +33,7 @@ const AdminDashboard = () => {
         try {
           const response = await fetch(`${API}/api/admin/verify`, {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
           });
           if (response.ok) {
             setIsAuthenticated(true);
@@ -48,29 +53,20 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchStats();
-      if (activeTab === 'requests') {
-        fetchRequests();
-      } else {
-        fetchUsers();
-      }
+      fetchUsers();
     }
-  }, [isAuthenticated, requestFilter, userFilter, activeTab]);
+  }, [isAuthenticated, userFilter]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthLoading(true);
-    
     try {
       const response = await fetch(`${API}/api/admin/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password })
       });
-      
       const data = await response.json();
-      
       if (response.ok && data.success) {
         sessionStorage.setItem('admin_token', data.token);
         setIsAuthenticated(true);
@@ -96,34 +92,19 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchRequests = async () => {
-    setLoading(true);
-    try {
-      const url = requestFilter === 'all' 
-        ? `${API}/api/trial/requests`
-        : `${API}/api/trial/requests?status=${requestFilter}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      setRequests(data.requests || []);
-    } catch (error) {
-      console.error('Error fetching requests:', error);
-      toast.error('Failed to fetch requests');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchUsers = async () => {
     setLoading(true);
     try {
       let url = `${API}/api/admin/users?`;
-      
       if (userFilter === 'cancelled') {
         url += 'cancelled=true';
+      } else if (userFilter === 'trial') {
+        url += 'plan_type=trial';
+      } else if (userFilter === 'no_plan') {
+        url += 'no_plan=true';
       } else if (userFilter !== 'all') {
         url += `subscription_tier=${userFilter}`;
       }
-      
       const response = await fetch(url);
       const data = await response.json();
       setUsers(data.users || []);
@@ -135,115 +116,10 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleApprove = async (email) => {
-    try {
-      const response = await fetch(`${API}/api/trial/approve/${email}`, {
-        method: 'POST'
-      });
-      const result = await response.json();
-      
-      if (result.status === 'approved' || result.status === 'already_approved') {
-        toast.success(`Approved! 1-month trial key sent: ${result.license_key}`);
-        fetchRequests();
-        fetchStats();
-      } else {
-        toast.error('Failed to approve');
-      }
-    } catch (error) {
-      console.error('Error approving:', error);
-      toast.error('Failed to approve request');
-    }
-  };
-
-  const handleReject = async (email) => {
-    try {
-      const response = await fetch(`${API}/api/trial/reject/${email}`, {
-        method: 'POST'
-      });
-      const result = await response.json();
-      
-      if (result.status === 'rejected') {
-        toast.success('Request rejected');
-        fetchRequests();
-        fetchStats();
-      } else {
-        toast.error('Failed to reject');
-      }
-    } catch (error) {
-      console.error('Error rejecting:', error);
-      toast.error('Failed to reject request');
-    }
-  };
-
-  const handleGrantKey = async (email, keyType) => {
-    try {
-      const response = await fetch(`${API}/api/admin/grant-key`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, key_type: keyType })
-      });
-      const result = await response.json();
-      
-      if (result.status === 'success') {
-        toast.success(`${keyType.toUpperCase()} key sent: ${result.license_key}`);
-        fetchUsers();
-        fetchStats();
-      } else {
-        toast.error('Failed to grant key');
-      }
-    } catch (error) {
-      console.error('Error granting key:', error);
-      toast.error('Failed to grant key');
-    }
-  };
-
-  const handleArchive = async (email) => {
-    try {
-      const response = await fetch(`${API}/api/admin/archive-user/${email}`, {
-        method: 'POST'
-      });
-      const result = await response.json();
-      
-      if (result.status === 'archived') {
-        toast.success('User archived');
-        fetchUsers();
-        fetchStats();
-      } else {
-        toast.error('Failed to archive');
-      }
-    } catch (error) {
-      console.error('Error archiving:', error);
-      toast.error('Failed to archive user');
-    }
-  };
-
-  const handleUnarchive = async (email) => {
-    try {
-      const response = await fetch(`${API}/api/admin/unarchive-user/${email}`, {
-        method: 'POST'
-      });
-      const result = await response.json();
-      
-      if (result.status === 'unarchived') {
-        toast.success('User restored from archive');
-        fetchUsers();
-        fetchStats();
-      } else {
-        toast.error('Failed to restore');
-      }
-    } catch (error) {
-      console.error('Error unarchiving:', error);
-      toast.error('Failed to restore user');
-    }
-  };
-
   const handleCancel = async (email) => {
     try {
-      const response = await fetch(`${API}/api/admin/cancel-user/${email}`, {
-        method: 'POST'
-      });
+      const response = await fetch(`${API}/api/admin/cancel-user/${email}`, { method: 'POST' });
       const result = await response.json();
-      
       if (result.status === 'cancelled') {
         toast.success('User access cancelled');
         fetchUsers();
@@ -259,11 +135,8 @@ const AdminDashboard = () => {
 
   const handleRestoreCancelled = async (email) => {
     try {
-      const response = await fetch(`${API}/api/admin/restore-user/${email}`, {
-        method: 'POST'
-      });
+      const response = await fetch(`${API}/api/admin/restore-user/${email}`, { method: 'POST' });
       const result = await response.json();
-      
       if (result.status === 'restored') {
         toast.success('User access restored');
         fetchUsers();
@@ -277,24 +150,76 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleArchive = async (email) => {
+    try {
+      const response = await fetch(`${API}/api/admin/archive-user/${email}`, { method: 'POST' });
+      const result = await response.json();
+      if (result.status === 'archived') {
+        toast.success('User deactivated');
+        fetchUsers();
+        fetchStats();
+      } else {
+        toast.error('Failed to deactivate');
+      }
+    } catch (error) {
+      console.error('Error archiving:', error);
+      toast.error('Failed to deactivate user');
+    }
+  };
+
+  const handleGrantLifetime = async () => {
+    if (!lifetimeTarget) return;
+    setGrantingLifetime(true);
+    try {
+      const response = await fetch(`${API}/api/admin/grant-lifetime/${lifetimeTarget}`, { method: 'POST' });
+      let result;
+      try { result = await response.json(); } catch { result = {}; }
+      if (response.ok && result.status === 'granted') {
+        toast.success(`Lifetime access granted to ${lifetimeTarget}${result.stripe_cancelled ? ' (Stripe sub cancelled)' : ''}`);
+        setLifetimeTarget(null);
+        fetchUsers();
+        fetchStats();
+      } else {
+        toast.error(result.detail || 'Failed to grant lifetime access');
+      }
+    } catch (error) {
+      console.error('Error granting lifetime:', error);
+      toast.error('Failed to grant lifetime access');
+    } finally {
+      setGrantingLifetime(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString();
   };
 
-  const getKeyTypeColor = (keyType) => {
-    switch(keyType) {
-      case 'lifetime': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-      case 'yearly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'quarterly': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
-      case 'monthly': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-    }
+  const getTierBadge = (user) => {
+    const tier = user.subscription_tier || user.plan_type;
+    const map = {
+      trial: { label: 'Free Trial', cls: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+      basic: { label: 'Basic', cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+      advanced: { label: 'Advanced', cls: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+      grandfathered: { label: 'Lifetime', cls: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+    };
+    const info = map[tier];
+    if (!info) return <span className="px-2 py-0.5 rounded text-xs border bg-slate-500/20 text-slate-400 border-slate-500/30">No Plan</span>;
+    return <span className={`px-2 py-0.5 rounded text-xs border ${info.cls}`}>{info.label}</span>;
   };
 
-  const isExpired = (expiresAt) => {
-    if (!expiresAt) return false;
-    return new Date(expiresAt) < new Date();
+  const getStatusBadge = (user) => {
+    const status = user.subscription_status;
+    const map = {
+      active: { label: 'active', cls: 'bg-green-500/20 text-green-400 border-green-500/30' },
+      trialing: { label: 'trialing', cls: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+      cancelling: { label: 'cancelling', cls: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+      cancelled: { label: 'cancelled', cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+      past_due: { label: 'past due', cls: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+    };
+    const info = map[status];
+    if (!info) return null;
+    return <span className={`px-2 py-0.5 rounded text-xs border ${info.cls}`}>{info.label}</span>;
   };
 
   const handleLogout = async () => {
@@ -302,9 +227,7 @@ const AdminDashboard = () => {
     try {
       await fetch(`${API}/api/admin/logout`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
     } catch (error) {
       console.error('Logout error:', error);
@@ -315,7 +238,7 @@ const AdminDashboard = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen  flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <div className="text-white text-lg">Verifying session...</div>
       </div>
     );
@@ -323,7 +246,7 @@ const AdminDashboard = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen  flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <Card className="bg-slate-800/90 border-slate-700 w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-white text-center">Admin Access</CardTitle>
@@ -338,8 +261,8 @@ const AdminDashboard = () => {
                 className="bg-slate-700 border-slate-600 text-white"
                 data-testid="admin-password-input"
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-cyan-500 hover:bg-cyan-600"
                 disabled={authLoading}
                 data-testid="admin-login-btn"
@@ -354,21 +277,29 @@ const AdminDashboard = () => {
   }
 
   const userFilters = [
-    { key: 'all', label: 'All Users', color: 'cyan', count: stats.users?.total || 0 },
-    { key: 'monthly', label: 'Monthly', color: 'green', count: stats.users?.monthly || 0 },
-    { key: 'quarterly', label: 'Quarterly', color: 'cyan', count: stats.users?.quarterly || 0 },
-    { key: 'yearly', label: 'Annual', color: 'blue', count: stats.users?.annual || 0 },
-    { key: 'cancelled', label: 'Cancelled', color: 'red', count: stats.users?.cancelled || 0 },
+    { key: 'all', label: 'All Users', count: stats.users?.total || 0 },
+    { key: 'trial', label: 'Free Trial', count: stats.users?.trial || 0 },
+    { key: 'basic', label: 'Basic', count: stats.users?.basic || 0 },
+    { key: 'advanced', label: 'Advanced', count: stats.users?.advanced || 0 },
+    { key: 'cancelled', label: 'Cancelled', count: stats.users?.cancelled || 0 },
+    { key: 'no_plan', label: 'No Plan', count: stats.users?.no_plan || 0 },
+  ];
+
+  const statCards = [
+    { label: 'Free Trial', count: stats.users?.trial || 0, color: 'cyan' },
+    { label: 'Basic', count: stats.users?.basic || 0, color: 'blue' },
+    { label: 'Advanced', count: stats.users?.advanced || 0, color: 'emerald' },
+    { label: 'Cancelled', count: stats.users?.cancelled || 0, color: 'red' },
   ];
 
   return (
-    <div className="min-h-screen  p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-          <Button 
-            variant="outline" 
+          <h1 className="text-3xl font-bold text-white" data-testid="admin-dashboard-title">Admin Dashboard</h1>
+          <Button
+            variant="outline"
             className="border-slate-600 text-slate-300"
             onClick={handleLogout}
             data-testid="admin-logout-btn"
@@ -377,276 +308,151 @@ const AdminDashboard = () => {
           </Button>
         </div>
 
-        {/* Main Tab Navigation */}
-        <div className="flex gap-2 border-b border-slate-700 pb-2">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {statCards.map((s) => (
+            <Card key={s.label} className="border-slate-700 bg-slate-800/50">
+              <CardContent className="p-4 text-center">
+                <p className={`text-2xl font-bold text-${s.color}-400`}>{s.count}</p>
+                <p className="text-slate-400 text-sm">{s.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 flex-wrap">
+          {userFilters.map((f) => (
+            <Button
+              key={f.key}
+              variant={userFilter === f.key ? 'default' : 'outline'}
+              size="sm"
+              className={userFilter === f.key
+                ? 'bg-cyan-500 hover:bg-cyan-600'
+                : 'border-slate-600 text-slate-300 hover:bg-slate-700'}
+              onClick={() => setUserFilter(f.key)}
+              data-testid={`admin-filter-${f.key}`}
+            >
+              {f.label} ({f.count})
+            </Button>
+          ))}
           <Button
-            variant={activeTab === 'requests' ? 'default' : 'ghost'}
-            className={activeTab === 'requests' ? 'bg-cyan-500' : 'text-slate-400'}
-            onClick={() => setActiveTab('requests')}
+            variant="outline"
+            size="sm"
+            className="border-slate-600 text-slate-300 ml-auto"
+            onClick={() => { fetchUsers(); fetchStats(); }}
+            data-testid="admin-refresh-btn"
           >
-            Trial Requests
-          </Button>
-          <Button
-            variant={activeTab === 'users' ? 'default' : 'ghost'}
-            className={activeTab === 'users' ? 'bg-cyan-500' : 'text-slate-400'}
-            onClick={() => setActiveTab('users')}
-          >
-            Users
+            Refresh
           </Button>
         </div>
 
-        {/* Trial Requests Tab */}
-        {activeTab === 'requests' && (
-          <>
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card className={`border ${requestFilter === 'pending' ? 'border-yellow-500' : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
-                    onClick={() => setRequestFilter('pending')}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-yellow-400">{stats.requests?.pending || 0}</p>
-                  <p className="text-slate-400 text-sm">Pending</p>
-                </CardContent>
-              </Card>
-              <Card className={`border ${requestFilter === 'approved' ? 'border-green-500' : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
-                    onClick={() => setRequestFilter('approved')}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-green-400">{stats.requests?.approved || 0}</p>
-                  <p className="text-slate-400 text-sm">Approved</p>
-                </CardContent>
-              </Card>
-              <Card className={`border ${requestFilter === 'rejected' ? 'border-red-500' : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
-                    onClick={() => setRequestFilter('rejected')}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-red-400">{stats.requests?.rejected || 0}</p>
-                  <p className="text-slate-400 text-sm">Rejected</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex gap-2">
-              {['pending', 'approved', 'rejected', 'all'].map((f) => (
-                <Button
-                  key={f}
-                  variant={requestFilter === f ? 'default' : 'outline'}
-                  size="sm"
-                  className={requestFilter === f 
-                    ? 'bg-cyan-500 hover:bg-cyan-600' 
-                    : 'border-slate-600 text-slate-300 hover:bg-slate-700'}
-                  onClick={() => setRequestFilter(f)}
-                >
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </Button>
-              ))}
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-slate-600 text-slate-300 ml-auto"
-                onClick={() => { fetchRequests(); fetchStats(); }}
-              >
-                Refresh
-              </Button>
-            </div>
-
-            {/* Requests List */}
-            <Card className="bg-slate-800/90 border-slate-700">
-              <CardContent className="p-0">
-                {loading ? (
-                  <div className="p-8 text-center text-slate-400">Loading...</div>
-                ) : requests.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400">
-                    No {requestFilter === 'all' ? '' : requestFilter} requests found
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-700">
-                    {requests.map((request, index) => (
-                      <div key={index} className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-white font-medium">{request.email}</p>
-                          <p className="text-slate-400 text-sm">
-                            Requested: {formatDate(request.created_at)}
-                          </p>
-                          {request.license_key && (
-                            <p className="text-cyan-400 text-sm font-mono">
-                              Key: {request.license_key}
-                            </p>
-                          )}
+        {/* Users List */}
+        <Card className="bg-slate-800/90 border-slate-700">
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-8 text-center text-slate-400">Loading...</div>
+            ) : users.length === 0 ? (
+              <div className="p-8 text-center text-slate-400" data-testid="admin-no-users">
+                No users found for this filter
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-700">
+                {users.map((user, index) => (
+                  <div key={index} className="p-4" data-testid={`admin-user-row-${index}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="text-white font-medium truncate">{user.email}</p>
+                          {getTierBadge(user)}
+                          {getStatusBadge(user)}
                         </div>
-                        <div className="flex items-center gap-2">
-                          {request.status === 'pending' ? (
-                            <>
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={() => handleApprove(request.email)}
-                              >
-                                Approve (1-mo trial)
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
-                                onClick={() => handleReject(request.email)}
-                              >
-                                Reject
-                              </Button>
-                            </>
-                          ) : (
-                            <span className={`px-3 py-1 rounded-full text-sm ${
-                              request.status === 'approved' 
-                                ? 'bg-green-500/20 text-green-400' 
-                                : 'bg-red-500/20 text-red-400'
-                            }`}>
-                              {request.status}
-                            </span>
-                          )}
+                        <div className="flex gap-4 mt-1 text-xs text-slate-500 flex-wrap">
+                          <span>Joined: {formatDate(user.created_at)}</span>
+                          {user.cancels_at && <span>Cancels: {formatDate(user.cancels_at)}</span>}
+                          {user.trial_ends_at && <span>Trial ends: {formatDate(user.trial_ends_at)}</span>}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {/* Users Tab */}
-        {activeTab === 'users' && (
-          <>
-            {/* Stats */}
-            <div className="grid grid-cols-5 gap-3">
-              {userFilters.map((f) => (
-                <Card 
-                  key={f.key}
-                  className={`border ${userFilter === f.key ? `border-${f.color}-500` : 'border-slate-700'} bg-slate-800/50 cursor-pointer`}
-                  onClick={() => setUserFilter(f.key)}
-                >
-                  <CardContent className="p-3 text-center">
-                    <p className={`text-xl font-bold text-${f.color}-400`}>{f.count}</p>
-                    <p className="text-slate-400 text-xs">{f.label}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex gap-2 flex-wrap">
-              {userFilters.map((f) => (
-                <Button
-                  key={f.key}
-                  variant={userFilter === f.key ? 'default' : 'outline'}
-                  size="sm"
-                  className={userFilter === f.key 
-                    ? `bg-${f.color}-500 hover:bg-${f.color}-600` 
-                    : 'border-slate-600 text-slate-300 hover:bg-slate-700'}
-                  onClick={() => setUserFilter(f.key)}
-                >
-                  {f.label} ({f.count})
-                </Button>
-              ))}
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-slate-600 text-slate-300 ml-auto"
-                onClick={() => { fetchUsers(); fetchStats(); }}
-              >
-                Refresh
-              </Button>
-            </div>
-
-            {/* Users List */}
-            <Card className="bg-slate-800/90 border-slate-700">
-              <CardContent className="p-0">
-                {loading ? (
-                  <div className="p-8 text-center text-slate-400">Loading...</div>
-                ) : users.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400">
-                    No {userFilter} users found
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-700">
-                    {users.map((user, index) => (
-                      <div key={index} className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-white font-medium">{user.email}</p>
-                              {user.subscription_tier && (
-                                <span className={`px-2 py-0.5 rounded text-xs border ${getKeyTypeColor(user.subscription_tier)}`}>
-                                  {user.subscription_tier}
-                                </span>
-                              )}
-                              {user.subscription_status === 'active' && (
-                                <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-                                  active
-                                </span>
-                              )}
-                              {user.subscription_status === 'cancelling' && (
-                                <span className="px-2 py-0.5 rounded text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                                  cancelling
-                                </span>
-                              )}
-                              {(user.subscription_status === 'cancelled') && (
-                                <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30">
-                                  cancelled
-                                </span>
-                              )}
-                              {!user.subscription_status && (
-                                <span className="px-2 py-0.5 rounded text-xs bg-slate-500/20 text-slate-400 border border-slate-500/30">
-                                  no plan
-                                </span>
-                              )}
-                            </div>
-                            {user.phone && (
-                              <p className="text-slate-400 text-sm">{user.phone}</p>
-                            )}
-                            <div className="flex gap-4 mt-1 text-xs text-slate-500">
-                              <span>Joined: {formatDate(user.created_at)}</span>
-                              {user.cancels_at && <span>Cancels: {formatDate(user.cancels_at)}</span>}
-                            </div>
-                          </div>
-                          <div className="flex gap-2 flex-wrap justify-end">
-                            {userFilter === 'cancelled' ? (
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={() => handleRestoreCancelled(user.email)}
-                              >
-                                Restore Access
-                              </Button>
-                            ) : (
-                              <>
-                                {user.subscription_status === 'active' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
-                                    onClick={() => handleCancel(user.email)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-slate-600 text-slate-400 hover:bg-slate-700"
-                                  onClick={() => handleArchive(user.email)}
-                                >
-                                  Deactivate
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
+                      <div className="flex gap-2 flex-wrap justify-end flex-shrink-0">
+                        {/* Grant Lifetime Access */}
+                        {user.subscription_tier !== 'grandfathered' && (
+                          <Button
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            onClick={() => setLifetimeTarget(user.email)}
+                            data-testid={`admin-grant-lifetime-${index}`}
+                          >
+                            Grant Lifetime
+                          </Button>
+                        )}
+                        {/* Restore (for cancelled) */}
+                        {(user.subscription_status === 'cancelled' || user.subscription_status === 'cancelling') && (
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => handleRestoreCancelled(user.email)}
+                            data-testid={`admin-restore-${index}`}
+                          >
+                            Restore
+                          </Button>
+                        )}
+                        {/* Cancel (for active) */}
+                        {user.subscription_status === 'active' && user.subscription_tier !== 'grandfathered' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
+                            onClick={() => handleCancel(user.email)}
+                            data-testid={`admin-cancel-${index}`}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                        {/* Deactivate */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                          onClick={() => handleArchive(user.email)}
+                          data-testid={`admin-deactivate-${index}`}
+                        >
+                          Deactivate
+                        </Button>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Grant Lifetime Modal */}
+      <AlertDialog open={!!lifetimeTarget} onOpenChange={(open) => { if (!open) setLifetimeTarget(null); }}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Grant Lifetime Access?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              This will set <span className="text-purple-400 font-medium">{lifetimeTarget}</span> to
+              &quot;Grandfathered&quot; status with permanent access. Any active Stripe subscription will be cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-600 text-slate-300" disabled={grantingLifetime}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={handleGrantLifetime}
+              disabled={grantingLifetime}
+              className="bg-purple-600 text-white hover:bg-purple-700"
+              data-testid="admin-confirm-lifetime-btn"
+            >
+              {grantingLifetime ? 'Granting...' : 'Confirm Grant Lifetime'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

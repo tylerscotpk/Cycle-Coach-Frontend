@@ -1902,12 +1902,16 @@ async def grant_key(request: GrantKeyRequest):
     }
 
 @api_router.get("/admin/users")
-async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str] = None):
+async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str] = None, plan_type: Optional[str] = None, no_plan: bool = False):
     """Get all registered users from auth_users collection"""
     query = {"is_active": True}
     
     if cancelled:
         query = {"subscription_status": {"$in": ["cancelled", "cancelling"]}}
+    elif no_plan:
+        query["$or"] = [{"subscription_status": None}, {"subscription_status": {"$exists": False}}]
+    elif plan_type:
+        query["plan_type"] = plan_type
     elif subscription_tier:
         query["subscription_tier"] = subscription_tier
     
@@ -1962,32 +1966,55 @@ async def restore_user(email: str):
         raise HTTPException(status_code=404, detail="User not found")
     return {"status": "restored", "email": email}
 
+@api_router.post("/admin/grant-lifetime/{email}")
+async def grant_lifetime_access(email: str):
+    """Grant lifetime (grandfathered) access to a user and cancel any active Stripe subscription."""
+    email = email.lower().strip()
+    user = await db.auth_users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Cancel active Stripe subscription if present
+    stripe_sub_id = user.get("stripe_subscription_id")
+    stripe_cancelled = False
+    if stripe_sub_id:
+        try:
+            stripe.Subscription.cancel(stripe_sub_id)
+            stripe_cancelled = True
+            logger.info(f"ADMIN: Cancelled Stripe subscription {stripe_sub_id} for {email}")
+        except Exception as e:
+            logger.warning(f"ADMIN: Could not cancel Stripe sub {stripe_sub_id} for {email}: {e}")
+
+    await db.auth_users.update_one(
+        {"email": email},
+        {"$set": {
+            "subscription_tier": "grandfathered",
+            "plan_type": "grandfathered",
+            "subscription_status": "active",
+            "cancels_at": None,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return {"status": "granted", "email": email, "stripe_cancelled": stripe_cancelled}
+
+
 @api_router.get("/admin/stats")
 async def get_admin_stats():
     """Get overall stats for dashboard from auth_users"""
     total_users = await db.auth_users.count_documents({"is_active": True})
-    monthly_count = await db.auth_users.count_documents({"subscription_tier": "monthly", "subscription_status": {"$in": ["active", "cancelling"]}})
-    quarterly_count = await db.auth_users.count_documents({"subscription_tier": "quarterly", "subscription_status": {"$in": ["active", "cancelling"]}})
-    annual_count = await db.auth_users.count_documents({"subscription_tier": "annual", "subscription_status": {"$in": ["active", "cancelling"]}})
-    no_subscription = await db.auth_users.count_documents({"subscription_status": None, "is_active": True})
+    trial_count = await db.auth_users.count_documents({"plan_type": "trial", "is_active": True})
+    basic_count = await db.auth_users.count_documents({"subscription_tier": "basic", "subscription_status": {"$in": ["active", "cancelling"]}, "is_active": True})
+    advanced_count = await db.auth_users.count_documents({"subscription_tier": "advanced", "subscription_status": {"$in": ["active", "cancelling"]}, "is_active": True})
+    no_plan_count = await db.auth_users.count_documents({"$or": [{"subscription_status": None}, {"subscription_status": {"$exists": False}}], "is_active": True})
     cancelled_count = await db.auth_users.count_documents({"subscription_status": {"$in": ["cancelled", "cancelling"]}})
     
-    # Legacy trial requests
-    pending_count = await db.trial_requests.count_documents({"status": "pending"})
-    approved_count = await db.trial_requests.count_documents({"status": "approved"})
-    
     return {
-        "requests": {
-            "pending": pending_count,
-            "approved": approved_count,
-            "rejected": 0
-        },
         "users": {
             "total": total_users,
-            "monthly": monthly_count,
-            "quarterly": quarterly_count,
-            "annual": annual_count,
-            "no_subscription": no_subscription,
+            "trial": trial_count,
+            "basic": basic_count,
+            "advanced": advanced_count,
+            "no_plan": no_plan_count,
             "cancelled": cancelled_count
         }
     }

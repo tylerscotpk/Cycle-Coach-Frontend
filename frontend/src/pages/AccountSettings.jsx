@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { LocalStorage } from '../utils/localStorageManager';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -69,7 +68,12 @@ const AccountSettings = () => {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        result = {};
+      }
 
       if (response.ok && result.success) {
         setSubscription(prev => ({
@@ -98,7 +102,12 @@ const AccountSettings = () => {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${sessionToken}` },
       });
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        result = {};
+      }
       if (response.ok && result.success) {
         setSubscription(prev => ({
           ...prev,
@@ -116,7 +125,7 @@ const AccountSettings = () => {
           user.plan_type = 'basic';
           user.subscription_tier = 'basic';
           localStorage.setItem('user', JSON.stringify(user));
-        } catch {}
+        } catch { /* ignore localStorage error */ }
       } else {
         toast.error(result.detail || 'Failed to downgrade. Please try again.');
       }
@@ -448,18 +457,19 @@ const AccountSettings = () => {
           <AlertDialogFooter className="gap-3">
             <AlertDialogCancel 
               className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600"
+              disabled={cancelling}
               data-testid="cancel-modal-keep-btn"
             >
               Keep My Subscription
             </AlertDialogCancel>
-            <AlertDialogAction
+            <Button
               onClick={handleCancelSubscription}
               disabled={cancelling}
               className="bg-red-600 text-white hover:bg-red-700"
               data-testid="cancel-modal-confirm-btn"
             >
               {cancelling ? 'Cancelling...' : 'Yes, Cancel Subscription'}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -499,14 +509,14 @@ const AccountSettings = () => {
             <AlertDialogCancel className="border-slate-600 text-slate-300">
               Keep Advanced
             </AlertDialogCancel>
-            <AlertDialogAction
+            <Button
               onClick={handleDowngrade}
               disabled={downgrading}
               className="bg-orange-600 text-white hover:bg-orange-700"
               data-testid="downgrade-confirm-btn"
             >
               {downgrading ? 'Processing...' : 'Confirm Downgrade to Basic'}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

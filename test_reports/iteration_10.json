@@ -1,0 +1,51 @@
+{
+  "summary": "Backend 11/11 admin dashboard tests PASSED (stats shape, all 5 user filters, grant-lifetime success/404, PWA icons). Frontend admin dashboard UI verified: no 'Trial Requests' tab, all 6 filter buttons present (All/Free Trial/Basic/Advanced/Cancelled/No Plan) and functional, stats cards show Free Trial/Basic/Advanced/Cancelled labels, Grant Lifetime button + modal work per user row, Deactivate + Cancel buttons present. AccountSettings cancel & downgrade modals verified via code review to use regular Button (not AlertDialogAction) with safe try/catch JSON parsing.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/admin/*", "issue": "Admin endpoints (users, stats, grant-lifetime, cancel-user, deactivate) have NO authentication guard — anyone knowing the URL can call them. Only /admin frontend page is password-protected. Consider adding admin-token check via Depends() on the router."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin Dashboard stats", "issues": ["Bucket counts (Free Trial+Basic+Advanced+Cancelled+No Plan = 22) don't equal total users (32) because grandfathered/lifetime users are not counted in any bucket. Consider adding a 'Lifetime/Grandfathered' stat card so totals reconcile."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_dashboard.py",
+    "/app/test_reports/pytest/admin_dashboard.xml"
+  ],
+  "action_items": [
+    "IMPORTANT: Test run granted lifetime to trialtest@test.com (was trial). If continued trial testing is needed, revert via DB or use a new trial user; consider updating /app/memory/test_credentials.md.",
+    "Consider auth guarding admin API endpoints (see minor backend issue).",
+    "Optionally add a Lifetime/Grandfathered stat card so totals in admin dashboard reconcile."
+  ],
+  "critical_code_review_comments": [
+    "AccountSettings.jsx handleCancelSubscription (L62-95): correctly uses try/catch on response.json() and updates state before closing modal; modal Footer uses <Button data-testid='cancel-modal-confirm-btn'> — NOT AlertDialogAction — so Radix will NOT auto-close before await completes. Fix verified in code.",
+    "AccountSettings.jsx handleDowngrade (L97-140): same pattern — safe JSON parse + Button (not AlertDialogAction) at L512 — correct.",
+    "AccountSettings.jsx canCancel() (L199-205) hides cancel button when no stripe_subscription_id — this is why testuser@test.com legacy monthly cannot exercise cancel via UI. Functional cancel-flow UI test not possible with current test users; verified by code review only.",
+    "AdminDashboard.jsx (461 lines) is within size limit; uses data-testid on filter tabs, user rows, grant/cancel/deactivate buttons — good testability.",
+    "server.py L1904-1919 admin/users: query filter is exclusive elif chain — combining cancelled with subscription_tier is not possible; acceptable for current UI use.",
+    "server.py L1969-1998 grant-lifetime: idempotent; also cancels active Stripe sub and updates plan_type + subscription_tier + status atomically. _id excluded from response (only status/email/stripe_cancelled returned).",
+    "server.py L1904-1919 admin/users: _id and password_hash correctly excluded via projection.",
+    "SECURITY: /api/admin/* endpoints (users, stats, grant-lifetime, archive-user, cancel-user, restore-user) lack any authentication dependency — publicly callable. The /api/admin/verify + login flow only protects the frontend page, not the API surface."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_dashboard.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11)",
+    "frontend": "100% for admin dashboard scenarios tested; AccountSettings cancel/downgrade verified by code review (UI functional test skipped — test user lacks stripe_subscription_id so cancel button not rendered)"
+  },
+  "test_credentials": {
+    "admin_password": "cyclecoach2024",
+    "note": "trialtest@test.com was upgraded to grandfathered/lifetime during grant-lifetime endpoint test — no longer a valid Trial User"
+  },
+  "seed_data_creation": "None (used existing users). Test upgraded trialtest@test.com via /api/admin/grant-lifetime — persistent state change.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Admin API is unauthenticated at the FastAPI level — you can call /api/admin/* directly with no token. For AccountSettings UI cancel/downgrade tests, you need a user with a real stripe_subscription_id and subscription_tier in ('basic','advanced'); testuser@test.com is Monthly Legacy without a stripe_subscription_id so canCancel() returns false and no button renders. Location gate on /account can be bypassed by seeding localStorage BEFORE navigation: cyclecoach_state_waiver_complete='true' and cyclecoach_consent_granted='true' (plain strings). trialtest@test.com is now grandfathered/lifetime.",
+  "rca_notes": "Original 'Failed to cancel subscription' bug root cause (AlertDialogAction auto-closes Radix dialog, aborting the fetch's response.json parse in unmounted state) is fixed: both cancel and downgrade footers now use plain <Button> and wrap response.json() in try/catch. Verified by static code review at AccountSettings.jsx L62-95, L97-140, L465-472, L512-519."
+}
