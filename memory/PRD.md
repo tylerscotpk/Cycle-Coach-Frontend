@@ -178,6 +178,11 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - **Downgrade Flow**: Already existed (Advanced → Basic); added safe JSON parsing to the handler.
 - **Testing**: 11/11 backend tests passed, frontend UI verified. All changes confirmed working.
 
+### Jul 4, 2026 (update) — Admin Auth Guards + Lifetime Stat Card
+- **Backend Auth Guards**: Added `require_admin` dependency (validates admin session token from `admin_sessions` collection with expiry check). Applied to all 11 protected admin endpoints: `/admin/stats`, `/admin/users`, `/admin/feedback`, `/admin/grant-key`, `/admin/grant-lifetime`, `/admin/archive-user`, `/admin/unarchive-user`, `/admin/cancel-user`, `/admin/restore-user`, `/trial/requests`, `/trial/approve`, `/trial/reject`. Login/verify/logout remain public.
+- **Frontend Auth Headers**: All admin dashboard fetch calls now include `Authorization: Bearer <token>` header. Auto-logout on 401 response.
+- **Lifetime Stat Card**: Added "Lifetime" count to `/api/admin/stats` (queries `subscription_tier: "grandfathered"`). Frontend shows 5 stat cards: Free Trial, Basic, Advanced, Lifetime, Cancelled — totals now reconcile.
+
 ---
 
 ## Backlog
@@ -192,11 +197,12 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Cancel subscription bug fix (DONE Jul 4)
 - [x] Admin dashboard overhaul for new tier structure (DONE Jul 4)
 - [x] PWA icon fix (DONE Jul 4)
+- [x] Admin API auth guards (DONE Jul 4)
+- [x] Lifetime stat card in admin dashboard (DONE Jul 4)
 - [ ] Connect real Stripe Payment Links for Basic ($5/mo) and Advanced ($8/mo)
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
 
 ### P2 — Medium Priority
-- [ ] Add auth guards to admin API endpoints (currently frontend-only protection)
 - [ ] Refactor `Dashboard.jsx` into smaller components
 - [ ] Refactor `App.js` routing with ProtectedRoute/PublicRoute wrappers
 - [ ] iOS App Store deployment (user needs Mac or CI/CD pipeline)

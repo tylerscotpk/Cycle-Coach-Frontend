@@ -1666,6 +1666,22 @@ async def check_feedback_status(email: str):
 # Admin password from environment variable
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 
+async def require_admin(authorization: Optional[str] = Header(None)):
+    """Dependency that validates admin token for protected admin endpoints."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Admin authentication required")
+    token = authorization.replace("Bearer ", "")
+    session = await db.admin_sessions.find_one({"token": token})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    expires_at = datetime.fromisoformat(session['expires_at'])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        await db.admin_sessions.delete_one({"token": token})
+        raise HTTPException(status_code=401, detail="Admin token expired")
+    return True
+
 class AdminLoginRequest(BaseModel):
     password: str
 
@@ -1740,7 +1756,7 @@ async def admin_logout(authorization: Optional[str] = Header(None)):
     return {"message": "Logged out successfully"}
 
 @api_router.get("/admin/feedback")
-async def get_all_feedback():
+async def get_all_feedback(_=Depends(require_admin)):
     """Get all feedback (admin endpoint)"""
     feedback_list = await db.feedback.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
     
@@ -1758,7 +1774,7 @@ async def get_all_feedback():
     }
 
 @api_router.get("/trial/requests")
-async def get_trial_requests(status: Optional[str] = None):
+async def get_trial_requests(status: Optional[str] = None, _=Depends(require_admin)):
     """Get all trial requests (admin endpoint)"""
     query = {}
     if status:
@@ -1768,7 +1784,7 @@ async def get_trial_requests(status: Optional[str] = None):
     return {"requests": requests, "count": len(requests)}
 
 @api_router.post("/trial/approve/{email}")
-async def approve_trial_request(email: str):
+async def approve_trial_request(email: str, _=Depends(require_admin)):
     """Approve a trial request - generates 1-MONTH trial license key and sends email"""
     email = email.lower().strip()
     
@@ -1833,7 +1849,7 @@ async def approve_trial_request(email: str):
     }
 
 @api_router.post("/trial/reject/{email}")
-async def reject_trial_request(email: str):
+async def reject_trial_request(email: str, _=Depends(require_admin)):
     """Reject a trial request"""
     email = email.lower().strip()
     
@@ -1852,7 +1868,7 @@ class GrantKeyRequest(BaseModel):
     key_type: str  # 'lifetime' or 'yearly'
 
 @api_router.post("/admin/grant-key")
-async def grant_key(request: GrantKeyRequest):
+async def grant_key(request: GrantKeyRequest, _=Depends(require_admin)):
     """Grant a lifetime or yearly key to a user (for approved testers after trial)"""
     email = request.email.lower().strip()
     key_type = request.key_type.lower()
@@ -1902,7 +1918,7 @@ async def grant_key(request: GrantKeyRequest):
     }
 
 @api_router.get("/admin/users")
-async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str] = None, plan_type: Optional[str] = None, no_plan: bool = False):
+async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str] = None, plan_type: Optional[str] = None, no_plan: bool = False, _=Depends(require_admin)):
     """Get all registered users from auth_users collection"""
     query = {"is_active": True}
     
@@ -1919,7 +1935,7 @@ async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str
     return {"users": users, "count": len(users)}
 
 @api_router.post("/admin/archive-user/{email}")
-async def archive_user(email: str):
+async def archive_user(email: str, _=Depends(require_admin)):
     """Deactivate a user account"""
     email = email.lower().strip()
     result = await db.auth_users.update_one(
@@ -1931,7 +1947,7 @@ async def archive_user(email: str):
     return {"status": "archived", "email": email}
 
 @api_router.post("/admin/unarchive-user/{email}")
-async def unarchive_user(email: str):
+async def unarchive_user(email: str, _=Depends(require_admin)):
     """Reactivate a user account"""
     email = email.lower().strip()
     result = await db.auth_users.update_one(
@@ -1943,7 +1959,7 @@ async def unarchive_user(email: str):
     return {"status": "unarchived", "email": email}
 
 @api_router.post("/admin/cancel-user/{email}")
-async def cancel_user(email: str):
+async def cancel_user(email: str, _=Depends(require_admin)):
     """Cancel a user's subscription access"""
     email = email.lower().strip()
     result = await db.auth_users.update_one(
@@ -1955,7 +1971,7 @@ async def cancel_user(email: str):
     return {"status": "cancelled", "email": email}
 
 @api_router.post("/admin/restore-user/{email}")
-async def restore_user(email: str):
+async def restore_user(email: str, _=Depends(require_admin)):
     """Restore a cancelled user's subscription access"""
     email = email.lower().strip()
     result = await db.auth_users.update_one(
@@ -1967,7 +1983,7 @@ async def restore_user(email: str):
     return {"status": "restored", "email": email}
 
 @api_router.post("/admin/grant-lifetime/{email}")
-async def grant_lifetime_access(email: str):
+async def grant_lifetime_access(email: str, _=Depends(require_admin)):
     """Grant lifetime (grandfathered) access to a user and cancel any active Stripe subscription."""
     email = email.lower().strip()
     user = await db.auth_users.find_one({"email": email})
@@ -1999,12 +2015,13 @@ async def grant_lifetime_access(email: str):
 
 
 @api_router.get("/admin/stats")
-async def get_admin_stats():
+async def get_admin_stats(_=Depends(require_admin)):
     """Get overall stats for dashboard from auth_users"""
     total_users = await db.auth_users.count_documents({"is_active": True})
     trial_count = await db.auth_users.count_documents({"plan_type": "trial", "is_active": True})
     basic_count = await db.auth_users.count_documents({"subscription_tier": "basic", "subscription_status": {"$in": ["active", "cancelling"]}, "is_active": True})
     advanced_count = await db.auth_users.count_documents({"subscription_tier": "advanced", "subscription_status": {"$in": ["active", "cancelling"]}, "is_active": True})
+    lifetime_count = await db.auth_users.count_documents({"subscription_tier": "grandfathered", "is_active": True})
     no_plan_count = await db.auth_users.count_documents({"$or": [{"subscription_status": None}, {"subscription_status": {"$exists": False}}], "is_active": True})
     cancelled_count = await db.auth_users.count_documents({"subscription_status": {"$in": ["cancelled", "cancelling"]}})
     
@@ -2014,6 +2031,7 @@ async def get_admin_stats():
             "trial": trial_count,
             "basic": basic_count,
             "advanced": advanced_count,
+            "lifetime": lifetime_count,
             "no_plan": no_plan_count,
             "cancelled": cancelled_count
         }

@@ -82,9 +82,15 @@ const AdminDashboard = () => {
     }
   };
 
+  const getAdminHeaders = () => {
+    const token = sessionStorage.getItem('admin_token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API}/api/admin/stats`);
+      const response = await fetch(`${API}/api/admin/stats`, { headers: getAdminHeaders() });
+      if (response.status === 401) { sessionStorage.removeItem('admin_token'); setIsAuthenticated(false); return; }
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -105,7 +111,8 @@ const AdminDashboard = () => {
       } else if (userFilter !== 'all') {
         url += `subscription_tier=${userFilter}`;
       }
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: getAdminHeaders() });
+      if (response.status === 401) { sessionStorage.removeItem('admin_token'); setIsAuthenticated(false); return; }
       const data = await response.json();
       setUsers(data.users || []);
     } catch (error) {
@@ -118,7 +125,7 @@ const AdminDashboard = () => {
 
   const handleCancel = async (email) => {
     try {
-      const response = await fetch(`${API}/api/admin/cancel-user/${email}`, { method: 'POST' });
+      const response = await fetch(`${API}/api/admin/cancel-user/${email}`, { method: 'POST', headers: getAdminHeaders() });
       const result = await response.json();
       if (result.status === 'cancelled') {
         toast.success('User access cancelled');
@@ -135,7 +142,7 @@ const AdminDashboard = () => {
 
   const handleRestoreCancelled = async (email) => {
     try {
-      const response = await fetch(`${API}/api/admin/restore-user/${email}`, { method: 'POST' });
+      const response = await fetch(`${API}/api/admin/restore-user/${email}`, { method: 'POST', headers: getAdminHeaders() });
       const result = await response.json();
       if (result.status === 'restored') {
         toast.success('User access restored');
@@ -152,7 +159,7 @@ const AdminDashboard = () => {
 
   const handleArchive = async (email) => {
     try {
-      const response = await fetch(`${API}/api/admin/archive-user/${email}`, { method: 'POST' });
+      const response = await fetch(`${API}/api/admin/archive-user/${email}`, { method: 'POST', headers: getAdminHeaders() });
       const result = await response.json();
       if (result.status === 'archived') {
         toast.success('User deactivated');
@@ -171,7 +178,7 @@ const AdminDashboard = () => {
     if (!lifetimeTarget) return;
     setGrantingLifetime(true);
     try {
-      const response = await fetch(`${API}/api/admin/grant-lifetime/${lifetimeTarget}`, { method: 'POST' });
+      const response = await fetch(`${API}/api/admin/grant-lifetime/${lifetimeTarget}`, { method: 'POST', headers: getAdminHeaders() });
       let result;
       try { result = await response.json(); } catch { result = {}; }
       if (response.ok && result.status === 'granted') {
@@ -289,6 +296,7 @@ const AdminDashboard = () => {
     { label: 'Free Trial', count: stats.users?.trial || 0, color: 'cyan' },
     { label: 'Basic', count: stats.users?.basic || 0, color: 'blue' },
     { label: 'Advanced', count: stats.users?.advanced || 0, color: 'emerald' },
+    { label: 'Lifetime', count: stats.users?.lifetime || 0, color: 'purple' },
     { label: 'Cancelled', count: stats.users?.cancelled || 0, color: 'red' },
   ];
 
@@ -309,7 +317,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {statCards.map((s) => (
             <Card key={s.label} className="border-slate-700 bg-slate-800/50">
               <CardContent className="p-4 text-center">
