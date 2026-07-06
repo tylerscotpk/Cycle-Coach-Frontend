@@ -1918,11 +1918,13 @@ async def grant_key(request: GrantKeyRequest, _=Depends(require_admin)):
     }
 
 @api_router.get("/admin/users")
-async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str] = None, plan_type: Optional[str] = None, no_plan: bool = False, _=Depends(require_admin)):
+async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str] = None, plan_type: Optional[str] = None, no_plan: bool = False, deactivated: bool = False, _=Depends(require_admin)):
     """Get all registered users from auth_users collection"""
     query = {"is_active": True}
     
-    if cancelled:
+    if deactivated:
+        query = {"is_active": False}
+    elif cancelled:
         query = {"subscription_status": {"$in": ["cancelled", "cancelling"]}}
     elif no_plan:
         query["$or"] = [{"subscription_status": None}, {"subscription_status": {"$exists": False}}]
@@ -1936,27 +1938,88 @@ async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str
 
 @api_router.post("/admin/archive-user/{email}")
 async def archive_user(email: str, _=Depends(require_admin)):
-    """Deactivate a user account"""
+    """Deactivate a user account — saves previous state for restore"""
     email = email.lower().strip()
+    user = await db.auth_users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Save previous subscription state for later restore
     result = await db.auth_users.update_one(
         {"email": email},
-        {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "is_active": False,
+            "pre_deactivation_status": user.get("subscription_status"),
+            "pre_deactivation_tier": user.get("subscription_tier"),
+            "pre_deactivation_plan": user.get("plan_type"),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
     )
     if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found or already deactivated")
+
+    # Send deactivation notification email
+    if RESEND_API_KEY:
+        try:
+            import asyncio
+            await asyncio.to_thread(resend.Emails.send, {
+                "from": SENDER_EMAIL,
+                "to": [email],
+                "subject": "Your Cycle Coach Account Has Been Deactivated",
+                "html": f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1 style="margin: 0;">Account Deactivated</h1>
+                    </div>
+                    <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px;">
+                        <p>Your Cycle Coach account has been deactivated.</p>
+                        <p>If you believe this is an error, please contact our support team and we'll be happy to assist you.</p>
+                        <div style="text-align: center; margin: 25px 0;">
+                            <a href="https://cyclecoach.net/info/contact" style="display: inline-block; background-color: #0891b2; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Contact Support</a>
+                        </div>
+                        <p style="color: #64748b; font-size: 13px;">— The Cycle Coach Team</p>
+                    </div>
+                </div>
+                """
+            })
+            logger.info(f"Deactivation email sent to {email}")
+        except Exception as e:
+            logger.error(f"Failed to send deactivation email to {email}: {e}")
+
     return {"status": "archived", "email": email}
 
 @api_router.post("/admin/unarchive-user/{email}")
 async def unarchive_user(email: str, _=Depends(require_admin)):
-    """Reactivate a user account"""
+    """Fully restore a deactivated user — restores previous subscription state"""
     email = email.lower().strip()
-    result = await db.auth_users.update_one(
-        {"email": email},
-        {"$set": {"is_active": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
-    )
-    if result.modified_count == 0:
+    user = await db.auth_users.find_one({"email": email})
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"status": "unarchived", "email": email}
+
+    restore_fields = {
+        "is_active": True,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Restore previous subscription state if available
+    prev_status = user.get("pre_deactivation_status")
+    prev_tier = user.get("pre_deactivation_tier")
+    prev_plan = user.get("pre_deactivation_plan")
+    if prev_status:
+        restore_fields["subscription_status"] = prev_status
+    if prev_tier:
+        restore_fields["subscription_tier"] = prev_tier
+    if prev_plan:
+        restore_fields["plan_type"] = prev_plan
+
+    result = await db.auth_users.update_one({"email": email}, {"$set": restore_fields})
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found or already active")
+    return {
+        "status": "unarchived",
+        "email": email,
+        "restored_tier": prev_tier,
+        "restored_status": prev_status,
+    }
 
 @api_router.post("/admin/cancel-user/{email}")
 async def cancel_user(email: str, _=Depends(require_admin)):
@@ -1972,12 +2035,27 @@ async def cancel_user(email: str, _=Depends(require_admin)):
 
 @api_router.post("/admin/restore-user/{email}")
 async def restore_user(email: str, _=Depends(require_admin)):
-    """Restore a cancelled user's subscription access"""
+    """Restore a user — handles both cancelled subscriptions and deactivated accounts"""
     email = email.lower().strip()
-    result = await db.auth_users.update_one(
-        {"email": email},
-        {"$set": {"subscription_status": "active", "updated_at": datetime.now(timezone.utc).isoformat()}}
-    )
+    user = await db.auth_users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    restore_fields = {
+        "subscription_status": "active",
+        "is_active": True,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # If deactivated, restore previous tier/plan
+    if not user.get("is_active", True):
+        prev_tier = user.get("pre_deactivation_tier")
+        prev_plan = user.get("pre_deactivation_plan")
+        if prev_tier:
+            restore_fields["subscription_tier"] = prev_tier
+        if prev_plan:
+            restore_fields["plan_type"] = prev_plan
+
+    result = await db.auth_users.update_one({"email": email}, {"$set": restore_fields})
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     return {"status": "restored", "email": email}
@@ -2024,6 +2102,7 @@ async def get_admin_stats(_=Depends(require_admin)):
     lifetime_count = await db.auth_users.count_documents({"subscription_tier": "grandfathered", "is_active": True})
     no_plan_count = await db.auth_users.count_documents({"$or": [{"subscription_status": None}, {"subscription_status": {"$exists": False}}], "is_active": True})
     cancelled_count = await db.auth_users.count_documents({"subscription_status": {"$in": ["cancelled", "cancelling"]}})
+    deactivated_count = await db.auth_users.count_documents({"is_active": False})
     
     return {
         "users": {
@@ -2033,7 +2112,8 @@ async def get_admin_stats(_=Depends(require_admin)):
             "advanced": advanced_count,
             "lifetime": lifetime_count,
             "no_plan": no_plan_count,
-            "cancelled": cancelled_count
+            "cancelled": cancelled_count,
+            "deactivated": deactivated_count
         }
     }
 

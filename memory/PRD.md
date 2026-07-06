@@ -195,6 +195,15 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - **Duplicate Stripe customers fixed**: Checkout reuses existing `stripe_customer_id` or searches by email before creating new customer.
 - **Testing**: 9/9 backend + full frontend E2E verified.
 
+### Jul 6, 2026 — Deactivate/Restore Flow Overhaul
+- **Deactivated users blocked from re-registering**: Returns "This account has been deactivated. Please contact support." (403) instead of "Account already exists".
+- **Deactivated users blocked from login**: Same message on login attempt.
+- **Admin Deactivate saves state**: Saves `pre_deactivation_status`, `pre_deactivation_tier`, `pre_deactivation_plan` before setting `is_active: false`. Sends deactivation notification email via Resend.
+- **Admin Restore fully restores**: Sets `is_active: true` and restores previous subscription tier/status/plan from saved state. Immediate login works.
+- **Admin Dashboard**: Added "Deactivated" filter tab with count. Deactivated users show "deactivated" status badge and "Reactivate" button. Active users show full action set (Grant Lifetime, Restore, Cancel, Deactivate).
+- **DB Fix**: ts_peterson@yahoo.com set to `is_active: true`, `subscription_status: active`, `subscription_tier: advanced`.
+- **Testing**: Full flow verified — deactivate → block registration → block login → restore → login works with restored tier.
+
 ---
 
 ## Backlog

@@ -141,6 +141,8 @@ async def register_user(request: RegisterRequest, response: Response):
 
         existing_user = await db.auth_users.find_one({"email": email})
         if existing_user:
+            if not existing_user.get("is_active", True):
+                raise HTTPException(status_code=403, detail="This account has been deactivated. Please contact support.")
             raise HTTPException(status_code=400, detail="An account with this email already exists")
 
         if request.phone:
@@ -221,7 +223,7 @@ async def login_user(request: LoginRequest, response: Response):
             raise HTTPException(status_code=401, detail="Invalid email/phone or password")
 
         if not user.get("is_active", True):
-            raise HTTPException(status_code=401, detail="Account is disabled")
+            raise HTTPException(status_code=403, detail="This account has been deactivated. Please contact support.")
 
         session_token = secrets.token_urlsafe(32)
         session = {

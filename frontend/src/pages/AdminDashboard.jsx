@@ -108,6 +108,8 @@ const AdminDashboard = () => {
         url += 'plan_type=trial';
       } else if (userFilter === 'no_plan') {
         url += 'no_plan=true';
+      } else if (userFilter === 'deactivated') {
+        url += 'deactivated=true';
       } else if (userFilter !== 'all') {
         url += `subscription_tier=${userFilter}`;
       }
@@ -149,11 +151,28 @@ const AdminDashboard = () => {
         fetchUsers();
         fetchStats();
       } else {
-        toast.error('Failed to restore');
+        toast.error(result.detail || 'Failed to restore');
       }
     } catch (error) {
       console.error('Error restoring:', error);
       toast.error('Failed to restore user');
+    }
+  };
+
+  const handleRestoreDeactivated = async (email) => {
+    try {
+      const response = await fetch(`${API}/api/admin/unarchive-user/${email}`, { method: 'POST', headers: getAdminHeaders() });
+      const result = await response.json();
+      if (result.status === 'unarchived') {
+        toast.success(`User reactivated${result.restored_tier ? ` (restored to ${result.restored_tier})` : ''}`);
+        fetchUsers();
+        fetchStats();
+      } else {
+        toast.error(result.detail || 'Failed to reactivate');
+      }
+    } catch (error) {
+      console.error('Error reactivating:', error);
+      toast.error('Failed to reactivate user');
     }
   };
 
@@ -216,6 +235,9 @@ const AdminDashboard = () => {
   };
 
   const getStatusBadge = (user) => {
+    if (user.is_active === false) {
+      return <span className="px-2 py-0.5 rounded text-xs border bg-gray-500/20 text-gray-400 border-gray-500/30">deactivated</span>;
+    }
     const status = user.subscription_status;
     const map = {
       active: { label: 'active', cls: 'bg-green-500/20 text-green-400 border-green-500/30' },
@@ -290,6 +312,7 @@ const AdminDashboard = () => {
     { key: 'advanced', label: 'Advanced', count: stats.users?.advanced || 0 },
     { key: 'cancelled', label: 'Cancelled', count: stats.users?.cancelled || 0 },
     { key: 'no_plan', label: 'No Plan', count: stats.users?.no_plan || 0 },
+    { key: 'deactivated', label: 'Deactivated', count: stats.users?.deactivated || 0 },
   ];
 
   const statCards = [
@@ -382,50 +405,65 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                       <div className="flex gap-2 flex-wrap justify-end flex-shrink-0">
-                        {/* Grant Lifetime Access */}
-                        {user.subscription_tier !== 'grandfathered' && (
-                          <Button
-                            size="sm"
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
-                            onClick={() => setLifetimeTarget(user.email)}
-                            data-testid={`admin-grant-lifetime-${index}`}
-                          >
-                            Grant Lifetime
-                          </Button>
-                        )}
-                        {/* Restore (for cancelled) */}
-                        {(user.subscription_status === 'cancelled' || user.subscription_status === 'cancelling') && (
+                        {/* Reactivate deactivated users */}
+                        {user.is_active === false && (
                           <Button
                             size="sm"
                             className="bg-green-600 hover:bg-green-700"
-                            onClick={() => handleRestoreCancelled(user.email)}
-                            data-testid={`admin-restore-${index}`}
+                            onClick={() => handleRestoreDeactivated(user.email)}
+                            data-testid={`admin-reactivate-${index}`}
                           >
-                            Restore
+                            Reactivate
                           </Button>
                         )}
-                        {/* Cancel (for active) */}
-                        {user.subscription_status === 'active' && user.subscription_tier !== 'grandfathered' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
-                            onClick={() => handleCancel(user.email)}
-                            data-testid={`admin-cancel-${index}`}
-                          >
-                            Cancel
-                          </Button>
+                        {user.is_active !== false && (
+                          <>
+                            {/* Grant Lifetime Access */}
+                            {user.subscription_tier !== 'grandfathered' && (
+                              <Button
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700 text-white"
+                                onClick={() => setLifetimeTarget(user.email)}
+                                data-testid={`admin-grant-lifetime-${index}`}
+                              >
+                                Grant Lifetime
+                              </Button>
+                            )}
+                            {/* Restore (for cancelled) */}
+                            {(user.subscription_status === 'cancelled' || user.subscription_status === 'cancelling') && (
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => handleRestoreCancelled(user.email)}
+                                data-testid={`admin-restore-${index}`}
+                              >
+                                Restore
+                              </Button>
+                            )}
+                            {/* Cancel (for active) */}
+                            {user.subscription_status === 'active' && user.subscription_tier !== 'grandfathered' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-600 text-red-400 hover:bg-red-600 hover:text-white"
+                                onClick={() => handleCancel(user.email)}
+                                data-testid={`admin-cancel-${index}`}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                            {/* Deactivate */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-slate-600 text-slate-400 hover:bg-slate-700"
+                              onClick={() => handleArchive(user.email)}
+                              data-testid={`admin-deactivate-${index}`}
+                            >
+                              Deactivate
+                            </Button>
+                          </>
                         )}
-                        {/* Deactivate */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-slate-600 text-slate-400 hover:bg-slate-700"
-                          onClick={() => handleArchive(user.email)}
-                          data-testid={`admin-deactivate-${index}`}
-                        >
-                          Deactivate
-                        </Button>
                       </div>
                     </div>
                   </div>

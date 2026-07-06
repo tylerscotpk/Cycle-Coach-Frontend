@@ -10,10 +10,10 @@
 - Password: Test1234
 - Plan: grandfathered (was trial, upgraded to lifetime during testing)
 
-## Original User
+## Original User (Advanced)
 - Email: ts_peterson@yahoo.com
 - Password: (user-set, unknown to agent)
-- Subscription: active
+- Subscription: active, subscription_tier: advanced
 
 ## Admin Dashboard
 - URL: /admin
