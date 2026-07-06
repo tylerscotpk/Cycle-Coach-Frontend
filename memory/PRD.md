@@ -187,6 +187,14 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - **Frontend Auth Headers**: All admin dashboard fetch calls now include `Authorization: Bearer <token>` header. Auto-logout on 401 response.
 - **Lifetime Stat Card**: Added "Lifetime" count to `/api/admin/stats` (queries `subscription_tier: "grandfathered"`). Frontend shows 5 stat cards: Free Trial, Basic, Advanced, Lifetime, Cancelled — totals now reconcile.
 
+### Jul 4, 2026 (update 3) — 7 Subscription Flow Bug Fixes
+- **Grandfathered tier recognition**: Auth check now evaluates `subscription_tier == "grandfathered"` FIRST, bypassing subscription_status. Webhook handlers skip grandfathered users to prevent status regression.
+- **Upgrade prompts hidden**: `hasAIAccess` includes `grandfathered`. No upgrade prompts for advanced/grandfathered.
+- **Features list tier-aware**: AI Wingman shows checkmark for advanced/grandfathered/trial, X mark for basic.
+- **Double charging fixed**: Dashboard upgrade uses `/subscription/upgrade` (in-place swap) when user has existing Stripe subscription, avoids creating duplicate.
+- **Duplicate Stripe customers fixed**: Checkout reuses existing `stripe_customer_id` or searches by email before creating new customer.
+- **Testing**: 9/9 backend + full frontend E2E verified.
+
 ---
 
 ## Backlog
@@ -203,6 +211,8 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] PWA icon fix (DONE Jul 4)
 - [x] Admin API auth guards (DONE Jul 4)
 - [x] Lifetime stat card in admin dashboard (DONE Jul 4)
+- [x] Onboarding re-prompt bug fix (DONE Jul 4)
+- [x] 7 subscription flow bug fixes — grandfathered recognition, double charging, duplicate customers, feature gating (DONE Jul 4)
 - [ ] Connect real Stripe Payment Links for Basic ($5/mo) and Advanced ($8/mo)
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
 

@@ -1,14 +1,14 @@
 # Test Credentials
 
-## Test User (Active Subscription - Legacy)
+## Test User (Grandfathered/Lifetime)
 - Email: testuser@test.com
 - Password: Test1234
-- Subscription: active (monthly - legacy)
+- Subscription: grandfathered (lifetime access, no Stripe subscription)
 
-## Trial User
+## Trial User (also Grandfathered from test iteration 10)
 - Email: trialtest@test.com
 - Password: Test1234
-- Plan: trial (7-day free trial, expires ~Jul 7 2026)
+- Plan: grandfathered (was trial, upgraded to lifetime during testing)
 
 ## Original User
 - Email: ts_peterson@yahoo.com
