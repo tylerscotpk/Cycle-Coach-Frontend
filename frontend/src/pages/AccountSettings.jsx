@@ -374,14 +374,36 @@ const AccountSettings = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3">
-              {['Cycle Tracking & Phase Detection', 'MoodMap Visualizer', 'Phase-Based Tips & Insights', 'Research-Backed Resources', 'Partner Profile & Preferences', 'AI Wingman (Personalized Advice)', 'Push Notifications'].map((feature) => (
-                <li key={feature} className="flex items-center gap-3 text-white">
-                  <span className="text-green-400">&#10003;</span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
+            {(() => {
+              const tier = subscription?.subscription_tier || subscription?.plan_type;
+              const hasAI = tier === 'advanced' || tier === 'grandfathered' || tier === 'trial';
+              const baseFeatures = [
+                'Cycle Tracking & Phase Detection',
+                'MoodMap Visualizer',
+                'Phase-Based Tips & Insights',
+                'Research-Backed Resources',
+                'Partner Profile & Preferences',
+                'Push Notifications',
+              ];
+              const aiFeature = 'AI Wingman (Personalized Advice)';
+              return (
+                <ul className="space-y-3">
+                  {baseFeatures.map((feature) => (
+                    <li key={feature} className="flex items-center gap-3 text-white">
+                      <span className="text-green-400">&#10003;</span>
+                      {feature}
+                    </li>
+                  ))}
+                  <li className={`flex items-center gap-3 ${hasAI ? 'text-white' : 'text-slate-500'}`}>
+                    <span className={hasAI ? 'text-green-400' : 'text-slate-600'}>
+                      {hasAI ? '\u2713' : '\u2717'}
+                    </span>
+                    {aiFeature}
+                    {!hasAI && <span className="text-xs text-slate-500 ml-1">(Advanced plan)</span>}
+                  </li>
+                </ul>
+              );
+            })()}
           </CardContent>
         </Card>
 

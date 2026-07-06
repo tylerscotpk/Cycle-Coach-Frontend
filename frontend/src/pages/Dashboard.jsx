@@ -54,7 +54,8 @@ const Dashboard = () => {
   };
   const [planType, setPlanType] = useState(getUserPlanType);
 
-  const hasAIAccess = planType === 'trial' || planType === 'advanced';
+  const hasAIAccess = planType === 'trial' || planType === 'advanced' || planType === 'grandfathered';
+  const isFullTier = planType === 'advanced' || planType === 'grandfathered';
   
   // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -168,7 +169,7 @@ const Dashboard = () => {
       try {
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         if (userData.id) LocalStorage.setUser(userData.id);
-      } catch {}
+      } catch { /* ignore localStorage error */ }
 
       // Load subscription tier info
       const tierData = LocalStorage.getSubscriptionTier();
@@ -449,7 +450,7 @@ const Dashboard = () => {
           { role: 'assistant', text: response.data.response, date: new Date().toISOString() }
         );
         LocalStorage.saveChatHistory(stored.slice(-50));
-      } catch {}
+      } catch { /* ignore save error */ }
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
@@ -736,22 +737,48 @@ const Dashboard = () => {
 
     setUpgrading(true);
     try {
-      const origin = window.location.origin;
-      const res = await fetch(`${API}/api/subscription/create-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}`,
-        },
-        body: JSON.stringify({
-          plan: 'advanced',
-          success_url: `${origin}/checkout-success?plan=advanced`,
-          cancel_url: `${origin}/app`,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Failed to create checkout');
-      window.location.href = data.checkout_url;
+      // Check if user already has a Stripe subscription — use in-place upgrade (no new sub)
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      if (userData.stripe_subscription_id) {
+        const res = await fetch(`${API}/api/subscription/upgrade`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+        let data;
+        try { data = await res.json(); } catch { data = {}; }
+        if (res.ok && data.success) {
+          setPlanType('advanced');
+          try {
+            const u = JSON.parse(localStorage.getItem('user') || '{}');
+            u.plan_type = 'advanced';
+            u.subscription_tier = 'advanced';
+            localStorage.setItem('user', JSON.stringify(u));
+          } catch { /* ignore */ }
+          setShowUpgradeModal(false);
+          toast.success('Upgraded to Advanced! AI Wingman is now unlocked.');
+          window.location.reload();
+        } else {
+          throw new Error(data.detail || 'Failed to upgrade');
+        }
+      } else {
+        // No existing subscription — redirect to Stripe Checkout
+        const origin = window.location.origin;
+        const res = await fetch(`${API}/api/subscription/create-checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`,
+          },
+          body: JSON.stringify({
+            plan: 'advanced',
+            success_url: `${origin}/checkout-success?plan=advanced`,
+            cancel_url: `${origin}/app`,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to create checkout');
+        window.location.href = data.checkout_url;
+      }
     } catch (err) {
       toast.error(err.message || 'Something went wrong');
       setUpgrading(false);

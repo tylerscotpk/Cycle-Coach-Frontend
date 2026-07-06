@@ -282,6 +282,11 @@ async def stripe_webhook(request: Request):
             )
 
             if auth_user:
+                # Never overwrite grandfathered users from webhook
+                if auth_user.get("subscription_tier") == "grandfathered":
+                    logger.info(f"SKIPPING subscription update for grandfathered user {auth_user.get('email')}")
+                    return {"status": "subscription_updated_skipped_grandfathered"}
+
                 update = {"stripe_customer_id": customer_id}
 
                 # Resolve plan_type from price ID
@@ -327,7 +332,11 @@ async def stripe_webhook(request: Request):
                 or await _find_user_by_stripe_customer(customer_id)
             )
             if auth_user:
-                await _activate_user(auth_user, {"subscription_status": "cancelled"}, "customer.subscription.deleted")
+                # Never downgrade grandfathered users — their Stripe sub was cancelled intentionally by admin
+                if auth_user.get("subscription_tier") == "grandfathered":
+                    logger.info(f"SKIPPING status update for grandfathered user {auth_user.get('email')}")
+                else:
+                    await _activate_user(auth_user, {"subscription_status": "cancelled"}, "customer.subscription.deleted")
             return {"status": "subscription_cancelled"}
 
         # ---- invoice.paid ----
@@ -569,11 +578,30 @@ async def create_checkout_session(
             "success_url": request.success_url,
             "cancel_url": request.cancel_url,
             "client_reference_id": user_id,
-            "customer_email": email,
             "payment_method_collection": "always",
             "metadata": metadata,
             "subscription_data": subscription_data,
         }
+
+        # Reuse existing Stripe customer if available, otherwise use email
+        existing_customer_id = user.get("stripe_customer_id")
+        if existing_customer_id:
+            checkout_params["customer"] = existing_customer_id
+        else:
+            # Search Stripe for existing customer by email
+            try:
+                customers = stripe.Customer.list(email=email, limit=1)
+                if customers.data:
+                    checkout_params["customer"] = customers.data[0].id
+                    # Persist for future use
+                    await db.auth_users.update_one(
+                        {"id": user_id},
+                        {"$set": {"stripe_customer_id": customers.data[0].id}}
+                    )
+                else:
+                    checkout_params["customer_email"] = email
+            except Exception:
+                checkout_params["customer_email"] = email
 
         session = stripe.checkout.Session.create(**checkout_params)
         logger.info(f"CHECKOUT CREATED: plan={request.plan} user={email} session={session.id}")

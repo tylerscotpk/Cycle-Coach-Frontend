@@ -240,10 +240,13 @@ async def login_user(request: LoginRequest, response: Response):
 
         has_subscription = False
         subscription_status = user.get("subscription_status")
+        subscription_tier = user.get("subscription_tier")
         trial_ends_at = user.get("trial_ends_at")
         plan_type = user.get("plan_type", "none")
 
-        if subscription_status in ("active", "cancelling"):
+        if subscription_tier == "grandfathered" or plan_type == "grandfathered":
+            has_subscription = True
+        elif subscription_status in ("active", "cancelling"):
             has_subscription = True
         elif subscription_status == "trialing" or plan_type == "trial":
             if trial_ends_at:
@@ -400,10 +403,13 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
 
         has_subscription = False
         subscription_status = user.get("subscription_status")
+        subscription_tier = user.get("subscription_tier")
         trial_ends_at = user.get("trial_ends_at")
         plan_type = user.get("plan_type", "none")
 
-        if subscription_status in ("active", "cancelling"):
+        if subscription_tier == "grandfathered" or plan_type == "grandfathered":
+            has_subscription = True
+        elif subscription_status in ("active", "cancelling"):
             has_subscription = True
         elif subscription_status == "trialing" or plan_type == "trial":
             if trial_ends_at:

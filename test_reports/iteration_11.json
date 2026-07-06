@@ -1,0 +1,28 @@
+{
+  "summary": "All 7 subscription flow bugs verified fixed. Backend: 9/9 pytest tests pass (login has_subscription:true, auth/check has_subscription:true, subscription_tier=grandfathered, upgrade rejects grandfathered with 400). Frontend: E2E Playwright test confirms grandfathered user (testuser@test.com) routes to /app on login, no 'Upgrade to Advanced' prompt on dashboard, no AI-Wingman-locked indicator, /account shows AI Wingman with green checkmark (no '(Advanced plan)' note), and after refresh + re-navigation to /app the user stays on /app (Bug #7 fixed). Code review confirms Bug #4 (Dashboard.jsx handleUpgradeCheckout branches on stripe_subscription_id → uses /api/subscription/upgrade instead of /api/subscription/create-checkout) and Bug #5 (stripe.py create_checkout_session reuses stripe_customer_id or searches by email before creating a new customer).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_grandfathered_subscription.py",
+    "/app/test_reports/pytest/grandfathered.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "auth.py L247-248, L410-411: has_subscription evaluates subscription_tier=='grandfathered' OR plan_type=='grandfathered' FIRST — correctly bypasses subscription_status checks even if status becomes 'cancelled' via webhook.",
+    "stripe.py L285-288 (customer.subscription.updated) and L335-339 (customer.subscription.deleted): early-return / skip for users with subscription_tier=='grandfathered' — prevents webhook from reverting admin-granted lifetime to cancelled.",
+    "stripe.py L586-604 (create_checkout_session): reuses user.stripe_customer_id if present, else searches stripe.Customer.list(email=...) and persists customer_id — prevents duplicate Stripe customers (Bug #5).",
+    "Dashboard.jsx L734-786 handleUpgradeCheckout: branches on userData.stripe_subscription_id — when present, POSTs to /api/subscription/upgrade (in-place swap, no double charge); else falls back to /api/subscription/create-checkout (Bug #4 fixed).",
+    "Dashboard.jsx L57-58: hasAIAccess and isFullTier both include 'grandfathered' — dashboard AI features unlocked without upgrade prompt (Bug #2).",
+    "AccountSettings.jsx L377-406: features list computes tier once (subscription_tier || plan_type) and gates only AI Wingman row on tier in ('advanced','grandfathered','trial'); no duplicated logic, no static feature list (Bug #3).",
+    "Note: 'trial' users show AI Wingman as a green checkmark item in Account Settings features — verify this is intended product behavior (trial does grant AI Wingman access per Dashboard.jsx L57 hasAIAccess).",
+    "Existing minor: /api/admin/* endpoints remain unauthenticated (previous iteration noted this — no change requested)."
+  ],
+  "updated_files": ["/app/backend/tests/test_grandfathered_subscription.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (all grandfathered UX flows verified)"},
+  "test_credentials": {"testuser@test.com": "Test1234 (subscription_tier=grandfathered, plan_type=grandfathered, subscription_status=active, stripe_subscription_id=null)"},
+  "seed_data_creation": "None. Used the existing testuser@test.com that was previously granted lifetime via admin.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "testuser@test.com is now grandfathered/lifetime (stripe_subscription_id=null, subscription_status=active). /api/subscription/upgrade correctly returns 400 for this user since no Stripe sub exists. Both trialtest@test.com (grandfathered per iteration 10) and testuser@test.com are now grandfathered — for future Basic/Advanced UI flows you'll need to seed a fresh user with a real stripe_subscription_id. Onboarding gate is bypassed by localStorage keys `cyclecoach_state_waiver_complete_{userId}` and `cyclecoach_consent_granted_{userId}` set to 'true'.",
+  "rca_of_the_issue": "Original Bug #1/#7 RCA: login and /auth/check evaluated has_subscription only via subscription_status — grandfathered users granted via admin have subscription_status='active' now, but if a stripe webhook fired 'customer.subscription.deleted' during the grant flow it would have flipped status to 'cancelled' → protected route would push them to /pricing. Fix has two prongs: (a) has_subscription checks subscription_tier=='grandfathered' FIRST (auth.py L247-248, L410-411), (b) webhook handlers early-return for grandfathered users (stripe.py L286-288, L336-338), so status can never regress. Bug #4/#5 RCA: previous flow always POSTed to /create-checkout which created a NEW subscription and (without customer reuse) a NEW Stripe customer — causing double charging and duplicate customers; fix picks upgrade endpoint when stripe_subscription_id is present and reuses customer_id / email lookup on new checkouts."
+}
