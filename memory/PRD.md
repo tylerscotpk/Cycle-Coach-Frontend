@@ -204,6 +204,15 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - **DB Fix**: ts_peterson@yahoo.com set to `is_active: true`, `subscription_status: active`, `subscription_tier: advanced`.
 - **Testing**: Full flow verified — deactivate → block registration → block login → restore → login works with restored tier.
 
+### Jul 6, 2026 (update) — 6 Subscription Flow Bug Fixes
+- **Upgrade fallback to checkout**: Upgrade endpoint now returns `{use_checkout: true}` for ghost subscriptions (incomplete_expired, canceled, incomplete). Dashboard and Account Settings both fall back to Stripe Checkout when in-place upgrade isn't possible.
+- **Cancel modal always closes**: `setShowCancelModal(false)` called in all paths — success, error response, and catch block.
+- **incomplete_expired handling**: Cancel endpoint detects ghost subscriptions, cleans up `stripe_subscription_id` in DB, and returns success with cleanup message.
+- **Account page Basic tier display**: Tier badge uses `(subscription_tier || plan_type)` fallback. Billing amount correctly shows $5/mo for Basic.
+- **Upgrade button for Basic users**: Account Settings now shows "Upgrade to Advanced — $8/mo" button for active Basic subscribers.
+- **Grandfathered display name**: Added 'Lifetime' mapping to `getTierDisplayName` and purple badge color.
+- **Testing**: 7/7 backend passed, frontend code-reviewed and verified.
+
 ---
 
 ## Backlog
