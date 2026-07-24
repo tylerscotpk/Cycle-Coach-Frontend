@@ -310,6 +310,7 @@ const AdminDashboard = () => {
     { key: 'trial', label: 'Free Trial', count: stats.users?.trial || 0 },
     { key: 'basic', label: 'Basic', count: stats.users?.basic || 0 },
     { key: 'advanced', label: 'Advanced', count: stats.users?.advanced || 0 },
+    { key: 'grandfathered', label: 'Lifetime', count: stats.users?.lifetime || 0 },
     { key: 'cancelled', label: 'Cancelled', count: stats.users?.cancelled || 0 },
     { key: 'no_plan', label: 'No Plan', count: stats.users?.no_plan || 0 },
     { key: 'deactivated', label: 'Deactivated', count: stats.users?.deactivated || 0 },
