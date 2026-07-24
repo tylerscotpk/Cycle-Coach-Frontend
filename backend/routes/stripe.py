@@ -626,13 +626,22 @@ async def upgrade_subscription(
     user = await _get_user_from_token(session_token, authorization)
     sub_id = user.get("stripe_subscription_id")
     if not sub_id:
-        raise HTTPException(status_code=400, detail="No active subscription found")
+        return JSONResponse(status_code=400, content={"success": False, "detail": "No active subscription found", "use_checkout": True})
 
     try:
         sub = stripe.Subscription.retrieve(sub_id)
 
+        # Clean up ghost/expired subscriptions — tell frontend to use checkout instead
+        if sub.status in ("incomplete_expired", "canceled", "incomplete"):
+            logger.warning(f"UPGRADE: Cleaning up {sub.status} subscription {sub_id} for {user.get('email')}")
+            await db.auth_users.update_one(
+                {"id": user["id"]},
+                {"$set": {"stripe_subscription_id": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            return JSONResponse(status_code=400, content={"success": False, "detail": f"Previous subscription is {sub.status}. Please use checkout.", "use_checkout": True})
+
         if sub.status not in ("active", "trialing"):
-            raise HTTPException(status_code=400, detail=f"Cannot upgrade — subscription status is {sub.status}")
+            return JSONResponse(status_code=400, content={"success": False, "detail": f"Cannot upgrade — subscription status is {sub.status}", "use_checkout": True})
 
         # Find the current subscription item
         if not sub.get("items") or not sub["items"].get("data"):

@@ -1,0 +1,37 @@
+{
+  "summary": "Tested 6 subscription-flow bug fixes. Backend pytest 7/7 passed. Verified: (1) /api/subscription/upgrade returns HTTP 400 with body {success:false, detail:'No active subscription found', use_checkout:true} for user without stripe_subscription_id (Bug #1). (4) /api/account/cancel-subscription with no stripe_subscription_id returns 400 (not 500). (5) /api/account/subscription returns both subscription_tier and plan_type so the badge fallback (tier||plan_type) resolves; AccountSettings page renders the tier badge next to 'Subscription Status'. Frontend UI verified with testuser@test.com (grandfathered): logged in, navigated to /account, badge shows 'grandfathered', neither upgrade-to-advanced-btn nor downgrade-btn is rendered (correct for grandfathered), /api/subscription/upgrade fetch from browser returns exactly {status:400, success:false, use_checkout:true}. Bugs #2/#3/#6 verified via code review only — no live Basic-tier user with active Stripe subscription is available (testuser and trialtest are both grandfathered, ts_peterson password is unknown).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Account Settings tier badge", "issues": ["Badge for 'grandfathered' tier renders the raw key 'grandfathered' — getTierDisplayName has no mapping for 'grandfathered' or 'lifetime'. Cosmetic — pre-existing, not in scope of this iteration."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_subscription_bugs_v12.py",
+    "/app/test_reports/pytest/subscription_bugs_v12.xml"
+  ],
+  "action_items": [
+    "Seed a fresh user with an active Basic-tier Stripe subscription (test-mode) so future iterations can exercise (a) the cancel modal close-on-error path (Bug #2/#3), (b) the 'Upgrade to Advanced' button visibility on the Account page (Bug #6), and (c) the incomplete_expired ghost cleanup path (Bug #4 full)."
+  ],
+  "critical_code_review_comments": [
+    "stripe.py L617-641 upgrade endpoint: returns JSONResponse(status_code=400, {success:false, use_checkout:true}) for missing sub, incomplete_expired, canceled, incomplete — also nulls stripe_subscription_id in DB before responding. Correct.",
+    "stripe.py L688-690: for other stripe.StripeError paths the endpoint raises HTTPException(400, ...) which returns {detail: '...'} WITHOUT use_checkout flag — frontend will treat this as an unrecoverable error (throws 'Failed to upgrade' toast). Acceptable but consider returning use_checkout:true here too if you want to always fall back to checkout on any Stripe failure.",
+    "auth.py L505-524 cancel endpoint: correctly detects sub_status in ('incomplete_expired','canceled','incomplete') and returns success with cleanup message and nulls stripe_subscription_id — matches Bug #4 fix intent.",
+    "AccountSettings.jsx L63-97 handleCancelSubscription: calls setShowCancelModal(false) in all three paths (success L85, response-not-ok L88, catch L93) — Bug #2/#3 fix confirmed by code review.",
+    "AccountSettings.jsx L143-191 handleUpgradeToAdvanced: correctly tries /subscription/upgrade first when stripe_subscription_id exists, falls back to /subscription/create-checkout when data.use_checkout is true. Correct.",
+    "AccountSettings.jsx L299-303 tier badge: uses (subscription_tier || plan_type) fallback so Basic tier will render even if only plan_type is set. Bug #5 fix confirmed.",
+    "AccountSettings.jsx L377-392 upgrade button: gated on tier ∈ {basic, plan_type=basic} AND subscription_status==='active'. Correct for Bug #6.",
+    "Dashboard.jsx L734-796 handleUpgradeCheckout: correctly handles data.use_checkout fallback and clears stale stripe_subscription_id in localStorage. Bug #1 fix confirmed.",
+    "Minor pre-existing: getTierDisplayName lacks mapping for 'grandfathered' and 'lifetime', so the badge shows the raw key — cosmetic only."
+  ],
+  "updated_files": ["/app/backend/tests/test_subscription_bugs_v12.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100% for grandfathered flow; Basic/Advanced flows verified via code review only"},
+  "test_credentials": {"testuser@test.com": "Test1234 (grandfathered, no stripe_subscription_id)"},
+  "seed_data_creation": "None. Only existing grandfathered testuser@test.com was available.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To fully exercise Bug #2, #3, #6 and the ghost-cleanup path of Bug #4, seed a user with a real Stripe test-mode subscription (basic tier, active status, valid stripe_subscription_id). testuser@test.com and trialtest@test.com are BOTH grandfathered → cancel/upgrade buttons are hidden for them. Login endpoint field is 'email_or_phone'. Onboarding bypass: localStorage cyclecoach_state_waiver_complete_{userId}=true and cyclecoach_consent_granted_{userId}=true. Grandfathered users have has_subscription:true, subscription_status:'active', stripe_subscription_id:null.",
+  "rca_of_the_issue": "Original Bug #1 RCA (verified fixed): when a user's stripe_subscription_id pointed at an incomplete_expired/canceled ghost sub, /subscription/upgrade would throw StripeError -> HTTP 400 with only {detail:'...'}, and the frontend gave up. Fix: backend detects those statuses, nulls the DB stripe_subscription_id, and returns JSONResponse with use_checkout:true; frontend (Dashboard.jsx L765 + AccountSettings.jsx L161) checks data.use_checkout and re-POSTs to /subscription/create-checkout. Bug #2/#3 RCA: handleCancelSubscription previously only closed the modal in the success branch, so any 400/500 (e.g. 'already scheduled') left the modal open showing spinner + then a toast — fix places setShowCancelModal(false) in all three branches. Bug #5 RCA: badge previously read subscription_tier only; Basic users granted via checkout with only plan_type='basic' set (e.g. mid-trial-to-basic conversion) rendered a blank badge — fix uses (subscription_tier || plan_type)."
+}

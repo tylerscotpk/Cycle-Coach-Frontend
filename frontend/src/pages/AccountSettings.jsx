@@ -24,6 +24,7 @@ const AccountSettings = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [downgrading, setDowngrading] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
 
   useEffect(() => {
     loadSubscriptionData();
@@ -84,10 +85,12 @@ const AccountSettings = () => {
         setShowCancelModal(false);
         toast.success('Subscription cancelled. You have access until ' + formatDate(result.cancels_at));
       } else {
+        setShowCancelModal(false);
         toast.error(result.detail || result.message || 'Failed to cancel subscription');
       }
     } catch (error) {
       console.error('Error cancelling subscription:', error);
+      setShowCancelModal(false);
       toast.error('Failed to cancel subscription. Please try again.');
     } finally {
       setCancelling(false);
@@ -136,6 +139,57 @@ const AccountSettings = () => {
       setDowngrading(false);
     }
   };
+
+  const handleUpgradeToAdvanced = async () => {
+    setUpgrading(true);
+    try {
+      const sessionToken = localStorage.getItem('session_token');
+      let useCheckout = !subscription?.stripe_subscription_id;
+
+      if (!useCheckout) {
+        const res = await fetch(`${API}/api/subscription/upgrade`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+        let data;
+        try { data = await res.json(); } catch { data = {}; }
+        if (res.ok && data.success) {
+          toast.success('Upgraded to Advanced! AI Wingman is now unlocked.');
+          loadSubscriptionData();
+          return;
+        }
+        if (data.use_checkout) {
+          useCheckout = true;
+        } else {
+          throw new Error(data.detail || 'Failed to upgrade');
+        }
+      }
+
+      if (useCheckout) {
+        const origin = window.location.origin;
+        const res = await fetch(`${API}/api/subscription/create-checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`,
+          },
+          body: JSON.stringify({
+            plan: 'advanced',
+            success_url: `${origin}/checkout-success?plan=advanced`,
+            cancel_url: `${origin}/account`,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to create checkout');
+        window.location.href = data.checkout_url;
+      }
+    } catch (err) {
+      toast.error(err.message || 'Something went wrong');
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -201,10 +255,11 @@ const AccountSettings = () => {
   const isCancelling = subscription?.subscription_status === 'cancelling';
 
   const canCancel = () => {
+    const tier = subscription?.subscription_tier || subscription?.plan_type;
     return (
       subscription?.stripe_subscription_id &&
       subscription?.subscription_status === 'active' &&
-      !['lifetime', 'grandfathered'].includes(subscription?.subscription_tier)
+      !['lifetime', 'grandfathered'].includes(tier)
     );
   };
 
@@ -241,9 +296,9 @@ const AccountSettings = () => {
           <CardHeader>
             <CardTitle className="text-white flex flex-wrap items-center gap-2" data-testid="subscription-status-title">
               Subscription Status
-              {subscription?.subscription_tier && (
-                <span className={`px-3 py-1 rounded-full text-xs sm:text-sm border ${getTierBadgeColor(subscription.subscription_tier)}`}>
-                  {getTierDisplayName(subscription.subscription_tier)}
+              {(subscription?.subscription_tier || subscription?.plan_type) && (
+                <span className={`px-3 py-1 rounded-full text-xs sm:text-sm border ${getTierBadgeColor(subscription.subscription_tier || subscription.plan_type)}`}>
+                  {getTierDisplayName(subscription.subscription_tier || subscription.plan_type)}
                 </span>
               )}
             </CardTitle>
@@ -284,7 +339,7 @@ const AccountSettings = () => {
                 </div>
               )}
 
-              {subscription?.subscription_tier && !['lifetime', 'grandfathered'].includes(subscription.subscription_tier) && (
+              {(subscription?.subscription_tier || subscription?.plan_type) && !['lifetime', 'grandfathered'].includes(subscription?.subscription_tier || subscription?.plan_type) && (
                 <>
                   <div className="bg-slate-900/50 rounded-lg p-4">
                     <p className="text-slate-400 text-sm">
@@ -314,6 +369,24 @@ const AccountSettings = () => {
                 <p className="text-orange-300/80 text-sm mt-1">
                   Your subscription will end on {formatDate(subscription.cancels_at)}. 
                   You will continue to have full access until then.
+                </p>
+              </div>
+            )}
+
+            {/* Upgrade Button — Basic users only */}
+            {(subscription?.subscription_tier === 'basic' || subscription?.plan_type === 'basic') &&
+             subscription?.subscription_status === 'active' && (
+              <div className="pt-4 border-t border-slate-700">
+                <Button
+                  onClick={handleUpgradeToAdvanced}
+                  disabled={upgrading}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                  data-testid="upgrade-to-advanced-btn"
+                >
+                  {upgrading ? 'Processing...' : 'Upgrade to Advanced — $8/mo'}
+                </Button>
+                <p className="text-slate-500 text-xs mt-2">
+                  Unlock AI Wingman and personalized advice. Prorated for this billing period.
                 </p>
               </div>
             )}

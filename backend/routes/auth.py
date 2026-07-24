@@ -503,6 +503,26 @@ async def cancel_user_subscription(session_token: Optional[str] = Cookie(None), 
         raise HTTPException(status_code=400, detail="Subscription is already scheduled for cancellation")
 
     try:
+        # Check subscription status first
+        try:
+            sub = stripe.Subscription.retrieve(subscription_id)
+            sub_status = sub.status if hasattr(sub, 'status') else sub.get('status', '')
+        except stripe.StripeError:
+            sub_status = "unknown"
+
+        # Handle ghost/expired subscriptions — clean up and inform user
+        if sub_status in ("incomplete_expired", "canceled", "incomplete"):
+            logger.warning(f"Cleaning up {sub_status} subscription {subscription_id} for {user.get('email')}")
+            await db.auth_users.update_one(
+                {"id": session["user_id"]},
+                {"$set": {
+                    "stripe_subscription_id": None,
+                    "subscription_status": "cancelled",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            return {"success": True, "message": "Subscription cleaned up. No active billing to cancel.", "cancels_at": datetime.now(timezone.utc).isoformat()}
+
         updated_subscription = stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
         cancel_at = updated_subscription.current_period_end
         cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()

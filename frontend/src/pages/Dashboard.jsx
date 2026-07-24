@@ -737,9 +737,11 @@ const Dashboard = () => {
 
     setUpgrading(true);
     try {
-      // Check if user already has a Stripe subscription — use in-place upgrade (no new sub)
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      if (userData.stripe_subscription_id) {
+      let useCheckout = !userData.stripe_subscription_id;
+
+      // Try in-place upgrade first if user has a subscription
+      if (!useCheckout) {
         const res = await fetch(`${API}/api/subscription/upgrade`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${sessionToken}` },
@@ -757,11 +759,24 @@ const Dashboard = () => {
           setShowUpgradeModal(false);
           toast.success('Upgraded to Advanced! AI Wingman is now unlocked.');
           window.location.reload();
+          return;
+        }
+        // If upgrade endpoint says use checkout, fall through
+        if (data.use_checkout) {
+          useCheckout = true;
+          // Clear stale subscription_id from localStorage
+          try {
+            const u = JSON.parse(localStorage.getItem('user') || '{}');
+            u.stripe_subscription_id = null;
+            localStorage.setItem('user', JSON.stringify(u));
+          } catch { /* ignore */ }
         } else {
           throw new Error(data.detail || 'Failed to upgrade');
         }
-      } else {
-        // No existing subscription — redirect to Stripe Checkout
+      }
+
+      // Redirect to Stripe Checkout for new subscription
+      if (useCheckout) {
         const origin = window.location.origin;
         const res = await fetch(`${API}/api/subscription/create-checkout`, {
           method: 'POST',
