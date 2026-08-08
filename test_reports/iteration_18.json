@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only verification of the dynamic clinical cycle model in Phase Predictor. computePhaseBoundaries math verified in isolation for the three required cases (24/5/14 → M1-5/F6-8/O9-11, 35/5/14 → M1-5/F6-19/O20-22, 28/5/14 → M1-5/F6-12/O13-15/L16-24/PMS25-28) — all PASS. Advanced Settings card is present, collapsed by default, expands on click, exposes data-testid='setting-menstrual-length' (default 5) and data-testid='setting-luteal-constant' (default 14), and persists to localStorage under cyclecoach_cycle_settings_<uid>. Prediction sentence correctly uses the dynamic boundaries when the date input is (re)set (e.g. Day 16 with lConst=11 → Ovulation; Day 16 with lConst=14 → Luteal). Dashboard renders phase info using the clinical model (Day 9 → Follicular). TWO BUGS FOUND: (1) Reference cards do NOT render the dynamic day ranges even though computePhaseBoundaries.ranges are threaded into dynamicPhaseCards[i].content.days — the JSX at PhasePredictor.jsx lines 322-326 only outputs emoji + name + cardTagline and never renders {card.content.days}. This directly violates the requirement 'Phase Predictor reference cards show dynamic day ranges based on user's average cycle length (not fixed 28-day ranges)'. (2) The prediction result is not reactively recomputed when cycle settings change — user must clear and re-enter the date for the phase to update, because calculatePrediction is only invoked from handlePredictionDateChange and there is no effect watching cycleSettings.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PhasePredictor Phase Reference cards", "issue": "Dynamic day ranges (dynamicBoundaries.ranges.*) are computed and passed as card.content.days but never rendered in the card JSX. Cards still show only emoji + phase name + cardTagline. This does not satisfy the acceptance criterion 'reference cards show dynamic day ranges based on user's average cycle length'.", "selector": "[data-testid=\"phase-ref-menstrual\"] etc.", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Phase Predictor — change Advanced Settings then read prediction", "issue": "When the user changes menstrualLength or lutealConstant while a prediction is already shown, the prediction sentence keeps showing the phase computed with the previous settings. Repro: pick a future date at day 16 with lutealConstant=11 → shows Ovulation; without clearing the date, change lutealConstant to 14 → sentence still says Ovulation. After clearing and re-selecting the same date it correctly shows Luteal. Root cause: calculatePrediction is only called from handlePredictionDateChange; there is no useEffect that re-runs it when cycleSettings changes.", "affected_selectors": ["[data-testid=\"prediction-sentence\"]", "[data-testid=\"setting-luteal-constant\"]", "[data-testid=\"setting-menstrual-length\"]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Render {card.content.days} inside the Phase Reference button (e.g. as a small caption under the phase name) so the dynamic day range from computePhaseBoundaries.ranges is visible to the user. Otherwise the whole dynamic-range feature is invisible on the reference cards.",
+    "Add a useEffect (or recompute inline) so that when cycleSettings changes AND predictionDate is set, calculatePrediction is re-run and setPrediction updated. Currently the prediction goes stale until the user clears/re-picks the date."
+  ],
+  "critical_code_review_comments": [
+    "PhasePredictor.jsx lines 54-60: dynamicPhaseCards populates content.days but the map at lines 315-328 never uses it. Dead data.",
+    "PhasePredictor.jsx: prediction state is not reactive to cycleSettings — either recompute in render (derive prediction from predictionDate + cycleSettings) or add useEffect([predictionDate, cycleSettings, avgCycleLength]).",
+    "cycleCalculations.js computePhaseBoundaries: for lutealConstant=16 on 28d cycle, pmsLength is set to 6 but the derived PMS range on the ranges object is only 5 days (24-28) because lutealEnd depends on lutealLength=lConst-pmsLength. Internal inconsistency; consider deriving pmsLength from (total - lutealEnd) or from lConst uniformly.",
+    "computePhaseBoundaries: for very short cycles (e.g. 21/5/14) follicular becomes a single day (6-6) because follicularLength clamps to 3 but the ovulation window absorbs 2 of those days. Acceptable per spec but worth documenting."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "5/7 acceptance criteria pass; 2 fail (reference-card day ranges not rendered, prediction not reactive to settings)"},
+  "seed_data_creation": "Logged in as testuser@test.com/Test1234. Seeded uid 0c6935cc-7225-4de3-ab2b-143fc07deace with cyclecoach_state_waiver_complete_<uid>=true, cyclecoach_consent_granted_<uid>=true, and cyclecoach_partner_profile_<uid>=btoa(JSON.stringify({name:'TestPartner', cycleStartDate:<today-8d>, cycleLength:28, averageCycleLength:28})). Removed cyclecoach_cycle_settings_<uid> at end of test.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "testuser@test.com / Test1234 (grandfathered)",
+  "context_for_next_testing_agent": "computePhaseBoundaries math is correct for the three golden cases. Two UI-level defects remain in /app/frontend/src/pages/PhasePredictor.jsx: (a) reference cards need to render card.content.days, (b) prediction needs to react to cycleSettings changes without requiring the date to be re-picked. Advanced Settings expansion, persistence, clamping, and Dashboard integration all work.",
+  "rca_of_the_issue": "Bug 1 (reference cards): The button JSX at PhasePredictor.jsx line 316-327 only emits emoji + card.key + card.content.cardTagline. card.content.days is set at lines 55-59 but never referenced in the DOM. Bug 2 (stale prediction): prediction is stored in useState and only refreshed via handlePredictionDateChange. When cycleSettings state updates, no effect triggers a recompute. Fix: either derive prediction inline (const prediction = predictionDate ? calculatePrediction(predictionDate) : null) or add useEffect([predictionDate, cycleSettings, avgCycleLength], () => setPrediction(predictionDate ? calculatePrediction(predictionDate) : null))."
+}

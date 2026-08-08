@@ -43,7 +43,7 @@ const _oldKey = (name) => `cyclecoach_${name}`;
 const ALL_KEYS = [
   'partner_profile', 'cycle_history', 'preferences', 'consent',
   'chat_history', 'license', 'subscription', 'location',
-  'notification_settings', 'extension_state',
+  'notification_settings', 'extension_state', 'cycle_settings',
 ];
 
 // Migrate data from old un-namespaced keys to new namespaced keys
@@ -217,6 +217,20 @@ export const LocalStorage = {
     const encrypted = encrypt(licenseData);
     if (encrypted) localStorage.setItem(_key('license'), encrypted);
   },
+
+  // Cycle Settings (luteal constant, period length)
+  saveCycleSettings: (settings) => {
+    try {
+      localStorage.setItem(_key('cycle_settings'), JSON.stringify(settings));
+    } catch { /* ignore */ }
+  },
+  getCycleSettings: () => {
+    try {
+      const raw = localStorage.getItem(_key('cycle_settings'));
+      return raw ? JSON.parse(raw) : { lutealConstant: 14, menstrualLength: 5 };
+    } catch { return { lutealConstant: 14, menstrualLength: 5 }; }
+  },
+
 
   getLicenseKey: () => {
     const data = localStorage.getItem(_key('license'));

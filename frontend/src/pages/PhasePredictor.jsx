@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LocalStorage } from '../utils/localStorageManager';
-import { parseDateLocal, recalculateCycleLengths, calculateStatistics } from '../utils/cycleCalculations';
+import { parseDateLocal, recalculateCycleLengths, calculateStatistics, computePhaseBoundaries } from '../utils/cycleCalculations';
 import { PHASE_CONTENT } from '../utils/phaseContent';
 import PhaseDetailModal from '../components/PhaseDetailModal';
 
@@ -40,12 +40,26 @@ const PhasePredictor = () => {
   const [predictionDate, setPredictionDate] = useState('');
   const [prediction, setPrediction] = useState(null);
   const [selectedPhaseModal, setSelectedPhaseModal] = useState(null);
+  const [cycleSettings, setCycleSettings] = useState(() => LocalStorage.getCycleSettings());
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const partner = LocalStorage.getPartnerProfile();
+  // Compute dynamic phase boundaries for reference cards
   const history = LocalStorage.getCycleHistory();
   const recalculated = recalculateCycleLengths(history);
   const stats = calculateStatistics(recalculated);
-  const avgCycleLength = stats.ewma_length || stats.average_length || partner?.cycleLength || 28;
+  const avgCycleLength = stats.ewma_length || 28;
+  const dynamicBoundaries = computePhaseBoundaries(avgCycleLength, cycleSettings.menstrualLength, cycleSettings.lutealConstant);
+
+  // Dynamic reference cards with computed day ranges
+  const dynamicPhaseCards = [
+    { key: 'Menstrual', color: 'from-red-500/20 to-red-600/10 border-red-500/30', content: { ...PHASE_CONTENT['Menstrual'], days: dynamicBoundaries.ranges.menstrual } },
+    { key: 'Follicular', color: 'from-green-500/20 to-green-600/10 border-green-500/30', content: { ...PHASE_CONTENT['Follicular'], days: dynamicBoundaries.ranges.follicular } },
+    { key: 'Ovulation', color: 'from-pink-500/20 to-pink-600/10 border-pink-500/30', content: { ...PHASE_CONTENT['Ovulation'], days: dynamicBoundaries.ranges.ovulation } },
+    { key: 'Luteal', color: 'from-blue-500/20 to-blue-600/10 border-blue-500/30', content: { ...PHASE_CONTENT['Early Luteal'], days: dynamicBoundaries.ranges.luteal } },
+    { key: 'PMS', color: 'from-orange-500/20 to-orange-600/10 border-orange-500/30', content: { ...PHASE_CONTENT['Late Luteal/PMS'], days: dynamicBoundaries.ranges.pms } },
+  ];
+
+  const partner = LocalStorage.getPartnerProfile();
 
   const calculatePrediction = (selectedDate) => {
     if (!partner?.cycleStartDate) return null;
@@ -65,21 +79,17 @@ const PhasePredictor = () => {
       cycleDay = avgCycleLength - ((daysBack - 1) % avgCycleLength);
     }
 
-    // Scale phase boundaries to the user's average
-    const scale = avgCycleLength / 28;
-    const menstrualEnd = 5;
-    const follicularEnd = Math.round(13 * scale);
-    const ovulationEnd = Math.round(16 * scale);
-    const earlyLutealEnd = Math.round(23 * scale);
+    // Dynamic phase boundaries using clinical model
+    const b = computePhaseBoundaries(avgCycleLength, cycleSettings.menstrualLength, cycleSettings.lutealConstant);
 
     let phaseName;
-    if (cycleDay >= 1 && cycleDay <= menstrualEnd) {
+    if (cycleDay >= 1 && cycleDay <= b.menstrualEnd) {
       phaseName = 'Menstrual';
-    } else if (cycleDay > menstrualEnd && cycleDay <= follicularEnd) {
+    } else if (cycleDay > b.menstrualEnd && cycleDay <= b.follicularEnd) {
       phaseName = 'Follicular';
-    } else if (cycleDay > follicularEnd && cycleDay <= ovulationEnd) {
+    } else if (cycleDay > b.follicularEnd && cycleDay <= b.ovulationEnd) {
       phaseName = 'Ovulation';
-    } else if (cycleDay > ovulationEnd && cycleDay <= earlyLutealEnd) {
+    } else if (cycleDay > b.ovulationEnd && cycleDay <= b.lutealEnd) {
       phaseName = 'Early Luteal';
     } else {
       phaseName = 'Late Luteal/PMS';
@@ -239,6 +249,62 @@ const PhasePredictor = () => {
           </CardContent>
         </Card>
 
+        {/* Advanced Cycle Settings */}
+        <Card className="bg-slate-800/30 border-slate-700/50">
+          <CardHeader className="cursor-pointer" onClick={() => setShowAdvanced(!showAdvanced)}>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white text-lg">Advanced Settings</CardTitle>
+              <svg className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${showAdvanced ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            <CardDescription className="text-slate-500 text-xs">
+              Avg cycle: {avgCycleLength}d &middot; Period: {cycleSettings.menstrualLength}d &middot; Luteal: {cycleSettings.lutealConstant}d
+            </CardDescription>
+          </CardHeader>
+          {showAdvanced && (
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-slate-300 text-sm">Period Length (days)</Label>
+                <p className="text-slate-500 text-xs mb-2">Average number of days your partner bleeds</p>
+                <Input
+                  type="number"
+                  min={3}
+                  max={7}
+                  value={cycleSettings.menstrualLength}
+                  onChange={(e) => {
+                    const v = Math.max(3, Math.min(7, parseInt(e.target.value) || 5));
+                    const updated = { ...cycleSettings, menstrualLength: v };
+                    setCycleSettings(updated);
+                    LocalStorage.saveCycleSettings(updated);
+                  }}
+                  className="bg-slate-700 border-slate-600 text-white w-24"
+                  data-testid="setting-menstrual-length"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300 text-sm">Luteal Phase Length (days)</Label>
+                <p className="text-slate-500 text-xs mb-2">Post-ovulation to next period. Default 14. Only change if confirmed via BBT or OPK tracking.</p>
+                <Input
+                  type="number"
+                  min={11}
+                  max={16}
+                  value={cycleSettings.lutealConstant}
+                  onChange={(e) => {
+                    const v = Math.max(11, Math.min(16, parseInt(e.target.value) || 14));
+                    const updated = { ...cycleSettings, lutealConstant: v };
+                    setCycleSettings(updated);
+                    LocalStorage.saveCycleSettings(updated);
+                  }}
+                  className="bg-slate-700 border-slate-600 text-white w-24"
+                  data-testid="setting-luteal-constant"
+                />
+              </div>
+              <p className="text-slate-600 text-xs">Changes apply immediately to all phase calculations.</p>
+            </CardContent>
+          )}
+        </Card>
+
         {/* Phase Reference Cards */}
         <Card className="bg-slate-800/30 border-slate-700/50">
           <CardHeader>
@@ -246,7 +312,7 @@ const PhasePredictor = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {PHASE_CARDS.map((card) => (
+              {dynamicPhaseCards.map((card) => (
                 <button
                   key={card.key}
                   onClick={() => setSelectedPhaseModal(card.content)}

@@ -106,42 +106,91 @@ export const getCappedCycleMessages = () => [
   "Her cycle went off-script. It happens! Check in with her when the time feels right.",
 ];
 
-export const getPhaseInfo = (cycleDay, averageLength = 28) => {
-  const { PHASE_CONTENT } = require('./phaseContent');
+/**
+ * Compute dynamic phase boundaries based on the clinical model:
+ * - Luteal phase is ~fixed (default 14 days, adjustable 11-16)
+ * - PMS is the last ~5-7 days of luteal constant
+ * - Follicular phase absorbs all cycle length variation
+ * - Ovulation is a 3-day window at the end of follicular
+ *
+ * @param {number} totalCycleLength - user's average cycle length
+ * @param {number} menstrualLength - average period length (default 5)
+ * @param {number} lutealConstant - post-ovulation days (default 14, range 11-16)
+ * @returns {{ menstrualEnd, follicularEnd, ovulationEnd, lutealEnd, pmsStart, ovulationDay }}
+ */
+export const computePhaseBoundaries = (totalCycleLength = 28, menstrualLength = 5, lutealConstant = 14) => {
+  // Clamp inputs to reasonable ranges
+  const total = Math.max(21, Math.min(45, totalCycleLength));
+  const mLen = Math.max(3, Math.min(7, menstrualLength));
+  const lConst = Math.max(11, Math.min(16, lutealConstant));
 
-  // Scale phase boundaries relative to the user's average
-  const scale = averageLength / 28;
-  const menstrualEnd = 5;
-  const follicularEnd = Math.round(13 * scale);
-  const ovulationEnd = Math.round(16 * scale);
-  const earlyLutealEnd = Math.round(23 * scale);
+  // Core formula: follicular absorbs all variation
+  const follicularLength = Math.max(3, total - mLen - lConst);
+  const ovulationDay = mLen + follicularLength;
+
+  // Ovulation window: 3 days centered on ovulationDay (taken from end of follicular)
+  const ovulationWindowStart = Math.max(mLen + 1, ovulationDay - 1);
+  const ovulationWindowEnd = ovulationDay + 1;
+
+  // Post-ovulation: split lutealConstant into Luteal + PMS
+  // PMS = last 5 days (or 6 if lutealConstant >= 15), Luteal = remainder
+  const pmsLength = lConst >= 15 ? 6 : 5;
+  const lutealLength = lConst - pmsLength;
+
+  const menstrualEnd = mLen;
+  const follicularEnd = ovulationWindowStart - 1;
+  const ovulationEnd = ovulationWindowEnd;
+  const lutealEnd = ovulationEnd + lutealLength;
+  // PMS runs from lutealEnd+1 through total
+
+  return {
+    menstrualEnd,
+    follicularEnd,
+    ovulationEnd,
+    lutealEnd,
+    total,
+    ovulationDay,
+    // For display in Phase Reference cards
+    ranges: {
+      menstrual: `1\u2013${menstrualEnd}`,
+      follicular: `${menstrualEnd + 1}\u2013${follicularEnd}`,
+      ovulation: `${follicularEnd + 1}\u2013${ovulationEnd}`,
+      luteal: `${ovulationEnd + 1}\u2013${lutealEnd}`,
+      pms: `${lutealEnd + 1}\u2013${total}`,
+    },
+  };
+};
+
+export const getPhaseInfo = (cycleDay, averageLength = 28, menstrualLength = 5, lutealConstant = 14) => {
+  const { PHASE_CONTENT } = require('./phaseContent');
+  const b = computePhaseBoundaries(averageLength, menstrualLength, lutealConstant);
 
   let phaseName, phaseNumber, phaseDay;
 
-  if (cycleDay > averageLength) {
+  if (cycleDay > b.total) {
     phaseName = "Late Luteal/PMS";
     phaseNumber = 5;
-    phaseDay = cycleDay - earlyLutealEnd;
-  } else if (cycleDay >= 1 && cycleDay <= menstrualEnd) {
+    phaseDay = cycleDay - b.lutealEnd;
+  } else if (cycleDay >= 1 && cycleDay <= b.menstrualEnd) {
     phaseName = "Menstrual";
     phaseNumber = 1;
     phaseDay = cycleDay;
-  } else if (cycleDay > menstrualEnd && cycleDay <= follicularEnd) {
+  } else if (cycleDay > b.menstrualEnd && cycleDay <= b.follicularEnd) {
     phaseName = "Follicular";
     phaseNumber = 2;
-    phaseDay = cycleDay - menstrualEnd;
-  } else if (cycleDay > follicularEnd && cycleDay <= ovulationEnd) {
+    phaseDay = cycleDay - b.menstrualEnd;
+  } else if (cycleDay > b.follicularEnd && cycleDay <= b.ovulationEnd) {
     phaseName = "Ovulation";
     phaseNumber = 3;
-    phaseDay = cycleDay - follicularEnd;
-  } else if (cycleDay > ovulationEnd && cycleDay <= earlyLutealEnd) {
+    phaseDay = cycleDay - b.follicularEnd;
+  } else if (cycleDay > b.ovulationEnd && cycleDay <= b.lutealEnd) {
     phaseName = "Early Luteal";
     phaseNumber = 4;
-    phaseDay = cycleDay - ovulationEnd;
+    phaseDay = cycleDay - b.ovulationEnd;
   } else {
     phaseName = "Late Luteal/PMS";
     phaseNumber = 5;
-    phaseDay = cycleDay - earlyLutealEnd;
+    phaseDay = cycleDay - b.lutealEnd;
   }
 
   const content = PHASE_CONTENT[phaseName] || PHASE_CONTENT["Late Luteal/PMS"];
@@ -155,8 +204,8 @@ export const getPhaseInfo = (cycleDay, averageLength = 28) => {
     briefFeelings: content.briefFeelings,
     prep: content.prep,
     action: content.action,
-    // Keep full content reference for "See Full Details"
     fullContent: content,
+    boundaries: b,
   };
 };
 
