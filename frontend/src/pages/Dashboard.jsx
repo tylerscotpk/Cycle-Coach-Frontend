@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import MoodMap from '@/components/MoodMap';
 import FeedbackModal from '@/components/FeedbackModal';
 import PartnerProfile from '@/components/PartnerProfile';
+import CoachingManual from '@/components/CoachingManual';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -1373,6 +1374,9 @@ const Dashboard = () => {
             <TabsTrigger value="profile" data-testid="tab-partner-profile">
               Partner Profile
             </TabsTrigger>
+            <TabsTrigger value="manual" data-testid="tab-coaching-manual">
+              Coaching Manual
+            </TabsTrigger>
           </TabsList>
 
           {/* AI Wingman Tab */}
@@ -1460,6 +1464,11 @@ const Dashboard = () => {
               updatePreference={updatePreference}
               hasAIAccess={hasAIAccess}
             />
+          </TabsContent>
+
+          {/* Coaching Manual Tab */}
+          <TabsContent value="manual" data-testid="coaching-manual-content">
+            <CoachingManual />
           </TabsContent>
 
           {/* === ARCHIVED: Resources Tab — will revisit with manual library === */}
