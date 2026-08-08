@@ -5,7 +5,7 @@
 export const PHASE_CONTENT = {
   Menstrual: {
     emoji: "\u{1F9F8}",
-    punchline: "Recovery Week: She\u2019s running low on fuel. Keep it calm.",
+    punchline: "Recovery Week: She\u2019s running on empty.",
     playByPlay: "Hormones bottom out, triggering the shedding of the uterine lining. Her body is literally doing a full reset, which dips energy, slows momentum, and increases sensitivity. This is her recovery week \u2014 the physiology equivalent of playing through a tough away game.",
     briefPlayByPlay: "Hormones bottom out \u2014 her body\u2019s hitting reset.",
     briefFeelings: "Low energy, cravings, wants comfort and calm.",
@@ -34,7 +34,7 @@ export const PHASE_CONTENT = {
   },
   Follicular: {
     emoji: "\u{1F337}",
-    punchline: "Preseason hype! She\u2019s warming up and ready to move.",
+    punchline: "Preseason hype! She\u2019s warming up.",
     playByPlay: "Estrogen starts climbing again after her period, rebuilding energy, mood, and motivation. Her body is gearing up for ovulation \u2014 think of it as the warm-up phase before game day. Hormones boost clarity, optimism, and creativity. She\u2019s getting back in the pocket.",
     briefPlayByPlay: "Estrogen\u2019s climbing \u2014 she\u2019s warming up and gaining momentum.",
     briefFeelings: "More energy, sharper focus, up for anything.",
@@ -122,7 +122,7 @@ export const PHASE_CONTENT = {
   },
   "Late Luteal/PMS": {
     emoji: "\u26A0\uFE0F",
-    punchline: "High-alert week! Sensitivity\u2019s up; play smart.",
+    punchline: "High-alert week! Sensitivity\u2019s up.",
     playByPlay: "Estrogen and progesterone dive faster than a soccer player in the penalty box \u2014 this is the hormonal cliff that creates PMS. This is NOT. HER. MOOD. It\u2019s physiology reacting to a rapid chemical shift.",
     briefPlayByPlay: "Estrogen and progesterone crash \u2014 that\u2019s PMS, not her mood.",
     briefFeelings: "Sensitive, short-fused, running low on bandwidth.",
