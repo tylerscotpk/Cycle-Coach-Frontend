@@ -1,6 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+// Collapsible section with smooth animation
+const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const contentRef = useRef(null);
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setHeight(contentRef.current.scrollHeight);
+    }
+  }, [children]);
+
+  return (
+    <div className="border border-slate-600/50 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-3 bg-slate-700/40 hover:bg-slate-700/60 transition-colors"
+        data-testid={`collapsible-${title.toLowerCase()}`}
+      >
+        <span className="text-white font-semibold text-sm">{title}</span>
+        <svg
+          className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div
+        style={{ maxHeight: isOpen ? `${height}px` : '0px' }}
+        className="transition-[max-height] duration-300 ease-in-out overflow-hidden"
+      >
+        <div ref={contentRef} className="p-3 pt-2">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const [selectedPhase, setSelectedPhase] = useState(null);
@@ -16,18 +55,31 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       color: "#dc2626",
       colorLight: "#ef4444",
       iconType: "drop",
-      description: "Red alert - literally. She's on her period.",
       emoji: "🩸",
-      tips: [
-        "**Do the dishes.** Like, NOW. Don't wait to be asked.",
-        "Get her **favorite snacks**. Ben & Jerry's never hurt nobody.",
-        "**Netflix marathon** = your best move. Let her pick, even if it's that sad dog movie again.",
-        "No jokes about her being 'emotional' unless you want to **sleep on the couch**",
-        "**Heating pad + backrub** = you're a goddamn hero. She'll remember this.",
-        "She says she's fine? **She's not fine.** Bring chocolate.",
-        "Think of yourself as her **emotional support human**. Just be there.",
-        "**🏋️ YOUR MOVE: Hit the gym hard.** She needs space anyway - use it to work on yourself."
-      ]
+      punchline: "Recovery Week: She's running low on fuel. Keep it calm.",
+      playByPlay: "Estrogen and progesterone bottom out, triggering the shedding of the uterine lining. Her body is literally doing a full reset, which dips energy, slows momentum, and increases sensitivity. This is her recovery week \u2014 the physiology equivalent of playing through a tough away game.",
+      feelsPhysical: [
+        "Cramps, bloating, fatigue",
+        "Back aches or pelvic pressure",
+        "Cravings",
+      ],
+      feelsEmotional: [
+        "Low energy, inward-focused",
+        "Receptive to calmness and the right type of humor",
+        "OK with space",
+      ],
+      prep: [
+        "\u201CFine\u201D could mean anything. Don\u2019t argue, don\u2019t smother. She\u2019ll talk when she\u2019s ready.",
+        "Comfort is king. She\u2019ll appreciate warmth, quiet, snacks, and her \u201Cme-time.\u201D",
+        "Clutter and messiness can be especially triggering right now.",
+        "Savory, salty, and chocolatey \u2014 your allies this week. Take inventory.",
+      ],
+      action: [
+        "Be supportive and comforting, even if it\u2019s from a distance.",
+        "Dirty dishes in the sink? It\u2019s your time to shine!",
+        "Grab the heating pad and activate your massage hands for instant hero status.",
+        "She needs space? You need gains. Hit the gym, come back grounded.",
+      ],
     },
     {
       name: "Follicular",
@@ -37,19 +89,32 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       color: "#16a34a",
       colorLight: "#22c55e",
       iconType: "flower",
-      description: "The storm has passed. She's back, baby!",
       emoji: "🌷",
-      tips: [
-        "**Book that fancy restaurant** NOW while she's saying yes to everything",
-        "She'll actually want to **leave the house** - capitalize on this window",
-        "Good time to bring up **that thing you've been avoiding** (yes, that thing)",
-        "**Compliments land HARD** right now - tell her she looks amazing",
-        "Try that **new thing in bed** she mentioned 3 months ago. Trust me.",
-        "She's basically a **yes-man** right now. Propose that guys' trip. Do it.",
-        "Think 'Happy Wife Life' - **she's in her power phase**, ride the wave",
-        "**💬 YOUR MOVE: Seek her counsel.** She's sharp, optimistic, and ready to problem-solve. Ask about that work thing.",
-        "**🏋️ YOUR MOVE: Show off those gains.** She'll notice you looking good. New haircut? She's paying attention."
-      ]
+      punchline: "Preseason hype! She's warming up and ready to move.",
+      playByPlay: "Estrogen starts climbing again after her period, rebuilding energy, mood, and motivation. Her body is gearing up for ovulation \u2014 think of it as the warm-up phase before game day. Hormones boost clarity, optimism, and creativity. She\u2019s getting back in the pocket.",
+      feelsPhysical: [
+        "Energy returning, better sleep",
+        "Less aches and pains",
+        "Appetite steady and predictable",
+      ],
+      feelsEmotional: [
+        "Sharper thinking and more clarity \u2014 flow state energy",
+        "Optimistic and future-oriented",
+        "More social, confident, and adventurous",
+      ],
+      prep: [
+        "Audible! Get ready to break the routine, and don\u2019t be afraid to take some (calculated) risks.",
+        "Game clock\u2019s in your favor \u2014 she\u2019s in her \u201Cyes-to-plans\u201D zone. If you\u2019ve got a big idea, this is the week.",
+        "It\u2019s also the best time for a difficult conversation.",
+        "Compliments land hard right now; she\u2019ll notice you noticing.",
+      ],
+      action: [
+        "Pick one solid plan \u2014 dinner, a show, a day trip \u2014 and lock it in. Don\u2019t overthink it; just set the play and send the invite.",
+        "Switch up the usual pattern \u2014 try a new spot, a new activity, or a small adventure. Lead with confidence and keep it light.",
+        "Run the play you\u2019ve been dodging. Pick a quiet moment, open the huddle, and talk it out.",
+        "Drop a clean, targeted compliment. No fluff. No paragraphs. Just a sharp \u201CI noticed that\u201D \u2014 bull\u2019s eye!",
+        "Got gym gains from last week? Go ahead and showboat; you\u2019ve got an audience.",
+      ],
     },
     {
       name: "Ovulation",
@@ -59,20 +124,31 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       color: "#db2777",
       colorLight: "#ec4899",
       iconType: "flame",
-      description: "🔥 PRIME TIME 🔥 This is it chief",
       emoji: "🔥",
-      tips: [
-        "**BRO. This is THE window.** Clear your schedule. Cancel your plans. This is go time.",
-        "She's ovulating = **nature's horny button is pressed**. Biology is on your side.",
-        "Tell her she looks **hot**. Then tell her again. Then one more time.",
-        "**Plan something romantic tonight** (you know exactly why)",
-        "This is when she's most likely to say **yes to anything** — make your move",
-        "Do NOT, I repeat, **DO NOT** mess this up with **lazy boyfriend energy**",
-        "Put the **phone down**. Give her your **FULL attention**. Be present.",
-        "Think of it like **playoff mode** - this is your time to shine, champion",
-        "**💪 YOUR MOVE: Brag a little.** Landed that deal? Nailed the presentation? She finds your confidence SEXY right now.",
-        "**🏋️ YOUR MOVE: Look sharp, smell good.** Fresh haircut, nice cologne. She's biologically wired to notice masculine energy."
-      ]
+      punchline: "Prime Time: MVP energy!",
+      playByPlay: "Estrogen peaks and she hits her physiological high-performance window. The egg is released, hormones boost energy, confidence, and social drive. This is her most naturally connected, outward-facing stretch of the cycle.",
+      feelsPhysical: [
+        "Aches or pinching sensations on one side",
+        "Higher energy, feeling in the zone",
+        "Clearer skin, brighter eyes",
+      ],
+      feelsEmotional: [
+        "Maximum confidence",
+        "More social and outgoing",
+        "More communicative and affectionate",
+      ],
+      prep: [
+        "She\u2019s in peak-performance mode \u2014 energized, confident, and tuned in. This week is worth prioritizing.",
+        "Her connection dial is turned up \u2014 chemistry feels easier and more natural right now.",
+        "Compliments land hard \u2014 she actually feels them this week.",
+        "Playoff mode \u2014 she\u2019s social, present, and fully engaged. Great window for quality time.",
+      ],
+      action: [
+        "Clear a little space in the schedule and make one standout plan \u2014 treat this week like prime time.",
+        "Lean into closeness: initiate time together, be warm, be engaged. Confidence leads the play.",
+        "Drop a sharp, specific compliment. Keep it clean and sincere \u2014 it\u2019ll land like a highlight reel.",
+        "Be fully present: phone down, attention up. Bring your A-game in effort and attitude.",
+      ],
     },
     {
       name: "Luteal",
@@ -82,18 +158,31 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       color: "#2563eb",
       colorLight: "#3b82f6",
       iconType: "house",
-      description: "Chill vibes. Enjoy it while it lasts.",
       emoji: "🏠",
-      tips: [
-        "She's in **nesting mode** - help with home projects without complaining",
-        "**Notice when she cleans/cooks** - say thank you like you actually mean it",
-        "Low-key **date nights > wild adventures** right now. Keep it cozy.",
-        "She might get **Stage 5 Clinger** status - that's normal, lean into it",
-        "**Don't plan anything crazy** - she wants routine and predictability",
-        "Think **Jim & Pam energy** - comfortable, domestic, wholesome vibes",
-        "**Quality time on the couch** > going out. She wants YOU, not a scene.",
-        "**💬 YOUR MOVE: Seek her advice.** She's in nurturing mode - ask about life decisions, career moves, friend drama."
-      ]
+      punchline: "Wind-down mode: Nesting and grounded.",
+      playByPlay: "Progesterone rises after ovulation, shifting her body into wind-down mode. Hormones slow things down, increase sensitivity, and push her toward routine, comfort, and stability.",
+      feelsPhysical: [
+        "Bloating and tenderness",
+        "Cravings and sensitive digestion",
+        "Lower energy",
+      ],
+      feelsEmotional: [
+        "Ready to wind down, less social, more introspective",
+        "Nesting mode, ready to get cozy, nurturing",
+        "Prefers routine and predictability",
+      ],
+      prep: [
+        "Stage 5 Clinger? Embrace it.",
+        "Not all heroes wear capes. Keep it low-key \u2014 cozy nights beat wild adventures right now.",
+        "Shifting into nesting mode means it\u2019s a great time to get things done around the house.",
+        "Gratitude and energy-matching will be greatly appreciated this week.",
+      ],
+      action: [
+        "Tackle a home task without complaining \u2014 it matches her nesting rhythm and shows presence.",
+        "Plan something low-key: a cozy night, a simple meal, a calm vibe. Keep it predictable.",
+        "Notice the extra things she\u2019s doing around the house and say a real thank-you.",
+        "Ask for her take on a decision \u2014 she\u2019s in a grounded, nurturing headspace.",
+      ],
     },
     {
       name: "PMS",
@@ -103,21 +192,30 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       color: "#ea580c",
       colorLight: "#f97316",
       iconType: "droplet",
-      description: "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
       emoji: "⚠️",
-      tips: [
-        "Whatever she says, **she's right**. I don't care if she's wrong - **SHE'S RIGHT.**",
-        "Is she crying at a **dog food commercial**? Normal. Just hug her. Don't ask questions.",
-        "Buy **tampons BEFORE she asks**. You're basically Nostradamus at this point.",
-        "**Cancel plans** if she's not feeling it. Don't be a hero. Just. Don't.",
-        "**Food delivery apps** are your best friend this week. Use them liberally.",
-        "Don't ask **'is it that time of the month?'** - that's a **death wish**, bro",
-        "She wants to fight? Brother, **you've already lost**. Apologize and move on.",
-        "Stock up on her **favorite junk food** like the apocalypse is coming",
-        "Think **Incredible Hulk** - don't poke the bear. Just don't.",
-        "**🏋️ YOUR MOVE: Hit the gym HARD.** She needs space. Channel that energy into gains. Come back stronger.",
-        "**🚫 YOUR MOVE: Do NOT brag.** Keep wins to yourself this week. Save the victory lap for next week."
-      ]
+      punchline: "High-alert week! Sensitivity's up; play smart.",
+      playByPlay: "Estrogen and progesterone dive faster than a soccer player in the penalty box \u2014 this is the hormonal cliff that creates PMS. This is NOT. HER. MOOD. It\u2019s physiology reacting to a rapid chemical shift.",
+      feelsPhysical: [
+        "Bloating, cramping, headaches, cravings, you name it",
+        "If it sucks, she\u2019s probably feeling it",
+      ],
+      feelsEmotional: [
+        "Sensitive and short-fused",
+        "Easily overwhelmed and fatigued",
+        "Brain fog; try doing math with your head chopped off and you\u2019ve got the idea",
+      ],
+      prep: [
+        "Patience and bandwidth for her are lower across the board. Be ready to compensate.",
+        "Crying at a dog food commercial? Totally normal \u2014 a hug goes a long way.",
+        "Don\u2019t be caught off guard lacking essentials; take inventory (comfort foods).",
+        "Flexibility wins this week. Be open to forfeiting or postponing plans.",
+      ],
+      action: [
+        "Not in the mood to cook? Order in \u2014 no shame in delivery.",
+        "Squash the snarky PMS/period/time-of-month remarks. She knows what\u2019s up; it won\u2019t end well.",
+        "Tension brewing over something small? Sideline it for later when things are calmer.",
+        "Pantry running low on her favorites? Stock up like the apocalypse is coming.",
+      ],
     }
   ];
 
@@ -138,16 +236,6 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
       setShowMismatchTooltip(true);
     }
   }, [cycleInfo, currentCycleDay]);
-
-  const renderTipWithBold = (tip) => {
-    const parts = tip.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i}>{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-  };
 
   const getCurrentPhase = () => {
     if (!currentCycleDay) return null;
@@ -425,7 +513,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
         </CardContent>
       </Card>
 
-      {/* Phase Details Dialog — icons & style match the wheel */}
+      {/* Phase Details Dialog — new structured layout */}
       <Dialog open={selectedPhase !== null} onOpenChange={() => setSelectedPhase(null)}>
         <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="phase-dialog">
           {selectedPhase && (
@@ -438,21 +526,70 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
                     <div className="text-sm text-slate-400 font-normal">Days {selectedPhase.days}</div>
                   </div>
                 </DialogTitle>
-                <DialogDescription className="text-slate-300 text-lg mt-4">
-                  {selectedPhase.description}
+                <DialogDescription className="text-slate-300 text-base mt-3 font-medium italic" data-testid="phase-punchline">
+                  {selectedPhase.punchline}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-6 pb-6">
-                <h4 className="text-white font-semibold mb-4 text-lg">Your Game Plan:</h4>
-                <ul className="space-y-3">
-                  {selectedPhase.tips.map((tip, idx) => (
-                    <li key={idx} className="flex gap-3 text-slate-300" data-testid={`dialog-tip-${idx}`}>
-                      <span className="text-cyan-400 font-bold flex-shrink-0">•</span>
-                      <span>{renderTipWithBold(tip)}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="mt-4 space-y-5 pb-4">
+                {/* Play-by-Play */}
+                <div data-testid="phase-play-by-play">
+                  <h4 className="text-cyan-400 font-semibold text-sm uppercase tracking-wider mb-2">Play-by-Play</h4>
+                  <p className="text-slate-300 text-sm leading-relaxed">{selectedPhase.playByPlay}</p>
+                </div>
+
+                {/* What She Feels */}
+                <div data-testid="phase-what-she-feels">
+                  <h4 className="text-cyan-400 font-semibold text-sm uppercase tracking-wider mb-3">What She Feels</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <h5 className="text-white font-medium text-sm mb-2">Physical</h5>
+                      <ul className="space-y-1.5">
+                        {selectedPhase.feelsPhysical.map((item, idx) => (
+                          <li key={idx} className="flex gap-2 text-slate-300 text-sm">
+                            <span className="text-slate-500 flex-shrink-0">&bull;</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h5 className="text-white font-medium text-sm mb-2">Mental / Emotional</h5>
+                      <ul className="space-y-1.5">
+                        {selectedPhase.feelsEmotional.map((item, idx) => (
+                          <li key={idx} className="flex gap-2 text-slate-300 text-sm">
+                            <span className="text-slate-500 flex-shrink-0">&bull;</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Prep — collapsible */}
+                <CollapsibleSection title="Prep" data-testid="phase-prep">
+                  <ul className="space-y-2">
+                    {selectedPhase.prep.map((item, idx) => (
+                      <li key={idx} className="flex gap-2 text-slate-300 text-sm">
+                        <span className="text-amber-400 flex-shrink-0">&bull;</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleSection>
+
+                {/* Action — collapsible */}
+                <CollapsibleSection title="Action" data-testid="phase-action">
+                  <ul className="space-y-2">
+                    {selectedPhase.action.map((item, idx) => (
+                      <li key={idx} className="flex gap-2 text-slate-300 text-sm">
+                        <span className="text-emerald-400 flex-shrink-0">&bull;</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleSection>
               </div>
             </>
           )}
