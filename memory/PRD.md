@@ -211,6 +211,11 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - **Account page Basic tier display**: Tier badge uses `(subscription_tier || plan_type)` fallback. Billing amount correctly shows $5/mo for Basic.
 - **Upgrade button for Basic users**: Account Settings now shows "Upgrade to Advanced — $8/mo" button for active Basic subscribers.
 - **Grandfathered display name**: Added 'Lifetime' mapping to `getTierDisplayName` and purple badge color.
+
+### Aug 8, 2026 — Coaching Manual + Phase Modal Restructure
+- **Coaching Manual**: New tab alongside AI Wingman and Partner Profile. 17 terms across 3 categories (Hormones, Cycle Phases, General Terms). Single-open accordion with smooth CSS animation and auto-scroll.
+- **Phase Modal Restructure**: Replaced old "Game Plan" tips with structured layout: Punch-line, Play-by-Play, What She Feels (Physical + Mental/Emotional), Prep (collapsible), Action (collapsible). All 5 phases updated with detailed content. Prep/Action expand independently.
+- **Testing**: 100% frontend pass on both features.
 - **Testing**: 7/7 backend passed, frontend code-reviewed and verified.
 
 ---
