@@ -107,6 +107,8 @@ export const getCappedCycleMessages = () => [
 ];
 
 export const getPhaseInfo = (cycleDay, averageLength = 28) => {
+  const { PHASE_CONTENT } = require('./phaseContent');
+
   // Scale phase boundaries relative to the user's average
   const scale = averageLength / 28;
   const menstrualEnd = 5;
@@ -114,94 +116,48 @@ export const getPhaseInfo = (cycleDay, averageLength = 28) => {
   const ovulationEnd = Math.round(16 * scale);
   const earlyLutealEnd = Math.round(23 * scale);
 
-  // If past the average, stay in Late Luteal/PMS (extended)
+  let phaseName, phaseNumber, phaseDay;
+
   if (cycleDay > averageLength) {
-    return {
-      phase: "Late Luteal/PMS",
-      phase_number: 5,
-      phase_day: cycleDay - earlyLutealEnd,
-      description: "Cycle extended — she might be running late this month.",
-      emoji: "⚠️",
-      tips: [
-        "**Stay patient.** Cycles vary — this is normal.",
-        "Keep up the **comfort items** — she may still need them.",
-        "**Don't mention it** unless she brings it up first.",
-        "**Food delivery apps** remain your best friend."
-      ]
-    };
+    phaseName = "Late Luteal/PMS";
+    phaseNumber = 5;
+    phaseDay = cycleDay - earlyLutealEnd;
+  } else if (cycleDay >= 1 && cycleDay <= menstrualEnd) {
+    phaseName = "Menstrual";
+    phaseNumber = 1;
+    phaseDay = cycleDay;
+  } else if (cycleDay > menstrualEnd && cycleDay <= follicularEnd) {
+    phaseName = "Follicular";
+    phaseNumber = 2;
+    phaseDay = cycleDay - menstrualEnd;
+  } else if (cycleDay > follicularEnd && cycleDay <= ovulationEnd) {
+    phaseName = "Ovulation";
+    phaseNumber = 3;
+    phaseDay = cycleDay - follicularEnd;
+  } else if (cycleDay > ovulationEnd && cycleDay <= earlyLutealEnd) {
+    phaseName = "Early Luteal";
+    phaseNumber = 4;
+    phaseDay = cycleDay - ovulationEnd;
+  } else {
+    phaseName = "Late Luteal/PMS";
+    phaseNumber = 5;
+    phaseDay = cycleDay - earlyLutealEnd;
   }
 
-  if (cycleDay >= 1 && cycleDay <= menstrualEnd) {
-    return {
-      phase: "Menstrual",
-      phase_number: 1,
-      phase_day: cycleDay,
-      description: "Red alert - literally. She's on her period.",
-      emoji: "🩸",
-      tips: [
-        "**Do the dishes.** Like, NOW. Don't wait to be asked.",
-        "Get her **favorite snacks**. Ben & Jerry's never hurt nobody.",
-        "**Netflix marathon** = your best move. Let her pick.",
-        "**Heating pad + backrub** = you're a goddamn hero."
-      ]
-    };
-  } else if (cycleDay > menstrualEnd && cycleDay <= follicularEnd) {
-    return {
-      phase: "Follicular",
-      phase_number: 2,
-      phase_day: cycleDay - menstrualEnd,
-      description: "The storm has passed. She's back, baby!",
-      emoji: "🌷",
-      tips: [
-        "**Book that fancy restaurant** NOW while she's saying yes to everything",
-        "She'll actually want to **leave the house** - capitalize on this window",
-        "**Compliments land HARD** right now - tell her she looks amazing",
-        "Good time to bring up **that thing you've been avoiding**"
-      ]
-    };
-  } else if (cycleDay > follicularEnd && cycleDay <= ovulationEnd) {
-    return {
-      phase: "Ovulation",
-      phase_number: 3,
-      phase_day: cycleDay - follicularEnd,
-      description: "🔥 PRIME TIME 🔥 This is it chief",
-      emoji: "🔥",
-      tips: [
-        "**BRO. This is THE window.** Clear your schedule.",
-        "Tell her she looks **hot**. Then tell her again.",
-        "**Plan something romantic tonight** (you know exactly why)",
-        "Put the **phone down**. Give her your **FULL attention**."
-      ]
-    };
-  } else if (cycleDay > ovulationEnd && cycleDay <= earlyLutealEnd) {
-    return {
-      phase: "Early Luteal",
-      phase_number: 4,
-      phase_day: cycleDay - ovulationEnd,
-      description: "Chill vibes. Enjoy it while it lasts.",
-      emoji: "🏠",
-      tips: [
-        "She's in **nesting mode** - help with home projects",
-        "**Notice when she cleans/cooks** - say thank you",
-        "Low-key **date nights > wild adventures** right now",
-        "**Quality time on the couch** > going out"
-      ]
-    };
-  } else {
-    return {
-      phase: "Late Luteal/PMS",
-      phase_number: 5,
-      phase_day: cycleDay - earlyLutealEnd,
-      description: "⚠️ DEFCON 1 ⚠️ Tread carefully, soldier",
-      emoji: "⚠️",
-      tips: [
-        "Whatever she says, **she's right**. I don't care if she's wrong - **SHE'S RIGHT.**",
-        "Buy **tampons BEFORE she asks**.",
-        "**Cancel plans** if she's not feeling it. Don't be a hero.",
-        "**Food delivery apps** are your best friend this week."
-      ]
-    };
-  }
+  const content = PHASE_CONTENT[phaseName] || PHASE_CONTENT["Late Luteal/PMS"];
+  return {
+    phase: phaseName,
+    phase_number: phaseNumber,
+    phase_day: phaseDay,
+    emoji: content.emoji,
+    punchline: content.punchline,
+    briefPlayByPlay: content.briefPlayByPlay,
+    briefFeelings: content.briefFeelings,
+    prep: content.prep,
+    action: content.action,
+    // Keep full content reference for "See Full Details"
+    fullContent: content,
+  };
 };
 
 export const recalculateCycleLengths = (history) => {

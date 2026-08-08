@@ -1,0 +1,26 @@
+{
+  "summary": "End-to-end Playwright test of the restructured Current Phase home card on Dashboard for grandfathered testuser@test.com (Follicular phase, day 11 of 28-day cycle). All 8 acceptance criteria pass: (1) punchline sourced from shared PHASE_CONTENT ('Preseason hype! She's warming up and ready to move.') — no 'storm has passed' or old descriptions; (2) header shows icon + phase name + punchline; (3) stat row is a 2-col grid (Overall Cycle 'Day 11' + Phase Progress 'Phase 2: Day 6'); (4) History + Predictor buttons are 2-col with icons; (5) Today's Game Plan shows 4 icon-led lines with 4 distinct icon colors (cyan/pink/amber/emerald) mapped to Play-by-Play/Feelings/Prep/Action; (6) brief lines pull correct content from PHASE_CONTENT.briefPlayByPlay/briefFeelings and date-seeded picks from prep[]/action[]; (7) See Full Details opens phase-detail-dialog with punchline + full Play-by-Play paragraph ('Estrogen starts climbing…') + What She Feels (Physical + Mental/Emotional lists) + Prep list + Action list; (8) MoodMap Follicular modal still shows shared punchline and Play-by-Play after data source change. Prep/Action are stable across page reload (date-seeded, no flicker). History dialog opens correctly. AI-personalized tips button present alongside See Full Details in bottom row.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Profile onboarding ('First Day of Her Last Period')", "issues": ["Uses browser-default HTML5 date picker (input[type=date]) instead of a shadcn Calendar/DatePicker component — unrelated to this change but noted for consistency"]},
+      {"screen": "Phase Detail Dialog", "issues": ["Console warning: 'Missing Description or aria-describedby={undefined} for DialogContent' — add DialogDescription (or aria-describedby) to phase-detail-dialog and cycle history dialog to satisfy Radix a11y guidance"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional a11y polish: add DialogDescription or aria-describedby to phase-detail-dialog and cycle-history dialog to silence Radix warning",
+    "Optional design polish: replace native <input type=date> in profile onboarding with shadcn Calendar/DatePicker for consistency"
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100% (8/8 acceptance criteria)"},
+  "seed_data_creation": "Logged in as testuser@test.com/Test1234 (grandfathered). Completed Privacy & Location (Outside US), Partner Consent (both native checkboxes), and profile onboarding (name=TestPartner, cycleStartDate=today-10d) to land on dashboard with Follicular phase, cycle Day 11, Phase 2 Day 6.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "testuser@test.com / Test1234 (grandfathered)",
+  "context_for_next_testing_agent": "Dashboard cycle card restructure is fully working with shared PHASE_CONTENT. Verified data-testids: cycle-info-card, current-phase, phase-punchline-card, cycle-day, phase-day, brief-play-by-play, brief-feelings, brief-prep, brief-action (all icon-led), toggle-cycle-history-button, phase-predictor-button, see-full-details-btn (opens phase-detail-dialog). Phase Detail dialog headings are CSS-uppercased ('Play-by-Play' -> 'PLAY-BY-PLAY' in inner_text). Onboarding flow to reach dashboard: (a) fill email/password inputs.first/second + click [data-testid='login-submit-btn']; (b) if state-privacy-waiver, open Select, click text 'Outside the United States' exact=True (force=True), click 'Continue'; (c) if Partner Consent, check both input[type='checkbox'] (native) then click 'I Understand and Have Consent - Continue'; (d) if 'First Day of Her Last Period' visible, fill name and input[type='date'] with iso date. Date-seeded Prep/Action stable across reload confirmed.",
+  "rca_of_the_issue": "N/A — all acceptance criteria pass. Single 'dialog_content' FAIL in test log was a test-side case-sensitivity mismatch (CSS 'uppercase' class rendered 'Play-by-Play' as 'PLAY-BY-PLAY' in inner_text); the dialog itself contains all required sections and content as verified by screenshot and punchline/pbp substring checks."
+}

@@ -11,6 +11,7 @@ import MoodMap from '@/components/MoodMap';
 import FeedbackModal from '@/components/FeedbackModal';
 import PartnerProfile from '@/components/PartnerProfile';
 import CoachingManual from '@/components/CoachingManual';
+import { PHASE_CONTENT, dateSeedPick } from '@/utils/phaseContent';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -38,6 +39,7 @@ const Dashboard = () => {
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showCycleHistory, setShowCycleHistory] = useState(false);
+  const [showPhaseDetail, setShowPhaseDetail] = useState(false);
   const [cycleHistory, setCycleHistory] = useState(null);
   const [logPeriodDate, setLogPeriodDate] = useState('');
   
@@ -79,16 +81,6 @@ const Dashboard = () => {
   const [cycleStartDate, setCycleStartDate] = useState('');
 
   // Helper to render text with bold markdown
-  const renderTipWithBold = (tip) => {
-    const parts = tip.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i}>{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-  };
-
   useEffect(() => {
     loadData();
     checkForFeedbackPrompt();
@@ -285,9 +277,13 @@ const Dashboard = () => {
         phase: phaseInfo.phase,
         phase_number: phaseInfo.phase_number,
         phase_day: phaseInfo.phase_day,
-        description: phaseInfo.description,
         emoji: phaseInfo.emoji,
-        tips: phaseInfo.tips
+        punchline: phaseInfo.punchline,
+        briefPlayByPlay: phaseInfo.briefPlayByPlay,
+        briefFeelings: phaseInfo.briefFeelings,
+        prep: phaseInfo.prep,
+        action: phaseInfo.action,
+        fullContent: phaseInfo.fullContent,
       });
 
       // Check extension state
@@ -1096,106 +1092,231 @@ const Dashboard = () => {
 
         {/* Current Cycle Info */}
         {cycleInfo && (
-          <div className={`bg-gradient-to-r ${getPhaseColor(cycleInfo.phase)} backdrop-blur-sm p-6 sm:p-8 rounded-2xl border mb-8`} data-testid="cycle-info-card">
-            <div className="grid md:grid-cols-2 gap-8">
-              <div>
-                <div className="text-sm text-slate-400 mb-2">Current Phase</div>
-                <div className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="current-phase">
-                  {cycleInfo.emoji && <span className="mr-2">{cycleInfo.emoji}</span>}
-                  {cycleInfo.phase}
-                </div>
-                <div className="text-slate-300 mb-4">{cycleInfo.description}</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-slate-400">Overall Cycle</div>
-                    <div className="text-2xl font-bold text-white" data-testid="cycle-day">
-                      Day {cycleInfo.cycle_day}{cycleInfo.is_capped ? '+' : ''}
-                    </div>
-                    {extensionStatus !== 'normal' && (
-                      <div className="text-xs text-orange-300 mt-1">Avg: {averageCycleLength} days</div>
-                    )}
-                    <Button
-                      onClick={() => {
-                        setShowCycleHistory(!showCycleHistory);
-                        if (!cycleHistory) loadCycleHistory();
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="mt-4 border-white/30 text-white hover:bg-white/10"
-                      data-testid="toggle-cycle-history-button"
-                    >
-                      📊 Cycle History & Stats
-                    </Button>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-400">Phase Progress</div>
-                    <div className="text-2xl font-bold text-white" data-testid="phase-day">
-                      Phase {cycleInfo.phase_number}: Day {cycleInfo.phase_day}
-                    </div>
-                    <Button
-                      onClick={() => window.location.href = '/predictor'}
-                      variant="outline"
-                      size="sm"
-                      className="mt-4 border-white/30 text-white hover:bg-white/10"
-                      data-testid="phase-predictor-button"
-                    >
-                      🔮 Phase Predictor
-                    </Button>
-                  </div>
-                </div>
+          <div className={`bg-gradient-to-r ${getPhaseColor(cycleInfo.phase)} backdrop-blur-sm p-4 sm:p-6 rounded-2xl border mb-8`} data-testid="cycle-info-card">
+            {/* Header: icon + phase name + punchline */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                {cycleInfo.emoji && <span className="text-2xl">{cycleInfo.emoji}</span>}
+                <span className="text-xl sm:text-2xl font-bold text-white" data-testid="current-phase">{cycleInfo.phase}</span>
               </div>
+              <p className="text-slate-300 text-sm" data-testid="phase-punchline-card">{cycleInfo.punchline}</p>
+            </div>
 
-              <div>
-                <div className="text-sm text-slate-400 mb-3">Today&apos;s Tips</div>
-                <ul className="space-y-2">
-                  {cycleInfo.tips.slice(0, 4).map((tip, idx) => (
-                    <li key={idx} className="flex gap-2 text-slate-200" data-testid={`tip-${idx}`}>
-                      <span className="text-cyan-400">•</span>
-                      <span>{renderTipWithBold(tip)}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Personalized tips — Advanced only */}
-                {hasAIAccess && planType !== 'basic' && (
-                  <div className="mt-4">
-                    {personalizedTips.length > 0 ? (
-                      <>
-                        <div className="text-xs text-emerald-400 font-semibold mb-2 flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                          Personalized for You
-                        </div>
-                        <ul className="space-y-2">
-                          {personalizedTips.map((tip, idx) => (
-                            <li key={`p-${idx}`} className="flex gap-2 text-slate-200 text-sm" data-testid={`personalized-tip-${idx}`}>
-                              <span className="text-emerald-400">•</span>
-                              <span>{tip}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : !loadingPersonalizedTips ? (
-                      <button
-                        onClick={fetchPersonalizedTips}
-                        className="text-xs text-emerald-400/70 hover:text-emerald-400 mt-2 flex items-center gap-1"
-                        data-testid="load-personalized-tips"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        Get AI-personalized tips
-                      </button>
-                    ) : (
-                      <p className="text-xs text-slate-500 mt-2">Generating personalized tips...</p>
-                    )}
-                  </div>
+            {/* Stat row: Overall Cycle + Phase Progress side by side */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-[10px] text-slate-400 uppercase tracking-wider">Overall Cycle</div>
+                <div className="text-xl font-bold text-white" data-testid="cycle-day">
+                  Day {cycleInfo.cycle_day}{cycleInfo.is_capped ? '+' : ''}
+                </div>
+                {extensionStatus !== 'normal' && (
+                  <div className="text-[10px] text-orange-300">Avg: {averageCycleLength}d</div>
                 )}
+              </div>
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-[10px] text-slate-400 uppercase tracking-wider">Phase Progress</div>
+                <div className="text-xl font-bold text-white" data-testid="phase-day">
+                  Phase {cycleInfo.phase_number}: Day {cycleInfo.phase_day}
+                </div>
               </div>
             </div>
 
+            {/* Button row: History + Predictor side by side */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <Button
+                onClick={() => {
+                  setShowCycleHistory(!showCycleHistory);
+                  if (!cycleHistory) loadCycleHistory();
+                }}
+                variant="outline"
+                size="sm"
+                className="border-white/20 text-white hover:bg-white/10 text-xs"
+                data-testid="toggle-cycle-history-button"
+              >
+                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                History
+              </Button>
+              <Button
+                onClick={() => window.location.href = '/predictor'}
+                variant="outline"
+                size="sm"
+                className="border-white/20 text-white hover:bg-white/10 text-xs"
+                data-testid="phase-predictor-button"
+              >
+                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                Predictor
+              </Button>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-white/10 mb-4" />
+
+            {/* Today's Game Plan */}
+            <div className="mb-4">
+              <div className="text-xs text-slate-400 uppercase tracking-wider mb-3">Today&apos;s Game Plan</div>
+              <div className="space-y-2">
+                {/* Play-by-Play (pulse icon) */}
+                <div className="flex gap-2 items-start text-sm text-slate-200" data-testid="brief-play-by-play">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                  <span>{cycleInfo.briefPlayByPlay}</span>
+                </div>
+                {/* Feelings (heart icon) */}
+                <div className="flex gap-2 items-start text-sm text-slate-200" data-testid="brief-feelings">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                  <span>{cycleInfo.briefFeelings}</span>
+                </div>
+                {/* Prep (clipboard icon) */}
+                <div className="flex gap-2 items-start text-sm text-slate-200" data-testid="brief-prep">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                  <span>{dateSeedPick(cycleInfo.prep, 'prep')}</span>
+                </div>
+                {/* Action (lightning bolt icon) */}
+                <div className="flex gap-2 items-start text-sm text-slate-200" data-testid="brief-action">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                  <span>{dateSeedPick(cycleInfo.action, 'action')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom button row: See Full Details + AI Tips side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => setShowPhaseDetail(true)}
+                variant="outline"
+                size="sm"
+                className="border-white/20 text-white hover:bg-white/10 text-xs"
+                data-testid="see-full-details-btn"
+              >
+                See Full Details
+              </Button>
+              {hasAIAccess && planType !== 'basic' ? (
+                personalizedTips.length > 0 ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 text-xs"
+                    disabled
+                  >
+                    AI tips loaded
+                  </Button>
+                ) : !loadingPersonalizedTips ? (
+                  <Button
+                    onClick={fetchPersonalizedTips}
+                    variant="outline"
+                    size="sm"
+                    className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 text-xs"
+                    data-testid="load-personalized-tips"
+                  >
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    AI-personalized tips
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" className="border-slate-600 text-slate-500 text-xs" disabled>
+                    Generating...
+                  </Button>
+                )
+              ) : (
+                <Button
+                  onClick={() => setShowUpgradeModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 text-xs"
+                >
+                  AI-personalized tips
+                </Button>
+              )}
+            </div>
+
+            {/* Personalized tips display (if loaded) */}
+            {hasAIAccess && planType !== 'basic' && personalizedTips.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-white/10">
+                <div className="text-xs text-emerald-400 font-semibold mb-2 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Personalized for You
+                </div>
+                <ul className="space-y-1.5">
+                  {personalizedTips.map((tip, idx) => (
+                    <li key={`p-${idx}`} className="flex gap-2 text-slate-200 text-sm" data-testid={`personalized-tip-${idx}`}>
+                      <span className="text-emerald-400 flex-shrink-0">&bull;</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Phase Detail Dialog — full modal */}
+        {cycleInfo?.fullContent && (
+          <Dialog open={showPhaseDetail} onOpenChange={setShowPhaseDetail}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="phase-detail-dialog">
+              <DialogHeader>
+                <DialogTitle className="text-2xl flex items-center gap-3">
+                  <span className="text-4xl">{cycleInfo.emoji}</span>
+                  <div>
+                    <div>{cycleInfo.phase}</div>
+                  </div>
+                </DialogTitle>
+                <DialogDescription className="text-slate-300 text-base mt-3 font-medium italic">
+                  {cycleInfo.punchline}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4 space-y-5 pb-4">
+                <div>
+                  <h4 className="text-cyan-400 font-semibold text-sm uppercase tracking-wider mb-2">Play-by-Play</h4>
+                  <p className="text-slate-300 text-sm leading-relaxed">{cycleInfo.fullContent.playByPlay}</p>
+                </div>
+                <div>
+                  <h4 className="text-cyan-400 font-semibold text-sm uppercase tracking-wider mb-3">What She Feels</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <h5 className="text-white font-medium text-sm mb-2">Physical</h5>
+                      <ul className="space-y-1.5">
+                        {cycleInfo.fullContent.feelsPhysical.map((item, idx) => (
+                          <li key={idx} className="flex gap-2 text-slate-300 text-sm">
+                            <span className="text-slate-500 flex-shrink-0">&bull;</span><span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h5 className="text-white font-medium text-sm mb-2">Mental / Emotional</h5>
+                      <ul className="space-y-1.5">
+                        {cycleInfo.fullContent.feelsEmotional.map((item, idx) => (
+                          <li key={idx} className="flex gap-2 text-slate-300 text-sm">
+                            <span className="text-slate-500 flex-shrink-0">&bull;</span><span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="border border-slate-600/50 rounded-lg p-3">
+                  <h4 className="text-amber-400 font-semibold text-sm mb-2">Prep</h4>
+                  <ul className="space-y-2">
+                    {cycleInfo.fullContent.prep.map((item, idx) => (
+                      <li key={idx} className="flex gap-2 text-slate-300 text-sm">
+                        <span className="text-amber-400 flex-shrink-0">&bull;</span><span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="border border-slate-600/50 rounded-lg p-3">
+                  <h4 className="text-emerald-400 font-semibold text-sm mb-2">Action</h4>
+                  <ul className="space-y-2">
+                    {cycleInfo.fullContent.action.map((item, idx) => (
+                      <li key={idx} className="flex gap-2 text-slate-300 text-sm">
+                        <span className="text-emerald-400 flex-shrink-0">&bull;</span><span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
 
         {/* Cycle History Dialog */}
