@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend re-verification of the two bugs found in iteration_18 for Phase Predictor dynamic clinical cycle model. BOTH BUGS FIXED. (1) Reference cards now render 'Days X-Y' from computePhaseBoundaries.ranges — verified all 5 cards show correct ranges for default 28/5/14 (M 1-5, F 6-12, O 13-15, L 16-24, PMS 25-28). (2) Prediction now recomputes reactively when Advanced Settings change without needing to clear/re-pick the date — verified by picking a date landing on cycle Day 17, which showed Luteal at lutealConstant=14 then instantly switched to Ovulation after changing lutealConstant to 11 (no re-pick). Reference cards also update reactively (Ovulation card range moved from 13-15 to 16-18 after the change). Advanced Settings still persist to localStorage under cyclecoach_cycle_settings_<uid> and rehydrate on reload. computePhaseBoundaries math re-verified for all required cases: 24/5/14 -> F 6-8 / O 9-11, 35/5/14 -> F 6-19 / O 20-22, 28/5/14 -> F 6-12 / O 13-15 / L 16-24 / PMS 25-28.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "cycleCalculations.js computePhaseBoundaries still has the pre-existing pmsLength inconsistency for lutealConstant=15/16 (pmsLength=6 but ranges.pms may be 5 days). Not in scope of this iteration but worth revisiting.",
+    "PhasePredictor.jsx uses require('./phaseContent') inside getPhaseInfo (cycleCalculations.js line 165) — mixed ESM/CJS; consider converting to a static import for tree-shaking and consistency."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "5/5 acceptance criteria pass"},
+  "seed_data_creation": "Logged in as testuser@test.com/Test1234. Seeded uid 0c6935cc-7225-4de3-ab2b-143fc07deace with waiver_complete, consent_granted, partner_profile (cycleStartDate = today-8d, cycleLength=28). Removed cycle_settings key at end of test.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "testuser@test.com / Test1234 (grandfathered)",
+  "context_for_next_testing_agent": "Both iteration_18 bugs are resolved. Reference cards use 'Days {card.content.days}' at PhasePredictor.jsx line 323. Prediction is now derived inline as `const prediction = predictionDate ? calculatePrediction(predictionDate) : null` (line 116), so it recomputes on every render when either predictionDate or cycleSettings changes. Login flow requires handling Privacy & Location modal after first login — pick 'Outside the United States' to skip state selection.",
+  "rca_of_the_issue": "N/A — both bugs from iteration_18 are fixed and verified end-to-end via UI."
+}

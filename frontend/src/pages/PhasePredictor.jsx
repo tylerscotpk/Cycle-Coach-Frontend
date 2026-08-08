@@ -38,7 +38,6 @@ const PHASE_COLORS = {
 const PhasePredictor = () => {
   const navigate = useNavigate();
   const [predictionDate, setPredictionDate] = useState('');
-  const [prediction, setPrediction] = useState(null);
   const [selectedPhaseModal, setSelectedPhaseModal] = useState(null);
   const [cycleSettings, setCycleSettings] = useState(() => LocalStorage.getCycleSettings());
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -113,13 +112,11 @@ const PhasePredictor = () => {
     };
   };
 
+  // Derive prediction reactively from date + settings
+  const prediction = predictionDate ? calculatePrediction(predictionDate) : null;
+
   const handlePredictionDateChange = (date) => {
     setPredictionDate(date);
-    if (date) {
-      setPrediction(calculatePrediction(date));
-    } else {
-      setPrediction(null);
-    }
   };
 
   return (
@@ -200,7 +197,7 @@ const PhasePredictor = () => {
                         variant="outline"
                         size="sm"
                         className="border-slate-600 text-slate-300"
-                        onClick={() => { setPredictionDate(''); setPrediction(null); }}
+                        onClick={() => setPredictionDate('')}
                       >
                         Clear
                       </Button>
@@ -323,6 +320,7 @@ const PhasePredictor = () => {
                   <div>
                     <p className="text-white font-medium text-sm">{card.key}</p>
                     <p className="text-slate-300 text-xs">{card.content.cardTagline}</p>
+                    <p className="text-slate-500 text-[10px]">Days {card.content.days}</p>
                   </div>
                 </button>
               ))}
