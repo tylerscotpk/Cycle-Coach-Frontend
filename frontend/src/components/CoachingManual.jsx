@@ -32,27 +32,27 @@ const MANUAL_DATA = [
     terms: [
       {
         term: "Cycle Length",
-        definition: "The full length of one cycle, counted from the first day of one period to the first day of the next. \u201CAverage\u201D is often cited as 28 days, but anywhere from about 21\u201335 days is considered normal \u2014 cycle length varies person to person."
-      },
-      {
-        term: "Follicular Phase (Days 6\u201313, roughly)",
-        definition: "Starts the day after the period ends and runs until ovulation. Estrogen climbs steadily, energy comes back online, and this is generally the highest-energy stretch of the cycle."
-      },
-      {
-        term: "Luteal Phase (Days 17\u201323, roughly)",
-        definition: "The stretch after ovulation and before the period. Progesterone rises first, then everything drops toward the end of the phase \u2014 that drop is the PMS window."
+        definition: "The full length of one cycle, counted from the first day of one period to the first day of the next. \u2018Average\u2019 is often cited as 28 days, but anywhere from about 21\u201335 days is considered normal \u2014 cycle length varies person to person. When a cycle runs longer than average, that extra time usually shows up in the follicular phase \u2014 it takes longer for an egg to grow and leave the ovary."
       },
       {
         term: "Menstrual Phase (Days 1\u20135, roughly)",
         definition: "The period itself \u2014 when the uterine lining sheds. Estrogen and progesterone are at their lowest point of the cycle, which is why energy often dips here."
       },
       {
+        term: "Follicular Phase (Days 6\u201313, roughly)",
+        definition: "Starts the day after the period ends and runs until ovulation. Estrogen climbs steadily, energy comes back online, and this is generally the highest-energy stretch of the cycle. This is also the phase most likely to stretch out in a longer-than-average cycle, since it takes longer for an egg to grow and leave the ovary."
+      },
+      {
         term: "Ovulation (Days 14\u201316, roughly)",
         definition: "The release of an egg from the ovary, triggered by the LH surge. Estrogen and testosterone both peak around this time."
       },
       {
-        term: "PMS (Premenstrual Syndrome)",
-        definition: "The final few days of the luteal phase, right before the period starts. Caused by the sharp drop in estrogen and progesterone \u2014 not a mood choice or a personality shift."
+        term: "Luteal Phase (Days 17\u201323, roughly)",
+        definition: "The stretch after ovulation and before the period. Progesterone rises first, then everything drops toward the end of the phase \u2014 that drop is the PMS window."
+      },
+      {
+        term: "PMS (Days 24\u201328, roughly)",
+        definition: "Short for Premenstrual Syndrome. The final few days of the luteal phase, right before the period starts. Caused by the sharp drop in estrogen and progesterone \u2014 not a mood choice or a personality shift."
       },
     ]
   },
