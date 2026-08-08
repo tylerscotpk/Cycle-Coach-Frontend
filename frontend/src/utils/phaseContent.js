@@ -5,6 +5,8 @@
 export const PHASE_CONTENT = {
   Menstrual: {
     emoji: "\u{1F9F8}",
+    name: "Menstrual",
+    days: "1\u20135",
     punchline: "Recovery Week: She\u2019s running on empty.",
     cardTagline: "Low fuel. Keep it calm.",
     playByPlay: "Hormones bottom out, triggering the shedding of the uterine lining. Her body is literally doing a full reset, which dips energy, slows momentum, and increases sensitivity. This is her recovery week \u2014 the physiology equivalent of playing through a tough away game.",
@@ -35,6 +37,8 @@ export const PHASE_CONTENT = {
   },
   Follicular: {
     emoji: "\u{1F337}",
+    name: "Follicular",
+    days: "6\u201313",
     punchline: "Preseason hype! She\u2019s warming up.",
     cardTagline: "Warming up, ready to move.",
     playByPlay: "Estrogen starts climbing again after her period, rebuilding energy, mood, and motivation. Her body is gearing up for ovulation \u2014 think of it as the warm-up phase before game day. Hormones boost clarity, optimism, and creativity. She\u2019s getting back in the pocket.",
@@ -66,6 +70,8 @@ export const PHASE_CONTENT = {
   },
   Ovulation: {
     emoji: "\u{1F525}",
+    name: "Ovulation",
+    days: "14\u201316",
     punchline: "Prime Time: MVP energy!",
     cardTagline: "Prime time. MVP energy.",
     playByPlay: "Estrogen peaks and she hits her physiological high-performance window. The egg is released, hormones boost energy, confidence, and social drive. This is her most naturally connected, outward-facing stretch of the cycle.",
@@ -96,6 +102,8 @@ export const PHASE_CONTENT = {
   },
   "Early Luteal": {
     emoji: "\u{1F3E0}",
+    name: "Luteal",
+    days: "17\u201323",
     punchline: "Wind-down mode: Nesting and grounded.",
     cardTagline: "Winding down. Stay cozy.",
     playByPlay: "Progesterone rises after ovulation, shifting her body into wind-down mode. Hormones slow things down, increase sensitivity, and push her toward routine, comfort, and stability.",
@@ -126,6 +134,8 @@ export const PHASE_CONTENT = {
   },
   "Late Luteal/PMS": {
     emoji: "\u26A0\uFE0F",
+    name: "PMS",
+    days: "24\u201328",
     punchline: "High-alert week! Sensitivity\u2019s up.",
     cardTagline: "Sensitivity\u2019s up. Play smart.",
     playByPlay: "Estrogen and progesterone dive faster than a soccer player in the penalty box \u2014 this is the hormonal cliff that creates PMS. This is NOT. HER. MOOD. It\u2019s physiology reacting to a rapid chemical shift.",

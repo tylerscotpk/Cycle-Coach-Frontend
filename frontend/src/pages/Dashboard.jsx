@@ -11,6 +11,7 @@ import MoodMap from '@/components/MoodMap';
 import FeedbackModal from '@/components/FeedbackModal';
 import PartnerProfile from '@/components/PartnerProfile';
 import CoachingManual from '@/components/CoachingManual';
+import PhaseDetailModal from '@/components/PhaseDetailModal';
 import { PHASE_CONTENT, dateSeedPick } from '@/utils/phaseContent';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -1249,74 +1250,13 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Phase Detail Dialog — full modal */}
+        {/* Phase Detail Dialog — shared modal component */}
         {cycleInfo?.fullContent && (
-          <Dialog open={showPhaseDetail} onOpenChange={setShowPhaseDetail}>
-            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="phase-detail-dialog">
-              <DialogHeader>
-                <DialogTitle className="text-2xl flex items-center gap-3">
-                  <span className="text-4xl">{cycleInfo.emoji}</span>
-                  <div>
-                    <div>{cycleInfo.phase}</div>
-                  </div>
-                </DialogTitle>
-                <DialogDescription className="text-slate-300 text-base mt-3 font-medium italic">
-                  {cycleInfo.punchline}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-4 space-y-5 pb-4">
-                <div>
-                  <h4 className="text-cyan-400 font-semibold text-sm uppercase tracking-wider mb-2">Play-by-Play</h4>
-                  <p className="text-slate-300 text-sm leading-relaxed">{cycleInfo.fullContent.playByPlay}</p>
-                </div>
-                <div>
-                  <h4 className="text-cyan-400 font-semibold text-sm uppercase tracking-wider mb-3">What She Feels</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <h5 className="text-white font-medium text-sm mb-2">Physical</h5>
-                      <ul className="space-y-1.5">
-                        {cycleInfo.fullContent.feelsPhysical.map((item, idx) => (
-                          <li key={idx} className="flex gap-2 text-slate-300 text-sm">
-                            <span className="text-slate-500 flex-shrink-0">&bull;</span><span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h5 className="text-white font-medium text-sm mb-2">Mental / Emotional</h5>
-                      <ul className="space-y-1.5">
-                        {cycleInfo.fullContent.feelsEmotional.map((item, idx) => (
-                          <li key={idx} className="flex gap-2 text-slate-300 text-sm">
-                            <span className="text-slate-500 flex-shrink-0">&bull;</span><span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                <div className="border border-slate-600/50 rounded-lg p-3">
-                  <h4 className="text-amber-400 font-semibold text-sm mb-2">Prep</h4>
-                  <ul className="space-y-2">
-                    {cycleInfo.fullContent.prep.map((item, idx) => (
-                      <li key={idx} className="flex gap-2 text-slate-300 text-sm">
-                        <span className="text-amber-400 flex-shrink-0">&bull;</span><span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="border border-slate-600/50 rounded-lg p-3">
-                  <h4 className="text-emerald-400 font-semibold text-sm mb-2">Action</h4>
-                  <ul className="space-y-2">
-                    {cycleInfo.fullContent.action.map((item, idx) => (
-                      <li key={idx} className="flex gap-2 text-slate-300 text-sm">
-                        <span className="text-emerald-400 flex-shrink-0">&bull;</span><span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <PhaseDetailModal
+            open={showPhaseDetail}
+            onOpenChange={setShowPhaseDetail}
+            phase={cycleInfo.fullContent}
+          />
         )}
 
         {/* Cycle History Dialog */}

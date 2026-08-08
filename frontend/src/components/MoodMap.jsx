@@ -1,46 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PHASE_CONTENT } from '@/utils/phaseContent';
-
-// Collapsible section with smooth animation
-const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const contentRef = useRef(null);
-  const [height, setHeight] = useState(0);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setHeight(contentRef.current.scrollHeight);
-    }
-  }, [children]);
-
-  return (
-    <div className="border border-slate-600/50 rounded-lg overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3 bg-slate-700/40 hover:bg-slate-700/60 transition-colors"
-        data-testid={`collapsible-${title.toLowerCase()}`}
-      >
-        <span className="text-white font-semibold text-sm">{title}</span>
-        <svg
-          className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      <div
-        style={{ maxHeight: isOpen ? `${height}px` : '0px' }}
-        className="transition-[max-height] duration-300 ease-in-out overflow-hidden"
-      >
-        <div ref={contentRef} className="p-3 pt-2">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-};
+import PhaseDetailModal from '@/components/PhaseDetailModal';
 
 const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const [selectedPhase, setSelectedPhase] = useState(null);
@@ -349,88 +310,12 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
         </CardContent>
       </Card>
 
-      {/* Phase Details Dialog — new structured layout */}
-      <Dialog open={selectedPhase !== null} onOpenChange={() => setSelectedPhase(null)}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="phase-dialog">
-          {selectedPhase && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-2xl flex items-center gap-3">
-                  <span className="text-4xl">{selectedPhase.emoji}</span>
-                  <div>
-                    <div>{selectedPhase.name}</div>
-                    <div className="text-sm text-slate-400 font-normal">Days {selectedPhase.days}</div>
-                  </div>
-                </DialogTitle>
-                <DialogDescription className="text-slate-300 text-base mt-3 font-medium italic" data-testid="phase-punchline">
-                  {selectedPhase.punchline}
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="mt-4 space-y-5 pb-4">
-                {/* Play-by-Play */}
-                <div data-testid="phase-play-by-play">
-                  <h4 className="text-cyan-400 font-semibold text-sm uppercase tracking-wider mb-2">Play-by-Play</h4>
-                  <p className="text-slate-300 text-sm leading-relaxed">{selectedPhase.playByPlay}</p>
-                </div>
-
-                {/* What She Feels */}
-                <div data-testid="phase-what-she-feels">
-                  <h4 className="text-cyan-400 font-semibold text-sm uppercase tracking-wider mb-3">What She Feels</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <h5 className="text-white font-medium text-sm mb-2">Physical</h5>
-                      <ul className="space-y-1.5">
-                        {selectedPhase.feelsPhysical.map((item, idx) => (
-                          <li key={idx} className="flex gap-2 text-slate-300 text-sm">
-                            <span className="text-slate-500 flex-shrink-0">&bull;</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h5 className="text-white font-medium text-sm mb-2">Mental / Emotional</h5>
-                      <ul className="space-y-1.5">
-                        {selectedPhase.feelsEmotional.map((item, idx) => (
-                          <li key={idx} className="flex gap-2 text-slate-300 text-sm">
-                            <span className="text-slate-500 flex-shrink-0">&bull;</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Prep — collapsible */}
-                <CollapsibleSection title="Prep" data-testid="phase-prep">
-                  <ul className="space-y-2">
-                    {selectedPhase.prep.map((item, idx) => (
-                      <li key={idx} className="flex gap-2 text-slate-300 text-sm">
-                        <span className="text-amber-400 flex-shrink-0">&bull;</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CollapsibleSection>
-
-                {/* Action — collapsible */}
-                <CollapsibleSection title="Action" data-testid="phase-action">
-                  <ul className="space-y-2">
-                    {selectedPhase.action.map((item, idx) => (
-                      <li key={idx} className="flex gap-2 text-slate-300 text-sm">
-                        <span className="text-emerald-400 flex-shrink-0">&bull;</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CollapsibleSection>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Phase Details — shared modal component */}
+      <PhaseDetailModal
+        open={selectedPhase !== null}
+        onOpenChange={() => setSelectedPhase(null)}
+        phase={selectedPhase}
+      />
     </>
   );
 };

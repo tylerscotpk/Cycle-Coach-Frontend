@@ -1,0 +1,20 @@
+{
+  "summary": "Frontend-only Playwright verification of the shared PhaseDetailModal across Phase Predictor, Dashboard, and MoodMap. All 6 acceptance criteria PASS. Verified data-testid='phase-detail-dialog' renders in all three entry points with identical structure: header (emoji + phase.name + Days range) → punchline (italic DialogDescription) → Play-by-Play → What She Feels (Physical + Mental/Emotional) → Prep (collapsible) → Action (collapsible). Predictor Menstrual card header='🧸 Menstrual / Days 1–5' with punchline='Recovery Week: She’s running on empty.' (NOT the punchline as title). Predictor PMS card header='⚠️ PMS / Days 24–28' with punchline='High-alert week! Sensitivity’s up.'. MoodMap Menstrual legend opens identical modal with same header. Dashboard 'See Full Details' opens the same shared PhaseDetailModal (showed Follicular for day-8 seeded partner with header='🌷 Follicular / Days 6–13'). Both collapsible-prep and collapsible-action testids present in all three contexts.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100% (6/6 acceptance criteria)"},
+  "seed_data_creation": "Logged in as testuser@test.com/Test1234; seeded uid 0c6935cc-7225-4de3-ab2b-143fc07deace with cyclecoach_state_waiver_complete_<uid>=true, cyclecoach_consent_granted_<uid>=true, and cyclecoach_partner_profile_<uid>=btoa(JSON.stringify({name:'TestPartner', cycleStartDate:<today-8d>, cycleLength:28})).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "testuser@test.com / Test1234 (grandfathered)",
+  "context_for_next_testing_agent": "Shared PhaseDetailModal (data-testid='phase-detail-dialog') is used correctly by MoodMap, Dashboard, and PhasePredictor. Key testids: phase-detail-dialog, phase-punchline, phase-play-by-play, phase-what-she-feels, collapsible-prep, collapsible-action, phase-ref-{menstrual,follicular,ovulation,luteal,pms}. Login submit uses data-testid='login-submit-btn' (get_by_role('button', name='Log In') is ambiguous with nav button — use testid). Dashboard route resolves to /app.",
+  "rca_of_the_issue": "N/A — the previous bug (PhasePredictor using punchline as title and cardTagline as subtitle) is fully fixed. All three surfaces now render from /app/frontend/src/components/PhaseDetailModal.jsx which reads phase.name + phase.days from /app/frontend/src/utils/phaseContent.js, with punchline rendered separately as DialogDescription."
+}
