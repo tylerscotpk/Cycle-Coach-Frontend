@@ -105,7 +105,7 @@ const PhasePredictor = () => {
       displayName: PHASE_DISPLAY[phaseName] || phaseName,
       phaseEmoji: phaseContent.emoji,
       phaseColor: PHASE_COLORS[phaseName],
-      phaseSummary: phaseContent.briefPlayByPlay,
+      phaseSummary: phaseContent.planningTip,
       fullContent: phaseContent,
       avgCycleLength,
       formattedDate,
