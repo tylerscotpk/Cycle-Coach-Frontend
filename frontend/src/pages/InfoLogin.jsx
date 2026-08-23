@@ -50,7 +50,7 @@ const InfoLogin = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API}/api/auth/login`, {
+      const response = await fetch("https://cycle-coach-backend.vercel.app/api/auth/login", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
