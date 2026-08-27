@@ -9,7 +9,13 @@ import time
 import uuid
 
 # Backend API URL from environment  
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL')
+from dotenv import dotenv_values
+
+BASE_URL = (os.environ.get('REACT_APP_BACKEND_URL')
+            or dotenv_values('/app/frontend/.env').get('REACT_APP_BACKEND_URL'))
+if not BASE_URL:
+    raise RuntimeError('REACT_APP_BACKEND_URL missing')
+BASE_URL = BASE_URL.rstrip('/')
 LOCALHOST_URL = "http://localhost:8001"
 
 # Test credentials

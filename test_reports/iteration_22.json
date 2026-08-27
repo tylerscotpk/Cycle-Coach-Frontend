@@ -1,0 +1,66 @@
+{
+  "summary": "Iteration 22 — FULL REGRESSION after merging mobile assets from android-current-backup into Real. Verified all 8 merge items via file inspection + assertions in a new pytest suite, ran the whole backend suite, and drove 7 frontend flows with Playwright. Backend: 137 passed / 0 failed / 19 skipped (16 of the skips are an obsolete license-key era suite I marked skip; 3 pre-existing skips). New suite /app/backend/tests/test_mobile_merge_regression_i22.py (29 tests, all pass) covers login (grandfathered), /auth/check (with/without/invalid token), /account/subscription, verify-email guards, admin auth guards + stats/users/grant-lifetime/archive, stripe create-checkout + upgrade(use_checkout) + sync, and the 5 mobile config files. Frontend: Dashboard (cycle info card w/ punchline from phaseContent, Day 9 / Phase 2: Day 4, all 4 daily-brief blocks), PhaseDetailModal ('🌷 Follicular / Days 6–13' + punchline + play-by-play + what-she-feels + Prep/Action collapsibles), Coaching Manual (3 categories Hormones / Cycle Phases / General Terms, 17 term accordions), Phase Predictor (LIVE avg 28 days, dynamic reference cards for all 5 phases, real prediction rendered for 2026-09-15 -> PMS Day 28, back-nav works), Account Settings (Lifetime badge, Active status, correct email, no upgrade/downgrade/cancel buttons for lifetime — correct), Admin Dashboard (password login, 5 stat cards, 8 filters with counts, 55 user rows, Grant Lifetime/Deactivate actions rendered), VerifyEmail waiting state ('Please Verify Your Email' + resend button). Zero JS console errors and zero error elements observed on any tested screen. Config: capacitor server.url=https://cyclecoach.net + appId net.cyclecoach.app, CookieManager.setAcceptThirdPartyCookies present in net/cyclecoach/app/MainActivity.java, all 5 Android permissions intact, ic_launcher icons present in all 5 mipmap densities, iOS Info.plist cyclecoach:// scheme + net.cyclecoach.app, pbxproj PRODUCT_BUNDLE_IDENTIFIER=net.cyclecoach.app. NO merge regressions found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/admin/users", "issue": "Response includes each user's raw verification_token (and it is retained after verification). Admin-auth protected, so low risk, but the token grants email-verification replay — consider omitting it from the admin payload."},
+      {"endpoint": "POST /api/subscription/upgrade", "issue": "For users with no stripe_subscription_id the endpoint returns HTTP 400 with {success:false, use_checkout:true}. Behaviour matches the spec's use_checkout contract but it is a 4xx, so any frontend caller must read the body on error (verify AccountSettings/Paywall does). Non-blocking, documented in the new test."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Phase day ranges (Dashboard PhaseDetailModal / MoodMap vs Phase Predictor)",
+        "issues": [
+          "Same user, same 28-day cycle, two different day ranges are shown: PhaseDetailModal + MoodMap use the STATIC ranges from utils/phaseContent.js (Menstrual 1–5, Follicular 6–13, Ovulation 14–16, Luteal 17–23, PMS 24–28) while Phase Predictor renders DYNAMIC ranges from computePhaseBoundaries() (Follicular 6–12, Ovulation 13–15, Luteal 16–24, PMS 25–28). Dashboard also reports 'Phase 2: Day 4' off the static boundaries. Recommend driving all surfaces off computePhaseBoundaries so the numbers agree."
+        ]
+      },
+      {
+        "screen": "Date inputs (Dashboard setup card 'First Day of Her Last Period', log-period, deny-date, Phase Predictor 'Date')",
+        "issues": [
+          "All use native <input type=\"date\"> (browser mm/dd/yyyy picker) instead of the shadcn Calendar/Popover component, so styling and behaviour differ from the rest of the dark UI and vary per browser/OS (notably on the iOS/Android WebView builds this merge targets)."
+        ]
+      },
+      {
+        "screen": "/verify-email waiting state",
+        "issues": ["Pre-existing from iteration 21: 'Resend Verification Email' label (text-cyan-300 on slate-800/60) is low contrast. Cosmetic."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_mobile_merge_regression_i22.py",
+    "/app/backend/tests/cleanup_test_users.py",
+    "/app/test_reports/pytest/i22_merge.xml",
+    "/app/test_reports/pytest/i22_full.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: unify phase day ranges — make PhaseDetailModal/MoodMap use computePhaseBoundaries() instead of the static phaseContent.js 'days' strings (currently Follicular shows 6–13 on the dashboard modal but 6–12 in the Predictor).",
+    "OPTIONAL: stop returning verification_token in GET /api/admin/users.",
+    "OPTIONAL: replace native type=date inputs with the shadcn Calendar component (matters for the Capacitor WebView builds).",
+    "OPTIONAL: delete /app/backend/tests/test_subscription_tiers.py — it targets removed license-key endpoints (all 404). I marked it skip rather than deleting."
+  ],
+  "critical_code_review_comments": [
+    "No merge regressions: all 8 merged mobile items verified by assertion (capacitor server.url, MainActivity CookieManager, Android permissions, Android launcher icons across 5 densities, iOS cyclecoach:// scheme, iOS bundle id in Info.plist + pbxproj, Real backend improvements green, verify-email idempotency intact).",
+    "Admin endpoints are now consistently guarded by require_admin (401 without/with bad token) — three older test files were still calling them unauthenticated and were the ONLY failures in the suite; fixed test-side by adding an admin-login fixture (no app code touched).",
+    "/app/backend/tests/test_cors_auth.py read BASE_URL from os.environ only and crashed with 'None/api/...' — added a dotenv fallback to /app/frontend/.env (test-only).",
+    "Partner profile + cycle history are localStorage-only by design (utils/localStorageManager.js), so a fresh browser session always lands on the setup card. Not a bug, but note for future testers: create the profile in the same browser context before testing /predictor, otherwise the prediction date input is not rendered (guarded by partner?.cycleStartDate).",
+    "/app/frontend/src/pages/Dashboard.jsx is 1846 lines — well over the 700-line guideline; consider splitting the cycle card, daily brief, history and AI-coach tabs into components."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_mobile_merge_regression_i22.py (new)",
+    "/app/backend/tests/cleanup_test_users.py (new, cleanup helper)",
+    "/app/backend/tests/test_admin_dashboard.py (test-only: admin-auth fixture + dotenv BASE_URL)",
+    "/app/backend/tests/test_account_first_flow.py (test-only: admin-auth headers + current stats keys)",
+    "/app/backend/tests/test_cors_auth.py (test-only: dotenv BASE_URL fallback)",
+    "/app/backend/tests/test_subscription_tiers.py (test-only: module-level skip, endpoints removed)"
+  ],
+  "success_rate": {"backend": "100% (137/137 executed, 19 skipped)", "frontend": "100% (7/7 requested flows)"},
+  "seed_data_creation": "Created partner profile 'Alex' (cycleStartDate = today-8d) in browser localStorage for testuser@test.com (client-side only, no server data). Ran cleanup_test_users.py afterwards: deleted 35 throwaway test_*_<hex>@test/example.com users generated by the regression suites; 20 users remain (testuser@test.com, trialtest@test.com, ts_peterson@yahoo.com preserved).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "testuser@test.com / Test1234 (grandfathered); admin password cyclecoach2024 — both from /app/memory/test_credentials.md and both working.",
+  "context_for_next_testing_agent": "Login field is 'email_or_phone'; login response nests has_subscription/plan_type under data['user'] and returns 'session_token' (not 'token'). Admin endpoints require Authorization: Bearer <token from POST /api/admin/login {password}>. /api/auth/check returns 200 with authenticated:false when unauthenticated — use a FRESH requests session (not the logged-in one) or the session_token cookie makes it look authenticated. /api/subscription/create-checkout body requires plan + success_url + cancel_url. Frontend: partner profile is localStorage-only, so always create it via the setup card in the same browser context before testing /app or /predictor, and set localStorage keys cyclecoach_state_waiver_complete_<uid> and cyclecoach_consent_granted_<uid> ('true') for uid 0c6935cc-7225-4de3-ab2b-143fc07deace. Advanced Settings inputs on /predictor are inside a collapsed section (count=0 until expanded). Run /app/backend/tests/cleanup_test_users.py after suite runs to purge throwaway users.",
+  "rca_of_the_issue": "No product defect found. The 38 initial suite failures were all test-side: (1) three older files called admin endpoints without the now-required admin bearer token, (2) test_cors_auth.py had no dotenv fallback for REACT_APP_BACKEND_URL so every URL was 'None/api/...', (3) test_subscription_tiers.py targets license-key endpoints that no longer exist in server.py/routes (all 404). After the test-only fixes the whole suite is green, confirming the android-current-backup -> Real merge introduced no backend regressions."
+}

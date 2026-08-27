@@ -7,6 +7,13 @@ import requests
 import os
 import time
 
+# OBSOLETE SUITE (iteration 22): the license-key era endpoints this file targets
+# (/api/subscription/tiers, /api/license/validate, /api/subscription/free-trial,
+# /api/license/resend, /api/subscription/upgrade-with-key) no longer exist in the
+# backend - the app moved to Stripe checkout + session auth. All requests return 404.
+# Skipped instead of deleted so the main agent can decide to remove the file.
+pytestmark = pytest.mark.skip(reason="Legacy license-key endpoints removed; suite obsolete")
+
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://partner-guide-4.preview.emergentagent.com')
 
 class TestSubscriptionTiers:

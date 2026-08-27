@@ -4,6 +4,7 @@
   "webDir": "build",
   "bundledWebRuntime": false,
   "server": {
+    "url": "https://cyclecoach.net",
     "androidScheme": "https"
   },
   "ios": {

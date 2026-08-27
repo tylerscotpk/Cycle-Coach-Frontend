@@ -3,14 +3,29 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://partner-guide-4.preview.emergentagent.com").rstrip("/")
+from dotenv import dotenv_values
+
+BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL")
+            or dotenv_values("/app/frontend/.env").get("REACT_APP_BACKEND_URL"))
+if not BASE_URL:
+    raise RuntimeError("REACT_APP_BACKEND_URL missing")
+BASE_URL = BASE_URL.rstrip("/")
 API = f"{BASE_URL}/api"
+ADMIN_PASSWORD = "cyclecoach2024"
 
 
 @pytest.fixture(scope="module")
 def client():
+    """Admin-authenticated session (admin endpoints now require a bearer admin token)."""
     s = requests.Session()
     s.headers.update({"Content-Type": "application/json"})
+    r = s.post(f"{API}/admin/login", json={"password": ADMIN_PASSWORD})
+    if r.status_code != 200:
+        pytest.fail(f"admin login failed {r.status_code}: {r.text[:300]}")
+    token = r.json().get("token")
+    if not token:
+        pytest.fail("admin login returned no token")
+    s.headers.update({"Authorization": f"Bearer {token}"})
     return s
 
 

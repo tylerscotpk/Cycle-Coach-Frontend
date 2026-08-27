@@ -293,31 +293,36 @@ class TestStripeWebhook:
         print("✓ Webhook handles subscription.deleted correctly")
 
 
+def _admin_headers():
+    """Admin endpoints require a bearer admin token (POST /api/admin/login)."""
+    r = requests.post(f"{BASE_URL}/api/admin/login", json={"password": "cyclecoach2024"})
+    assert r.status_code == 200, f"admin login failed: {r.status_code} {r.text[:200]}"
+    token = r.json().get("token")
+    assert token, "no admin token returned"
+    return {"Authorization": f"Bearer {token}"}
+
+
 class TestAdminEndpoints:
     """Test admin endpoints read from auth_users"""
-    
+
     def test_admin_stats_returns_user_stats(self):
         """GET /api/admin/stats returns stats from auth_users"""
-        response = requests.get(f"{BASE_URL}/api/admin/stats")
-        
+        response = requests.get(f"{BASE_URL}/api/admin/stats", headers=_admin_headers())
+
         assert response.status_code == 200
         data = response.json()
-        
-        # Check users object exists with expected fields
+
+        # Check users object exists with expected fields (current tier model)
         assert "users" in data
         users = data["users"]
-        assert "total" in users
-        assert "monthly" in users
-        assert "quarterly" in users
-        assert "annual" in users
-        assert "no_subscription" in users
-        assert "cancelled" in users
-        
+        for key in ["total", "trial", "basic", "advanced", "no_plan", "cancelled"]:
+            assert key in users, f"missing key: {key}"
+
         print(f"✓ Admin stats returns auth_users data: {users}")
-    
+
     def test_admin_users_returns_auth_users(self):
         """GET /api/admin/users returns users from auth_users collection"""
-        response = requests.get(f"{BASE_URL}/api/admin/users")
+        response = requests.get(f"{BASE_URL}/api/admin/users", headers=_admin_headers())
         
         assert response.status_code == 200
         data = response.json()
@@ -362,13 +367,15 @@ class TestPublicPages:
     
     def test_api_endpoints_accessible(self):
         """Basic API endpoint accessibility check"""
+        # (endpoint, headers)
         endpoints = [
-            "/api/auth/check",
-            "/api/admin/stats",
+            ("/api/auth/check", {}),
+            ("/api/health", {}),
+            ("/api/admin/stats", _admin_headers()),
         ]
-        
-        for endpoint in endpoints:
-            response = requests.get(f"{BASE_URL}{endpoint}")
+
+        for endpoint, headers in endpoints:
+            response = requests.get(f"{BASE_URL}{endpoint}", headers=headers)
             assert response.status_code == 200, f"Endpoint {endpoint} returned {response.status_code}"
             print(f"✓ {endpoint} accessible")
 
