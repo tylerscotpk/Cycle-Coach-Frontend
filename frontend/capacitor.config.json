@@ -23,6 +23,11 @@
     "StatusBar": {
       "style": "Dark",
       "backgroundColor": "#0f172a"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_launcher",
+      "iconColor": "#06b6d4",
+      "sound": "default"
     }
   }
 }

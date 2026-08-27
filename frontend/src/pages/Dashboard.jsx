@@ -23,7 +23,7 @@ import { LocalStorage } from '../utils/localStorageManager';
 import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod, getDisplayCycleDay, getCycleExtensionStatus, getCappedCycleMessages, calculateEWMA } from '../utils/cycleCalculations';
 import { RESOURCES, getRelevantResources, getNextPhase, getPhasePrioritizedResources, getUnarchivedResources, archiveResource, getPhaseEmoji, getPhaseColor, getPhaseLabel, getPhaseDays, PHASE_LABELS } from '../utils/resourcesData';
 import { getUnseenFact } from '../utils/cycleFacts';
-import { initializeNotifications, runNotificationChecks } from '../utils/notificationService';
+import { initializeNotifications, runNotificationChecks, rescheduleNotifications } from '../utils/notificationService';
 
 const Dashboard = () => {
   // LOCAL-ONLY MODE: No user prop needed
@@ -395,6 +395,7 @@ const Dashboard = () => {
       setPartner(newPartner);
       loadCycleInfoLocal(newPartner);
       loadStaticResources(newPartner);
+      rescheduleNotifications();
       toast.success('Partner profile created!');
     } catch (error) {
       console.error('Error creating partner:', error);
@@ -642,6 +643,7 @@ const Dashboard = () => {
         loadCycleInfoLocal(updatedPartner);
       }
       
+      rescheduleNotifications();
       toast.success('Period logged!');
       setLogPeriodDate('');
       
@@ -710,6 +712,7 @@ const Dashboard = () => {
       toast.success('Cycle entry deleted');
       
       // Reload
+      rescheduleNotifications();
       loadCycleHistory();
       loadCycleInfoLocal(partner);
     } catch (error) {
@@ -850,6 +853,7 @@ const Dashboard = () => {
     // Reload everything
     loadCycleInfoLocal(updatedPartner);
     loadStaticResources(updatedPartner);
+    rescheduleNotifications();
     toast.success('Cycle reset to new Day 1!');
   };
 

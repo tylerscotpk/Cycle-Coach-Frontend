@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend-only testing of the Capacitor Local Notifications feature (web-fallback path) on the preview URL. Completed full onboarding (login -> privacy/location waiver -> partner consent -> partner profile creation with TEST_Ava, start date 8 days ago) and then verified NotificationSettings, toggle behaviour, toast feedback, localStorage persistence across reload, plus regression on Dashboard tabs and Phase Predictor. All 11 requested checks passed. No console errors or page errors captured.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Partner profile setup + Phase Predictor", "issues": ["Native browser date picker (mm/dd/yyyy input[type=date]) used instead of the shadcn Calendar component - inconsistent with dark theme styling"]},
+      {"screen": "Partner Consent modal / Privacy & Location waiver", "issues": ["No data-testid on the two consent checkboxes, the consent continue button, or the location Select trigger - forced role/text based selectors during testing"]}
+    ]
+  },
+  "test_report_links": ["No new pytest files created (frontend-only scope). Playwright scripts executed inline via browser automation tool."],
+  "action_items": [
+    "Clarify docs/expectations: NotificationSettings renders on the /privacy (Privacy & Data) page, NOT inside a Dashboard settings tab as stated in the test request. If a Dashboard settings entry point was intended, it is missing.",
+    "Add data-testid attributes to PartnerConsent checkboxes/continue button and StatePrivacyWaiver location select (both currently have none).",
+    "Consider replacing native date inputs with the shadcn Calendar/date picker for theme consistency.",
+    "Dashboard.jsx is 1849 lines - split into smaller modules (phase card, history, settings sections)."
+  ],
+  "critical_code_review_comments": [
+    "notificationService.rescheduleNotifications() is a no-op on web; on web the app relies on runNotificationChecks() at visit time only, so toggling Partner Nudges has no observable web effect (expected, but confirm product intent).",
+    "capacitor.config.json server.url points to https://cyclecoach.net - native builds will load the remote site, so local notification scheduling code must ship with that deployed bundle to work.",
+    "localStorageManager.getNotificationSettings correctly drops legacy reflectionPrompts/ratingPrompts keys; old persisted blobs simply fall back to defaults - no migration needed, verified in browser localStorage (only phaseReminders/partnerNudges/savedAt stored).",
+    "Dashboard.jsx exceeds the 700-line guideline (1849 lines)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (out of scope)", "frontend": "100% (11/11 requested checks passed)"},
+  "seed_data_creation": "Local-only (localStorage) partner profile 'TEST_Ava' created for testuser@test.com in the headless browser session; nothing persisted server-side.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "testuser@test.com / Test1234 (worked; grandfathered access)",
+  "context_for_next_testing_agent": "IMPORTANT: a fresh Playwright browser has empty localStorage, so after login the app forces: (1) Privacy & Location waiver [data-testid=state-privacy-waiver, select 'Outside the United States' via button[role=combobox], then privacy-continue-btn], (2) Partner Consent modal (NO testids - use button[role=checkbox] x2 + button 'I Understand and Have Consent - Continue'), (3) partner profile setup [partner-name-input, cycle-start-date-input (yyyy-mm-dd fill), create-partner-button]. Only then does the Dashboard render tab-ai-coach / tab-partner-profile / tab-coaching-manual and privacy-settings-btn. Notification settings are at /privacy: notification-settings-card, toggle-phase-reminders (default checked), toggle-partner-nudges (default unchecked). In headless Chromium Notification.permission == 'denied', so notif-denied-banner shows (correct behaviour); the enable/test buttons are therefore not reachable in headless runs.",
+  "rca_of_the_issue": "Verified results: card + title 'Notification Preferences' render; exactly 2 switches inside the card; defaults phaseReminders=ON, partnerNudges=OFF; no 'Reflection'/'Feedback'/'Rating' text in card; toggling each switch fires toast 'Notification settings updated' and flips data-state; localStorage key cyclecoach_notification_settings_<uid> stores {\"phaseReminders\":true,\"partnerNudges\":true,...}; after page reload both states persist (phase=checked, nudges=checked); 0 error elements; Phase Predictor page loads with live average 28 days; Coaching Manual and AI Wingman tabs both clickable and render content."
+}

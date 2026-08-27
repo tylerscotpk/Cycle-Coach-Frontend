@@ -1,287 +1,329 @@
 /**
- * Push Notification Service for Cycle Coach
- * Handles browser notifications for phase reminders and reflection prompts
- * All data stays local - no server-side notification storage
+ * Notification Service for Cycle Coach
+ *
+ * Native (iOS / Android via Capacitor):
+ *   Schedules local notifications for future phase transitions.
+ *   Cancels & reschedules when cycle data changes.
+ *
+ * Web fallback:
+ *   Uses the browser Notification API on each app visit.
+ *
+ * Notification types:
+ *   - Phase-change reminders (1 day before each transition) — on by default
+ *   - Partner nudges (day a new phase starts) — off by default, independently toggleable
  */
 
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { LocalStorage } from './localStorageManager';
-import { calculateCycleDay, getPhaseInfo, predictNextPeriod, recalculateCycleLengths, calculateStatistics, getCycleExtensionStatus } from './cycleCalculations';
+import {
+  calculateCycleDay,
+  computePhaseBoundaries,
+  recalculateCycleLengths,
+  calculateStatistics,
+  getCycleExtensionStatus,
+  parseDateLocal,
+} from './cycleCalculations';
 
-// Check if notifications are supported
+// ── ID ranges (32-bit safe) ────────────────────────────────────────
+const PHASE_REMINDER_IDS = [101, 102, 103, 104, 105];
+const PARTNER_NUDGE_IDS  = [201, 202, 203, 204, 205];
+const ALL_NOTIFICATION_IDS = [...PHASE_REMINDER_IDS, ...PARTNER_NUDGE_IDS];
+const TEST_NOTIFICATION_ID = 999;
+
+const NOTIFICATION_HOUR = 9; // schedule at 9 AM local
+
+// ── Platform helpers ───────────────────────────────────────────────
+
+export const isNativePlatform = () => {
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
+};
+
 export const isNotificationsSupported = () => {
-  return 'Notification' in window && 'serviceWorker' in navigator;
+  if (isNativePlatform()) return true;
+  return 'Notification' in window;
 };
 
-// Request notification permission
+// ── Permission ─────────────────────────────────────────────────────
+
+/**
+ * Returns: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale' | 'unsupported'
+ */
+export const checkNotificationPermission = async () => {
+  if (isNativePlatform()) {
+    try {
+      const r = await LocalNotifications.checkPermissions();
+      return r.display;
+    } catch { return 'denied'; }
+  }
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission === 'default' ? 'prompt' : Notification.permission;
+};
+
 export const requestNotificationPermission = async () => {
-  if (!isNotificationsSupported()) {
-    console.log('Notifications not supported');
-    return 'unsupported';
+  if (isNativePlatform()) {
+    try {
+      const r = await LocalNotifications.requestPermissions();
+      return r.display;
+    } catch { return 'denied'; }
   }
-
-  const permission = await Notification.requestPermission();
-  return permission; // 'granted', 'denied', or 'default'
+  if (!('Notification' in window)) return 'unsupported';
+  const p = await Notification.requestPermission();
+  return p === 'default' ? 'prompt' : p;
 };
 
-// Get current notification permission status
-export const getNotificationPermission = () => {
-  if (!isNotificationsSupported()) return 'unsupported';
-  return Notification.permission;
+// ── Messages ───────────────────────────────────────────────────────
+
+const PHASE_REMINDER_MESSAGES = {
+  Follicular:        { title: "Follicular phase tomorrow",       body: "Energy is rising — great time to plan something fun together." },
+  Ovulation:         { title: "Ovulation phase approaching",     body: "Her most social, confident phase starts tomorrow. Make plans." },
+  'Early Luteal':    { title: "Luteal phase incoming",           body: "Energy dips after ovulation. Cozy nights in might be the move." },
+  'Late Luteal/PMS': { title: "PMS phase ahead",                 body: "Sensitivity increases soon. Stock up on comfort items and patience." },
+  Menstrual:         { title: "Period likely starting tomorrow",  body: "Her period is expected to begin. Time to be extra supportive." },
 };
 
-// Show a notification
-export const showNotification = (title, options = {}) => {
-  if (Notification.permission !== 'granted') {
-    console.log('Notification permission not granted');
-    return null;
-  }
-
-  const defaultOptions = {
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    vibrate: [200, 100, 200],
-    requireInteraction: false,
-    ...options
-  };
-
-  return new Notification(title, defaultOptions);
+const PARTNER_NUDGE_MESSAGES = {
+  Follicular:        { title: "Follicular phase started",             body: "She's gaining energy — suggest an outing or active date this week." },
+  Ovulation:         { title: "Ovulation phase is here",              body: "Peak confidence and energy. Plan something memorable today." },
+  'Early Luteal':    { title: "Luteal phase started",                 body: "Comfort mode activated. A thoughtful gesture goes a long way." },
+  'Late Luteal/PMS': { title: "PMS phase has begun",                  body: "Extra patience and her favourite snacks. You've got this." },
+  Menstrual:         { title: "Her period has started",               body: "Rest and warmth are key. Ask what she needs — don't assume." },
 };
 
-// Get phase transition messages
-const getPhaseTransitionMessage = (nextPhase) => {
-  const messages = {
-    'Menstrual': {
-      title: "Heads up - Period incoming! 🔴",
-      body: "Her period is likely starting tomorrow. Time to stock up on her favorites."
-    },
-    'Follicular': {
-      title: "Storm's over - Follicular phase begins! 🌱",
-      body: "She's about to feel more energetic. Great time to plan something fun."
-    },
-    'Ovulation': {
-      title: "Prime time approaching! 🔥",
-      body: "Ovulation phase starts tomorrow. Clear your schedule, champ."
-    },
-    'Early Luteal': {
-      title: "Cozy mode incoming 🏠",
-      body: "Early luteal phase tomorrow. She might prefer staying in."
-    },
-    'Late Luteal/PMS': {
-      title: "PMS Alert - Tread carefully ⚠️",
-      body: "Late luteal/PMS phase ahead. Stock up on comfort items."
+// ── Scheduling math ────────────────────────────────────────────────
+
+const getTransitionDates = (cycleStartDate, avgLen, mLen, lConst) => {
+  const b = computePhaseBoundaries(avgLen, mLen, lConst);
+  const start = parseDateLocal(cycleStartDate);
+
+  const transitions = [
+    { phase: 'Follicular',        transDay: b.menstrualEnd + 1 },
+    { phase: 'Ovulation',         transDay: b.follicularEnd + 1 },
+    { phase: 'Early Luteal',      transDay: b.ovulationEnd + 1 },
+    { phase: 'Late Luteal/PMS',   transDay: b.lutealEnd + 1 },
+    { phase: 'Menstrual',         transDay: b.total + 1 },
+  ];
+
+  const now = new Date();
+
+  return transitions.map(t => {
+    const transDate = new Date(start);
+    transDate.setDate(transDate.getDate() + t.transDay - 1);
+
+    const reminder = new Date(transDate);
+    reminder.setDate(reminder.getDate() - 1);
+    reminder.setHours(NOTIFICATION_HOUR, 0, 0, 0);
+
+    const nudge = new Date(transDate);
+    nudge.setHours(NOTIFICATION_HOUR, 0, 0, 0);
+
+    return { phase: t.phase, reminder, nudge, reminderFuture: reminder > now, nudgeFuture: nudge > now };
+  });
+};
+
+// ── Native schedule / cancel ───────────────────────────────────────
+
+export const cancelAllScheduled = async () => {
+  if (!isNativePlatform()) return;
+  try {
+    await LocalNotifications.cancel({
+      notifications: ALL_NOTIFICATION_IDS.map(id => ({ id })),
+    });
+  } catch (e) { console.warn('Cancel notifications failed:', e); }
+};
+
+export const scheduleNativeNotifications = async () => {
+  if (!isNativePlatform()) return;
+
+  const perm = await checkNotificationPermission();
+  if (perm !== 'granted') return;
+
+  const settings = LocalStorage.getNotificationSettings();
+  const profile  = LocalStorage.getPartnerProfile();
+  if (!profile?.cycleStartDate) return;
+
+  const history      = LocalStorage.getCycleHistory();
+  const recalc       = recalculateCycleLengths(history);
+  const stats        = calculateStatistics(recalc);
+  const cs           = LocalStorage.getCycleSettings();
+  const avgLen       = stats.ewma_length || stats.average_length || profile.cycleLength || 28;
+  const mLen         = cs.menstrualLength || 5;
+  const lConst       = cs.lutealConstant  || 14;
+
+  await cancelAllScheduled();
+
+  const transitions = getTransitionDates(profile.cycleStartDate, avgLen, mLen, lConst);
+  const batch = [];
+
+  transitions.forEach((t, i) => {
+    if (settings.phaseReminders !== false && t.reminderFuture) {
+      const m = PHASE_REMINDER_MESSAGES[t.phase];
+      if (m) batch.push({
+        id: PHASE_REMINDER_IDS[i],
+        title: m.title,
+        body: m.body,
+        schedule: { at: t.reminder, allowWhileIdle: true },
+        sound: 'default',
+        smallIcon: 'ic_launcher',
+      });
     }
-  };
-  
-  return messages[nextPhase] || { title: "Phase change coming", body: "Check the app for tips." };
-};
-
-// Get reflection prompt messages
-const getReflectionPrompts = () => [
-  { title: "Quick check-in 💬", body: "How did your date night go? Log what worked in the AI chat!" },
-  { title: "What worked this week? 📝", body: "Spend 30 seconds telling the AI Wingman what she responded well to." },
-  { title: "Reflection time 🤔", body: "What's one thing you noticed about her mood this cycle?" },
-  { title: "Pro tip reminder 💡", body: "Ask the AI Wingman for movie suggestions based on her profile!" },
-  { title: "Quick update? 📋", body: "Learned any new preferences? Update her Partner Profile!" }
-];
-
-// Check if we should show phase reminder (1 day before phase change)
-export const checkPhaseReminder = () => {
-  const settings = LocalStorage.getNotificationSettings();
-  if (!settings.phaseReminders) return null;
-
-  const profile = LocalStorage.getPartnerProfile();
-  if (!profile?.cycleStartDate) return null;
-
-  const history = LocalStorage.getCycleHistory();
-  const recalculated = recalculateCycleLengths(history);
-  const stats = calculateStatistics(recalculated);
-  const cycleLength = stats.average_length || profile.cycleLength || 28;
-
-  const cycleDay = calculateCycleDay(profile.cycleStartDate);
-  const phaseInfo = getPhaseInfo(cycleDay, cycleLength);
-  
-  // Phase transition days (one day before next phase)
-  const phaseEndDays = {
-    'Menstrual': 5,
-    'Follicular': 13,
-    'Ovulation': 16,
-    'Early Luteal': 23,
-    'Late Luteal/PMS': cycleLength
-  };
-
-  const endDay = phaseEndDays[phaseInfo.phase];
-  const daysUntilChange = endDay - cycleDay;
-
-  // Only show notification 1 day before phase change
-  if (daysUntilChange === 1) {
-    const phases = ['Menstrual', 'Follicular', 'Ovulation', 'Early Luteal', 'Late Luteal/PMS'];
-    const currentIndex = phases.indexOf(phaseInfo.phase);
-    const nextPhase = phases[(currentIndex + 1) % phases.length];
-    return getPhaseTransitionMessage(nextPhase);
-  }
-
-  return null;
-};
-
-// Check if we should show reflection prompt (random, ~once every 3-5 days)
-export const checkReflectionPrompt = () => {
-  const settings = LocalStorage.getNotificationSettings();
-  if (!settings.reflectionPrompts) return null;
-
-  // Check last prompt time
-  const lastPrompt = localStorage.getItem('cyclecoach_last_reflection_prompt');
-  const now = Date.now();
-  
-  if (lastPrompt) {
-    const daysSinceLastPrompt = (now - parseInt(lastPrompt)) / (1000 * 60 * 60 * 24);
-    // Only show every 3-5 days (random)
-    const minDays = 3 + Math.random() * 2;
-    if (daysSinceLastPrompt < minDays) return null;
-  }
-
-  // 20% chance to show on any given day check
-  if (Math.random() > 0.2) return null;
-
-  // Save the time of this prompt
-  localStorage.setItem('cyclecoach_last_reflection_prompt', now.toString());
-
-  const prompts = getReflectionPrompts();
-  return prompts[Math.floor(Math.random() * prompts.length)];
-};
-
-// Schedule notification checks (call this on app load)
-export const initializeNotifications = async () => {
-  // Don't init if not supported
-  if (!isNotificationsSupported()) {
-    console.log('Notifications not supported on this device');
-    return false;
-  }
-
-  // Check permission
-  const permission = getNotificationPermission();
-  if (permission === 'denied') {
-    console.log('Notification permission denied');
-    return false;
-  }
-
-  // If not yet asked, don't auto-ask (let user opt-in from settings)
-  if (permission === 'default') {
-    console.log('Notification permission not yet requested');
-    return false;
-  }
-
-  return true;
-};
-
-// Check if we should show cycle extension notification (at average + 2)
-export const checkExtensionAlert = () => {
-  const settings = LocalStorage.getNotificationSettings();
-  if (!settings.phaseReminders) return null;
-
-  const profile = LocalStorage.getPartnerProfile();
-  if (!profile?.cycleStartDate) return null;
-
-  const history = LocalStorage.getCycleHistory();
-  const recalculated = recalculateCycleLengths(history);
-  const stats = calculateStatistics(recalculated);
-  const avgLength = stats.ewma_length || stats.average_length || 28;
-
-  const cycleDay = calculateCycleDay(profile.cycleStartDate);
-  const status = getCycleExtensionStatus(cycleDay, avgLength);
-
-  // Only fire at avg+2 and only once per cycle
-  if (status === 'normal') return null;
-
-  const extensionState = LocalStorage.getExtensionState();
-  if (extensionState?.alertShownForCycleStart === profile.cycleStartDate) return null;
-
-  // Mark alert as shown for this cycle
-  LocalStorage.saveExtensionState({
-    ...(extensionState || {}),
-    alertShownForCycleStart: profile.cycleStartDate,
-    confirmed: null
+    if (settings.partnerNudges && t.nudgeFuture) {
+      const m = PARTNER_NUDGE_MESSAGES[t.phase];
+      if (m) batch.push({
+        id: PARTNER_NUDGE_IDS[i],
+        title: m.title,
+        body: m.body,
+        schedule: { at: t.nudge, allowWhileIdle: true },
+        sound: 'default',
+        smallIcon: 'ic_launcher',
+      });
+    }
   });
 
-  return {
-    title: "Cycle extended — check in! 📋",
-    body: `Day ${cycleDay} and counting. Periods can vary — confirm if her cycle has extended.`
-  };
+  if (batch.length) {
+    try {
+      await LocalNotifications.schedule({ notifications: batch });
+    } catch (e) { console.error('Schedule notifications failed:', e); }
+  }
 };
 
-// Run notification checks (call periodically or on app focus)
+/**
+ * Cancel obsolete + reschedule from current cycle data.
+ * Call whenever cycle data or notification settings change.
+ */
+export const rescheduleNotifications = async () => {
+  if (isNativePlatform()) await scheduleNativeNotifications();
+};
+
+// ── Web-only checks (run on visit / focus) ─────────────────────────
+
+const showWebNotification = (title, opts = {}) => {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  new Notification(title, { icon: '/favicon.ico', badge: '/favicon.ico', vibrate: [200, 100, 200], ...opts });
+};
+
 export const runNotificationChecks = () => {
-  // Don't run if permission not granted
-  if (Notification.permission !== 'granted') return;
+  if (isNativePlatform()) return; // native uses scheduled notifications
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // Check phase reminder
-  const phaseReminder = checkPhaseReminder();
-  if (phaseReminder) {
-    const uid = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').id || ''; } catch { return ''; } })();
-    const notifKey = uid ? `cyclecoach_last_phase_notification_${uid}` : 'cyclecoach_last_phase_notification';
-    const lastPhaseNotif = localStorage.getItem(notifKey);
-    const today = new Date().toDateString();
-    
-    if (lastPhaseNotif !== today) {
-      showNotification(phaseReminder.title, { body: phaseReminder.body });
-      localStorage.setItem(notifKey, today);
+  const settings = LocalStorage.getNotificationSettings();
+  const profile  = LocalStorage.getPartnerProfile();
+  if (!profile?.cycleStartDate) return;
+
+  const uid = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').id || ''; } catch { return ''; } })();
+  const notifKey = uid ? `cyclecoach_last_phase_notification_${uid}` : 'cyclecoach_last_phase_notification';
+  const today = new Date().toDateString();
+
+  // Phase reminder — once per day
+  if (settings.phaseReminders !== false && localStorage.getItem(notifKey) !== today) {
+    const history  = LocalStorage.getCycleHistory();
+    const recalc   = recalculateCycleLengths(history);
+    const stats    = calculateStatistics(recalc);
+    const cs       = LocalStorage.getCycleSettings();
+    const avgLen   = stats.ewma_length || stats.average_length || profile.cycleLength || 28;
+    const mLen     = cs.menstrualLength || 5;
+    const lConst   = cs.lutealConstant  || 14;
+    const cycleDay = calculateCycleDay(profile.cycleStartDate);
+    const b        = computePhaseBoundaries(avgLen, mLen, lConst);
+
+    const edges = [
+      { day: b.menstrualEnd,   next: 'Follicular' },
+      { day: b.follicularEnd,  next: 'Ovulation' },
+      { day: b.ovulationEnd,   next: 'Early Luteal' },
+      { day: b.lutealEnd,      next: 'Late Luteal/PMS' },
+      { day: b.total,          next: 'Menstrual' },
+    ];
+
+    for (const e of edges) {
+      if (cycleDay === e.day) {
+        const m = PHASE_REMINDER_MESSAGES[e.next];
+        if (m) { showWebNotification(m.title, { body: m.body }); localStorage.setItem(notifKey, today); }
+        break;
+      }
     }
   }
 
-  // Check extension alert
-  const extensionAlert = checkExtensionAlert();
-  if (extensionAlert) {
-    showNotification(extensionAlert.title, { body: extensionAlert.body });
-  }
+  // Extension alert (fires once per extended cycle)
+  if (settings.phaseReminders !== false) {
+    const history2 = LocalStorage.getCycleHistory();
+    const recalc2  = recalculateCycleLengths(history2);
+    const stats2   = calculateStatistics(recalc2);
+    const avgLen2  = stats2.ewma_length || stats2.average_length || 28;
+    const cycleDay = calculateCycleDay(profile.cycleStartDate);
+    const status   = getCycleExtensionStatus(cycleDay, avgLen2);
 
-  // Check reflection prompt
-  const reflectionPrompt = checkReflectionPrompt();
-  if (reflectionPrompt) {
-    showNotification(reflectionPrompt.title, { body: reflectionPrompt.body });
+    if (status !== 'normal') {
+      const extState = LocalStorage.getExtensionState();
+      if (extState?.alertShownForCycleStart !== profile.cycleStartDate) {
+        LocalStorage.saveExtensionState({ ...(extState || {}), alertShownForCycleStart: profile.cycleStartDate, confirmed: null });
+        showWebNotification('Cycle extended — check in', {
+          body: `Day ${cycleDay} and counting. Periods can vary — confirm if her cycle has extended.`,
+        });
+      }
+    }
   }
 };
 
-// Enable/disable notifications (request permission if needed)
-export const enableNotifications = async () => {
-  if (!isNotificationsSupported()) {
-    return { success: false, message: 'Notifications not supported' };
-  }
+// ── Public API ──────────────────────────────────────────────────────
 
-  const permission = await requestNotificationPermission();
-  
-  if (permission === 'granted') {
-    return { success: true, message: 'Notifications enabled' };
-  } else if (permission === 'denied') {
-    return { 
-      success: false, 
-      message: 'Notifications blocked. Please enable in browser settings.' 
-    };
-  } else {
-    return { success: false, message: 'Notification permission not granted' };
-  }
-};
-
-// Get a test notification (for settings page)
-export const sendTestNotification = () => {
-  if (Notification.permission !== 'granted') {
-    return false;
-  }
-  
-  showNotification("Test notification! 🎉", {
-    body: "Notifications are working. You'll get reminders before phase changes."
-  });
-  
+export const initializeNotifications = async () => {
+  if (!isNotificationsSupported()) return false;
+  const perm = await checkNotificationPermission();
+  if (perm !== 'granted') return false;
+  if (isNativePlatform()) await scheduleNativeNotifications();
   return true;
+};
+
+export const enableNotifications = async () => {
+  if (!isNotificationsSupported()) return { success: false, message: 'Notifications not supported on this device' };
+  const perm = await requestNotificationPermission();
+  if (perm === 'granted') {
+    if (isNativePlatform()) await scheduleNativeNotifications();
+    return { success: true, message: 'Notifications enabled' };
+  }
+  if (perm === 'denied') return { success: false, message: 'Notifications blocked. Enable them in your device settings.' };
+  return { success: false, message: 'Notification permission not granted' };
+};
+
+export const sendTestNotification = async () => {
+  if (isNativePlatform()) {
+    try {
+      const perm = await checkNotificationPermission();
+      if (perm !== 'granted') return false;
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: TEST_NOTIFICATION_ID,
+          title: 'Test notification',
+          body: "Notifications are working. You'll get reminders before phase changes.",
+          schedule: { at: new Date(Date.now() + 1000) },
+          sound: 'default',
+          smallIcon: 'ic_launcher',
+        }],
+      });
+      return true;
+    } catch { return false; }
+  }
+  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  showWebNotification('Test notification', { body: "Notifications are working. You'll get reminders before phase changes." });
+  return true;
+};
+
+// Legacy export kept for any remaining import
+export const getNotificationPermission = () => {
+  if (isNativePlatform()) return 'native';
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission;
 };
 
 export default {
   isNotificationsSupported,
+  isNativePlatform,
+  checkNotificationPermission,
   requestNotificationPermission,
-  getNotificationPermission,
-  showNotification,
-  checkPhaseReminder,
-  checkReflectionPrompt,
   initializeNotifications,
   runNotificationChecks,
   enableNotifications,
-  sendTestNotification
+  sendTestNotification,
+  rescheduleNotifications,
+  cancelAllScheduled,
 };
