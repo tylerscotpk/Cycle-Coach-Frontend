@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the iOS/mobile email-verification flow (VerifyEmail.jsx + /api/auth/verify-email + iOS Info.plist). Backend: 7/7 pytest checks pass (invalid token -> 400 JSON, missing token -> 422, resend-verification safe for known/unknown/empty email, login unaffected). Info.plist correctly declares CFBundleURLTypes -> CFBundleURLSchemes -> 'cyclecoach' with CFBundleURLName net.cyclecoach.app. Frontend: waiting state, error state (resend + Back to Log In, navigates to /login), and success state all render correctly; desktop button reads 'Continue to Choose Your Plan' and navigates to /pricing, iOS UA button reads 'Return to Cycle Coach' with the helper text and falls back to /pricing after the cyclecoach:// deep-link attempt. ONE CRITICAL BUG: with a REAL valid token the page ends up on 'Verification Failed' even though verification actually succeeded, because the verify request fires twice (200 then 400) and the second (failed) response overwrites the state.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/auth/verify-email", "issue": "Endpoint is non-idempotent: on success it sets verification_token=None, so any second call with the same token returns 400 'Invalid or expired verification token'. The already_verified branch is unreachable because the token lookup fails first. Any duplicate hit (React StrictMode double effect, page reload, email-client link prefetch/scanner, iOS Safari re-request) makes a genuinely verified user see 'Verification Failed'. Recommend keeping the token (or storing verified_token) and returning {success:true, already_verified:true} when the token belongs to an already verified user.", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "VerifyEmail error/success state", "issue": "Resend button in the error state and Back-to-Log-In button have no data-testid (only success button and waiting-state resend do).", "selector": "button:has-text('Resend Verification Email')", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Verify email with real token (/verify-email?token=<valid>)", "issue": "REPRODUCED: verifyToken runs twice (React.StrictMode double-invokes the effect in index.js). Observed network: 200 then 400 for the same token. Final UI shows 'Verification Failed' while a green 'Email verified!' toast is simultaneously displayed - contradictory and blocks the new iOS 'Return to Cycle Coach' flow entirely. Fix: guard verifyToken with a useRef (call-once) AND make the backend idempotent.", "affected_selectors": ["[data-testid=\"verify-return-btn\"]"]}
+    ],
+    "design_issues": [
+      {"screen": "/verify-email", "issues": ["Cosmetic only: waiting/error states are not wrapped in the bordered card used by the success state, so layouts differ slightly between states. Contrast, spacing and centering are fine on 1920x1080 and 390x844."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_email_verification.py", "/app/backend/tests/get_verify_token.py", "/app/test_reports/pytest/email_verification.xml"],
+  "action_items": [
+    "CRITICAL: Make GET /api/auth/verify-email idempotent (do not null verification_token, or match already-verified users on the same token and return success/already_verified).",
+    "CRITICAL: Add a useRef 'hasVerified' guard in VerifyEmail.jsx so verifyToken fires only once per token (StrictMode/remount safe), and do not downgrade an already-successful state to error.",
+    "LOW: add data-testid to the error-state resend and Back-to-Log-In buttons."
+  ],
+  "critical_code_review_comments": [
+    "VerifyEmail.jsx line 21-27: effect has no idempotency guard; combined with the single-use server token this produces a false 'Verification Failed'.",
+    "routes/auth.py line 613: the email_verified/already_verified early-return can never execute after a successful verification since the token is cleared in line 616-619.",
+    "VerifyEmail.jsx handleResend reads the email from localStorage 'user'; a user arriving from an email link on a fresh browser/iOS Safari has no localStorage, so 'Resend Verification Email' always errors with 'No email found. Please log in again.' (verified in the waiting state). Consider passing the email in the verification link query string."
+  ],
+  "updated_files": ["/app/backend/tests/test_email_verification.py", "/app/backend/tests/get_verify_token.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "6/7 acceptance criteria pass - real-token success path fails"},
+  "seed_data_creation": "Registered temporary users test_verify_ui@test.com and test_verify_ui2@test.com to obtain real verification tokens; both deleted from auth_users after testing.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "testuser@test.com / Test1234 (login uses field 'email_or_phone', not 'email')",
+  "context_for_next_testing_agent": "Use /app/backend/tests/get_verify_token.py <email> to register a throwaway user and print a real verification token, then load /verify-email?token=<token> in the browser. Success UI/labels can also be validated with page.route mocking of **/api/auth/verify-email** returning {\"success\":true}. iOS behaviour is testable by creating a new browser context with an iPhone user_agent. Remember to delete the throwaway auth_users docs afterwards.",
+  "rca_of_the_issue": "React.StrictMode (src/index.js) double-invokes the useEffect in VerifyEmail.jsx, so GET /api/auth/verify-email is called twice with the same token. The backend clears verification_token on the first (successful) call, so the second call cannot find the user and returns 400; the component's second setStatus('error') overwrites the earlier setStatus('success'), leaving the user on 'Verification Failed' despite email_verified=true in the DB (confirmed in MongoDB). Mitigation requires both a client-side call-once guard and an idempotent server endpoint."
+}

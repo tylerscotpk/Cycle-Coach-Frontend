@@ -1,22 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isCapacitor = () => typeof window !== 'undefined' && !!window.Capacitor;
+
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('verifying'); // verifying | success | error | waiting
+  const [status, setStatus] = useState('verifying');
   const [resending, setResending] = useState(false);
+  const hasVerified = useRef(false);
 
   const token = searchParams.get('token');
 
   useEffect(() => {
-    if (token) {
+    if (token && !hasVerified.current) {
+      hasVerified.current = true;
       verifyToken(token);
-    } else {
+    } else if (!token) {
       setStatus('waiting');
     }
   }, [token]);
@@ -24,15 +29,15 @@ const VerifyEmail = () => {
   const verifyToken = async (t) => {
     try {
       const res = await fetch(`${API}/api/auth/verify-email?token=${t}`);
-      const data = await res.json();
+      let data;
+      try { data = await res.json(); } catch { data = {}; }
       if (res.ok && data.success) {
         setStatus('success');
-        // Update local user data
         try {
           const user = JSON.parse(localStorage.getItem('user') || '{}');
           user.email_verified = true;
           localStorage.setItem('user', JSON.stringify(user));
-        } catch {}
+        } catch { /* ignore */ }
         toast.success('Email verified!');
       } else {
         setStatus('error');
@@ -68,13 +73,25 @@ const VerifyEmail = () => {
     }
   };
 
-  const handleContinue = () => {
-    const pendingPlan = localStorage.getItem('pending_plan');
-    if (pendingPlan) {
+  const handleReturnToApp = () => {
+    if (isCapacitor()) {
+      // Already inside the Capacitor app — navigate normally
       navigate('/pricing');
-    } else {
-      navigate('/pricing');
+      return;
     }
+
+    if (isIOS()) {
+      // On iOS Safari — deep link back into the Capacitor app
+      window.location.href = 'cyclecoach://verified';
+      // Fallback: if deep link doesn't open (app not installed), show web flow after delay
+      setTimeout(() => {
+        navigate('/pricing');
+      }, 1500);
+      return;
+    }
+
+    // Web and Android — navigate normally
+    navigate('/pricing');
   };
 
   return (
@@ -82,7 +99,11 @@ const VerifyEmail = () => {
       <div className="max-w-md w-full text-center space-y-6">
         {status === 'verifying' && (
           <>
-            <div className="text-5xl mb-4">📧</div>
+            <div className="text-5xl mb-4">
+              <svg className="w-12 h-12 mx-auto text-cyan-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
             <h1 className="text-2xl font-bold text-white">Verifying your email...</h1>
             <p className="text-slate-400">Please wait a moment.</p>
           </>
@@ -90,31 +111,48 @@ const VerifyEmail = () => {
 
         {status === 'success' && (
           <>
-            <div className="text-5xl mb-4">✅</div>
-            <h1 className="text-2xl font-bold text-white">Email Verified!</h1>
-            <p className="text-slate-400">Your account is confirmed. Let&apos;s get you started.</p>
-            <Button
-              onClick={handleContinue}
-              className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-5 text-lg"
-              data-testid="verify-continue-btn"
-            >
-              Continue to Choose Your Plan
-            </Button>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8">
+              <div className="text-5xl mb-4">
+                <svg className="w-16 h-16 mx-auto text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-white mb-2">Email Verified Successfully</h1>
+              <p className="text-slate-400 mb-6">Your account is confirmed and ready to go.</p>
+              <Button
+                onClick={handleReturnToApp}
+                className="bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-5 text-lg w-full"
+                data-testid="verify-return-btn"
+              >
+                {isIOS() && !isCapacitor() ? 'Return to Cycle Coach' : 'Continue to Choose Your Plan'}
+              </Button>
+              {isIOS() && !isCapacitor() && (
+                <p className="text-slate-500 text-xs mt-3">
+                  This will open the Cycle Coach app. If the app doesn&apos;t open, you can log in from the app directly.
+                </p>
+              )}
+            </div>
           </>
         )}
 
         {status === 'error' && (
           <>
-            <div className="text-5xl mb-4">❌</div>
+            <div className="text-5xl mb-4">
+              <svg className="w-16 h-16 mx-auto text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
             <h1 className="text-2xl font-bold text-white">Verification Failed</h1>
             <p className="text-slate-400">The link may have expired or already been used.</p>
             <div className="flex flex-col gap-3">
               <Button onClick={handleResend} disabled={resending}
-                className="bg-cyan-500 hover:bg-cyan-600 text-white">
+                className="bg-cyan-500 hover:bg-cyan-600 text-white"
+                data-testid="error-resend-btn">
                 {resending ? 'Sending...' : 'Resend Verification Email'}
               </Button>
               <Button variant="outline" className="border-slate-600 text-slate-300"
-                onClick={() => navigate('/login')}>
+                onClick={() => navigate('/login')}
+                data-testid="error-back-login-btn">
                 Back to Log In
               </Button>
             </div>
@@ -123,7 +161,11 @@ const VerifyEmail = () => {
 
         {status === 'waiting' && (
           <>
-            <div className="text-5xl mb-4">📧</div>
+            <div className="text-5xl mb-4">
+              <svg className="w-16 h-16 mx-auto text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
             <h1 className="text-2xl font-bold text-white">Please Verify Your Email</h1>
             <p className="text-slate-400">
               We&apos;ve sent a verification link to your email. Click it to activate your account and continue.

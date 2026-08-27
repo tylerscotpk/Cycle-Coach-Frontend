@@ -350,12 +350,12 @@ class TestStripeWebhook:
             headers={"Content-Type": "application/json"}
         )
         
-        # Should succeed without signature verification for testing
+        # Account-first flow (ghost prevention): an unregistered email must NOT
+        # create a user. Webhook returns 200 with status "no_user".
+        # See tests/test_account_first_flow.py::test_webhook_unregistered_email
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         data = response.json()
-        assert data.get("status") == "success"
-        assert "license_key" in data
-        assert data.get("tier") == "monthly"
+        assert data.get("status") == "no_user", f"Expected no_user for unregistered email, got: {data}"
     
     def test_webhook_subscription_deleted(self):
         """Test webhook for customer.subscription.deleted event"""

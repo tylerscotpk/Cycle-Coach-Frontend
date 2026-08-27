@@ -1,0 +1,45 @@
+{
+  "summary": "CRITICAL RETEST of the email-verification double-fire bug (found in iteration_20). All 5 requested items PASS. Backend: created /app/backend/tests/test_verify_email_idempotent.py (5 tests, 5 pass) verifying the verify-email endpoint is now idempotent - token is no longer nulled on success, 1st call returns success with email, 2nd/3rd calls return success + already_verified:true, invalid token still 400, resend for verified user returns already_verified:true. Frontend: real-token load of /verify-email?token=<valid> now renders 'Email Verified Successfully' (previously 'Verification Failed'); network interception confirms exactly ONE /api/auth/verify-email request despite React StrictMode (useRef hasVerified guard works). iOS UA (iPhone 17_5 Safari) shows button text 'Return to Cycle Coach' plus the deep-link hint. Error state (invalid token) renders both data-testid buttons (error-resend-btn, error-back-login-btn) and Back-to-Log-In navigates to /login. Waiting state (no token) renders correctly with resend-verification-btn. Regression suite (test_email_verification.py + test_auth_account.py) 33/33 pass after fixing one stale test assertion. Throwaway test users cleaned up (3 deleted, 0 remaining).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/verify-email waiting state (no token)",
+        "issues": ["'Resend Verification Email' outline button uses text-cyan-300 on a slate-800/60 panel with border-cyan-500/40 - the label renders very dim/low-contrast in screenshots. Consider text-cyan-200 or a solid fill for better legibility. Cosmetic only, button is functional and clickable."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_verify_email_idempotent.py",
+    "/app/backend/tests/get_verify_token.py",
+    "/app/test_reports/pytest/verify_email_idem.xml",
+    "/app/test_reports/pytest/verify_regression_i21.xml"
+  ],
+  "action_items": [
+    "No functional action items - the double-fire bug is FIXED and verified end-to-end.",
+    "OPTIONAL (design): raise contrast of resend-verification-btn label on the waiting state.",
+    "OPTIONAL (hardening): verification_token is now retained forever after verification, so the link remains permanently replayable (it only ever returns already_verified, so no privilege escalation). If you want cleanup, null the token on a delayed/TTL basis or add a verified_at timestamp and reject tokens older than N days."
+  ],
+  "critical_code_review_comments": [
+    "routes/auth.py verify-email: idempotency implemented correctly - user is looked up by verification_token, early-returns already_verified:true when email_verified is already true, and only then performs the update + welcome email. No double welcome email on repeated calls (confirmed: 2nd/3rd calls short-circuit before asyncio.create_task).",
+    "VerifyEmail.jsx: useRef hasVerified guard is set BEFORE the async verifyToken call, which is the correct ordering to survive StrictMode's synchronous double-invocation. Verified only 1 network request fires.",
+    "VerifyEmail.jsx handleResend: on the missing-email early-return path, setResending(false) is handled by the finally block - correct, no stuck spinner.",
+    "Fixed stale test: tests/test_auth_account.py::test_webhook_checkout_completed asserted status=='success' for an unregistered email, but the account-first/ghost-prevention flow intentionally returns status=='no_user' (routes/stripe.py:209, asserted in test_account_first_flow.py:234). Updated the assertion to match intended behavior - test-only change, no app code touched."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_verify_email_idempotent.py (new)",
+    "/app/backend/tests/test_auth_account.py (stale assertion fixed, test-only)"
+  ],
+  "success_rate": {"backend": "100% (38/38)", "frontend": "100% (5/5 requested flows)"},
+  "seed_data_creation": "Registered throwaway users test_verify_idem@test.com, test_verify_ui_a/b/c@test.com to obtain real verification tokens. ALL DELETED after testing (verified 0 remaining matching ^test_verify).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "testuser@test.com / Test1234 (from /app/memory/test_credentials.md, used for login regression). Throwaway verification users used Test1234 and were deleted.",
+  "context_for_next_testing_agent": "Email verification double-fire bug is CLOSED and covered by regression tests at /app/backend/tests/test_verify_email_idempotent.py. Use /app/backend/tests/get_verify_token.py <email> to mint a real verification token (it deletes the user first, registers, then prints TOKEN=...). IMPORTANT: each token is single-use for the 'first success' assertion only - after one verify the endpoint returns already_verified, so mint a FRESH token per UI success-state test. When counting network calls in Playwright, attach page.on('request') then call page.goto() yourself; the tool's initial navigation happens before your listener is attached (a listener attached after nav reports 0 calls). Always clean up ^test_verify users from db.auth_users afterwards. Note: verification tokens intentionally persist in DB post-verification.",
+  "rca_of_the_issue": "ORIGINAL BUG (iteration_20): the verify-email endpoint set verification_token=None on successful verification. React StrictMode invoked the useEffect twice, firing two concurrent GET /api/auth/verify-email requests with the same token. The first succeeded and cleared the token; the second found no matching document and raised 400, so the component's last setStatus won and rendered 'Verification Failed' even though the email WAS verified. FIX VERIFIED on both layers: (1) backend retains verification_token and returns {success:true, already_verified:true} when email_verified is already set, making the endpoint idempotent; (2) frontend hasVerified useRef is flipped synchronously before the fetch, so StrictMode's second invocation is skipped entirely - network interception confirmed exactly 1 request. Both defenses independently confirmed working."
+}

@@ -608,6 +608,8 @@ async def verify_email(token: str):
 
     user = await db.auth_users.find_one({"verification_token": token}, {"_id": 0})
     if not user:
+        # Token not found — check if it was already used (user already verified)
+        # This handles StrictMode double-fire and email link prefetch
         raise HTTPException(status_code=400, detail="Invalid or expired verification token")
 
     if user.get("email_verified"):
@@ -615,7 +617,7 @@ async def verify_email(token: str):
 
     await db.auth_users.update_one(
         {"id": user["id"]},
-        {"$set": {"email_verified": True, "verification_token": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"email_verified": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
 
     # Send welcome email now that they're verified
