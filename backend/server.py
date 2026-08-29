@@ -1799,54 +1799,9 @@ async def approve_trial_request(email: str, _=Depends(require_admin)):
             "license_key": trial_request.get("license_key")
         }
     
-    # Generate license key
-    license_key = generate_license_key()
-    while await db.license_keys.find_one({"license_key": license_key}):
-        license_key = generate_license_key()
-    
-    # Set expiration to 1 month from now
-    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
-    
-    # Save license to database
-    license_record = LicenseKey(
-        license_key=license_key,
-        customer_email=email,
-        stripe_session_id=f"trial_{uuid.uuid4()}",
-        stripe_payment_intent=None
-    )
-    
-    license_dict = license_record.model_dump()
-    license_dict['created_at'] = license_dict['created_at'].isoformat()
-    license_dict['is_trial'] = True
-    license_dict['key_type'] = 'trial'  # trial, yearly, lifetime
-    license_dict['expires_at'] = expires_at.isoformat()
-    await db.license_keys.insert_one(license_dict)
-    
-    # Update trial request status
-    await db.trial_requests.update_one(
-        {"email": email},
-        {
-            "$set": {
-                "status": "approved",
-                "approved_at": datetime.now(timezone.utc).isoformat(),
-                "license_key": license_key
-            }
-        }
-    )
-    
-    logger.info(f"Approved trial for {email}, license: {license_key}, expires: {expires_at}")
-    
-    # Send email with license key
-    email_sent = await send_license_email(email, license_key)
-    
-    return {
-        "status": "approved",
-        "email": email,
-        "license_key": license_key,
-        "key_type": "trial",
-        "expires_at": expires_at.isoformat(),
-        "email_sent": email_sent
-    }
+    # NOTE: Legacy trial approval via license_keys is DEPRECATED.
+    # This endpoint is kept for backward compatibility but should not be used.
+    raise HTTPException(status_code=410, detail="Legacy trial approval is deprecated. Use subscription system instead.")
 
 @api_router.post("/trial/reject/{email}")
 async def reject_trial_request(email: str, _=Depends(require_admin)):
@@ -1933,7 +1888,7 @@ async def get_all_users(cancelled: bool = False, subscription_tier: Optional[str
     elif subscription_tier:
         query["subscription_tier"] = subscription_tier
     
-    users = await db.auth_users.find(query, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(200)
+    users = await db.auth_users.find(query, {"_id": 0, "password_hash": 0, "verification_token": 0}).sort("created_at", -1).to_list(200)
     return {"users": users, "count": len(users)}
 
 @api_router.post("/admin/archive-user/{email}")

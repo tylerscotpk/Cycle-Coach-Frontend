@@ -1,0 +1,3 @@
+{
+  "ignorePatterns": ["android/", "ios/", "build/"]
+}
