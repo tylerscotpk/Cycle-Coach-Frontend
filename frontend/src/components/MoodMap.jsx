@@ -2,18 +2,28 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PHASE_CONTENT } from '@/utils/phaseContent';
 import PhaseDetailModal from '@/components/PhaseDetailModal';
+import { LocalStorage } from '../utils/localStorageManager';
+import { recalculateCycleLengths, calculateStatistics, computePhaseBoundaries } from '../utils/cycleCalculations';
 
 const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const [selectedPhase, setSelectedPhase] = useState(null);
   const [hoveredPhase, setHoveredPhase] = useState(null);
   const [showMismatchTooltip, setShowMismatchTooltip] = useState(false);
 
+  // Compute dynamic boundaries from cycle data
+  const history = LocalStorage.getCycleHistory();
+  const recalculated = recalculateCycleLengths(history);
+  const stats = calculateStatistics(recalculated);
+  const cs = LocalStorage.getCycleSettings();
+  const avgLen = stats.ewma_length || stats.average_length || 28;
+  const db = computePhaseBoundaries(avgLen, cs.menstrualLength || 5, cs.lutealConstant || 14);
+
   const phases = [
-    { name: "Menstrual", num: 1, days: "1\u20135", dayRange: [1, 5], color: "#dc2626", colorLight: "#ef4444", iconType: "drop", ...PHASE_CONTENT["Menstrual"] },
-    { name: "Follicular", num: 2, days: "6\u201313", dayRange: [6, 13], color: "#16a34a", colorLight: "#22c55e", iconType: "flower", ...PHASE_CONTENT["Follicular"] },
-    { name: "Ovulation", num: 3, days: "14\u201316", dayRange: [14, 16], color: "#db2777", colorLight: "#ec4899", iconType: "flame", ...PHASE_CONTENT["Ovulation"] },
-    { name: "Luteal", num: 4, days: "17\u201323", dayRange: [17, 23], color: "#2563eb", colorLight: "#3b82f6", iconType: "house", ...PHASE_CONTENT["Early Luteal"] },
-    { name: "PMS", num: 5, days: "24\u201328", dayRange: [24, 28], color: "#ea580c", colorLight: "#f97316", iconType: "droplet", ...PHASE_CONTENT["Late Luteal/PMS"] },
+    { name: "Menstrual", num: 1, days: db.ranges.menstrual, dayRange: [1, db.menstrualEnd], color: "#dc2626", colorLight: "#ef4444", iconType: "drop", ...PHASE_CONTENT["Menstrual"] },
+    { name: "Follicular", num: 2, days: db.ranges.follicular, dayRange: [db.menstrualEnd + 1, db.follicularEnd], color: "#16a34a", colorLight: "#22c55e", iconType: "flower", ...PHASE_CONTENT["Follicular"] },
+    { name: "Ovulation", num: 3, days: db.ranges.ovulation, dayRange: [db.follicularEnd + 1, db.ovulationEnd], color: "#db2777", colorLight: "#ec4899", iconType: "flame", ...PHASE_CONTENT["Ovulation"] },
+    { name: "Luteal", num: 4, days: db.ranges.luteal, dayRange: [db.ovulationEnd + 1, db.lutealEnd], color: "#2563eb", colorLight: "#3b82f6", iconType: "house", ...PHASE_CONTENT["Early Luteal"] },
+    { name: "PMS", num: 5, days: db.ranges.pms, dayRange: [db.lutealEnd + 1, db.total], color: "#ea580c", colorLight: "#f97316", iconType: "droplet", ...PHASE_CONTENT["Late Luteal/PMS"] },
   ];
 
   // One-time tooltip for phase mismatch

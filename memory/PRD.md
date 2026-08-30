@@ -122,11 +122,14 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Onboarding re-prompt bug fix (DONE Jul 4)
 - [x] 7 subscription flow bug fixes — grandfathered recognition, double charging, duplicate customers, feature gating (DONE Jul 4)
 - [x] Native Capacitor Local Notifications — phase reminders + partner nudges (DONE Aug 27)
+- [x] Notification overhaul — phaseContent.js copy, Day 1 check-in, cold-start disclaimers, extension on native (DONE Aug 30)
+- [x] Dynamic day ranges in Phase Detail Modal (DONE Aug 30)
 - [ ] Connect real Stripe Payment Links for Basic ($5/mo) and Advanced ($8/mo)
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
 
 ### P2 — Medium Priority
-- [ ] Unify static vs dynamic day ranges in PhaseDetailModal/PhasePredictor
+- [x] Unify static vs dynamic day ranges in PhaseDetailModal/PhasePredictor/MoodMap (DONE Aug 30)
+- [ ] Remove `verification_token` from admin users API response
 - [ ] Remove `verification_token` from admin users API response
 - [ ] Refactor `Dashboard.jsx` into smaller components
 - [ ] Refactor `App.js` routing with ProtectedRoute/PublicRoute wrappers

@@ -1,5 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { LocalStorage } from '../utils/localStorageManager';
+import { recalculateCycleLengths, calculateStatistics, computePhaseBoundaries } from '../utils/cycleCalculations';
+
+// Map display name → boundaries.ranges key
+const NAME_TO_RANGE_KEY = {
+  Menstrual:  'menstrual',
+  Follicular: 'follicular',
+  Ovulation:  'ovulation',
+  Luteal:     'luteal',
+  PMS:        'pms',
+};
+
+/** Compute the dynamic day-range string for a phase display name.
+ *  Returns null when data is unavailable (caller falls back to static). */
+const getDynamicDays = (displayName) => {
+  try {
+    const history = LocalStorage.getCycleHistory();
+    const recalc  = recalculateCycleLengths(history);
+    const stats   = calculateStatistics(recalc);
+    const cs      = LocalStorage.getCycleSettings();
+    const avgLen  = stats.ewma_length || stats.average_length || 28;
+    const b       = computePhaseBoundaries(avgLen, cs.menstrualLength || 5, cs.lutealConstant || 14);
+    return b.ranges[NAME_TO_RANGE_KEY[displayName]] || null;
+  } catch {
+    return null;
+  }
+};
 
 const CollapsibleSection = ({ title, children }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,6 +69,10 @@ const CollapsibleSection = ({ title, children }) => {
 const PhaseDetailModal = ({ open, onOpenChange, phase }) => {
   if (!phase) return null;
 
+  // Use dynamic range from cycle data; fall back to static phaseContent.js string
+  const dynamicDays = getDynamicDays(phase.name);
+  const displayDays = dynamicDays || phase.days;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="phase-detail-dialog">
@@ -50,7 +81,7 @@ const PhaseDetailModal = ({ open, onOpenChange, phase }) => {
             <span className="text-4xl">{phase.emoji}</span>
             <div>
               <div>{phase.name}</div>
-              {phase.days && <div className="text-sm text-slate-400 font-normal">Days {phase.days}</div>}
+              {displayDays && <div className="text-sm text-slate-400 font-normal" data-testid="phase-days-range">Days {displayDays}</div>}
             </div>
           </DialogTitle>
           <DialogDescription className="text-slate-300 text-base mt-3 font-medium italic" data-testid="phase-punchline">
