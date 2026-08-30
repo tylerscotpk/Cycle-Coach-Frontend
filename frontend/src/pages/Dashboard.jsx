@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DatePicker } from '@/components/ui/date-picker';
 import MoodMap from '@/components/MoodMap';
 import FeedbackModal from '@/components/FeedbackModal';
 import PartnerProfile from '@/components/PartnerProfile';
@@ -934,15 +935,16 @@ const Dashboard = () => {
 
                   <div>
                     <Label htmlFor="cycle-date" className="text-white">First Day of Her Last Period</Label>
-                    <Input
-                      id="cycle-date"
-                      data-testid="cycle-start-date-input"
-                      type="date"
-                      value={cycleStartDate}
-                      onChange={(e) => setCycleStartDate(e.target.value)}
-                      required
-                      className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                    />
+                    <div className="mt-2">
+                      <DatePicker
+                        value={cycleStartDate}
+                        onChange={(val) => setCycleStartDate(val)}
+                        max={new Date().toISOString().split('T')[0]}
+                        placeholder="Select start date"
+                        className="w-full"
+                        testId="cycle-start-date-input"
+                      />
+                    </div>
                   </div>
 
                   <Button
@@ -996,8 +998,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Trial Banner */}
-        {planType === 'trial' && (() => {
+        {/* Trial Banner — hidden per product decision (users informed at signup) */}
+        {false && planType === 'trial' && (() => {
           try {
             const userData = JSON.parse(localStorage.getItem('user') || '{}');
             const trialEnd = userData.trial_ends_at ? new Date(userData.trial_ends_at) : null;
@@ -1069,14 +1071,12 @@ const Dashboard = () => {
               <div>
                 <h3 className="text-white font-semibold mb-2">When did her period actually start?</h3>
                 <form onSubmit={handleSubmitDenyDate} className="flex flex-wrap gap-2 items-end">
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={denyDate}
-                    onChange={(e) => setDenyDate(e.target.value)}
+                    onChange={(val) => setDenyDate(val)}
                     max={new Date().toISOString().split('T')[0]}
-                    required
-                    className="bg-white/20 border-white/30 text-white w-auto"
-                    data-testid="deny-date-input"
+                    placeholder="Select date"
+                    testId="deny-date-input"
                   />
                   <Button type="submit" className="bg-cyan-500 hover:bg-cyan-600 text-white" size="sm" data-testid="deny-date-submit">
                     Set as Day 1
@@ -1318,14 +1318,13 @@ const Dashboard = () => {
                 <div className="bg-white/10 p-4 rounded-lg">
                   <h4 className="text-white font-semibold mb-3">Log New Period</h4>
                   <form onSubmit={handleLogPeriod} className="flex gap-2">
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={logPeriodDate}
-                      onChange={(e) => setLogPeriodDate(e.target.value)}
+                      onChange={(val) => setLogPeriodDate(val)}
                       max={new Date().toISOString().split('T')[0]}
-                      required
-                      className="bg-white/20 border-white/30 text-white"
-                      data-testid="log-period-date-input"
+                      placeholder="Select period start"
+                      className="flex-1"
+                      testId="log-period-date-input"
                     />
                     <Button
                       type="submit"

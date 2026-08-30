@@ -136,6 +136,6 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [ ] iOS App Store deployment (user needs Mac or CI/CD pipeline)
 
 ### P3 — Future
-- [ ] Replace native date inputs with Shadcn Calendar component
+- [x] Replace native date inputs with Shadcn Calendar component (DONE Aug 30)
 - [ ] Multi-partner support
 - [ ] Analytics dashboard improvements

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { LocalStorage } from '../utils/localStorageManager';
 import { parseDateLocal, recalculateCycleLengths, calculateStatistics, computePhaseBoundaries } from '../utils/cycleCalculations';
 import { PHASE_CONTENT } from '../utils/phaseContent';
@@ -188,12 +189,12 @@ const PhasePredictor = () => {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex-1">
                     <Label className="text-slate-300 text-sm mb-2 block">Date</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={predictionDate}
-                      onChange={(e) => handlePredictionDateChange(e.target.value)}
-                      className="bg-slate-700/50 border-slate-600 text-white"
-                      data-testid="prediction-date-input"
+                      onChange={(val) => handlePredictionDateChange(val)}
+                      placeholder="Pick a date"
+                      className="w-full"
+                      testId="prediction-date-input"
                     />
                   </div>
                   {prediction && (
