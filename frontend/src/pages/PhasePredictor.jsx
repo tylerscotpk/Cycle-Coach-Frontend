@@ -165,6 +165,11 @@ const PhasePredictor = () => {
               Based on {stats.total_cycles_tracked} logged cycle{stats.total_cycles_tracked !== 1 ? 's' : ''}
             </span>
           )}
+          {stats.total_cycles_tracked === 0 && (
+            <span className="text-amber-400/70 text-xs ml-auto" data-testid="estimate-disclaimer-predictor">
+              Estimated using a typical cycle &mdash; accuracy improves as you log more history.
+            </span>
+          )}
         </div>
 
         {/* Date Input Card */}

@@ -89,13 +89,19 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - `GET /api/admin/stats` — User stats from auth_users
 
 ## Notification System
-- **Phase Reminders:** Scheduled 1 day before each phase transition at 9 AM local time
-- **Partner Nudges:** Scheduled on the day each new phase starts at 9 AM (off by default)
+- **Phase Reminders:** Scheduled 1 day before each phase transition at 9 AM local time. Copy pulled from `phaseContent.js` (`planningTip` for body, display `name` for title).
+- **Day 1 Check-in:** Fires on predicted Day 1 of next cycle at 9 AM. Native: Yes/No action buttons — "Yes" logs Day 1 via same path as manual period logging, "No" shows dismissal message on next app open. Web: browser notification prompting user to log in Cycle History. Default ON.
+- **Cycle Extension Alert:** Fires once per cycle when cycle exceeds EWMA avg + 2 days. Native + Web.
+- **Cold-start disclaimers** (when total_cycles_tracked === 0):
+  - Dashboard phase card: "Estimated cycle — accuracy improves with more data."
+  - Phase Predictor: "Estimated using a typical cycle — accuracy improves as you log more history."
+  - Notification body: appends " (Estimated — no history yet)"
 - **Scheduling:** Based on `computePhaseBoundaries()` from cycleCalculations.js
-- **Reschedule triggers:** New partner created, period logged, cycle entry deleted, extension denied
+- **Reschedule triggers:** New partner created, period logged, cycle entry deleted, extension denied, Day 1 confirmed via notification
 - **Native:** `@capacitor/local-notifications` for iOS/Android with `LocalNotifications.schedule()`
-- **Web:** Browser `Notification` API fires on app visit (once/day for phase, once/cycle for extension)
+- **Web:** Browser `Notification` API fires on app visit
 - **No SCHEDULE_EXACT_ALARM:** Standard scheduling used to avoid Android policy concerns
+- **De-duplication:** `logDay1FromNotification` checks if date already exists as most recent cycle entry
 
 ---
 

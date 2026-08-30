@@ -19,7 +19,7 @@ const NotificationSettings = () => {
     const saved = LocalStorage.getNotificationSettings();
     return {
       phaseReminders: saved?.phaseReminders ?? true,
-      partnerNudges: saved?.partnerNudges ?? false,
+      day1CheckIn: saved?.day1CheckIn ?? true,
     };
   });
   const [permissionStatus, setPermissionStatus] = useState('loading');
@@ -61,7 +61,7 @@ const NotificationSettings = () => {
     const sent = await sendTestNotification();
     if (sent) {
       toast.success(isNativePlatform()
-        ? 'Test notification scheduled — check your notification tray'
+        ? 'Test notification scheduled \u2014 check your notification tray'
         : 'Test notification sent!');
     } else {
       toast.error('Enable notifications first.');
@@ -146,17 +146,17 @@ const NotificationSettings = () => {
           />
         </div>
 
-        {/* Partner Nudges */}
-        <div className="flex items-center justify-between" data-testid="partner-nudges-row">
+        {/* Day 1 Check-in */}
+        <div className="flex items-center justify-between" data-testid="day1-checkin-row">
           <div className="space-y-0.5">
-            <Label className="text-white font-medium">Partner Nudges</Label>
-            <p className="text-slate-400 text-sm">Action tips on the day a new phase starts</p>
+            <Label className="text-white font-medium">Day 1 Check-in</Label>
+            <p className="text-slate-400 text-sm">Confirm when her period starts to keep predictions accurate</p>
           </div>
           <Switch
-            checked={settings.partnerNudges}
-            onCheckedChange={() => handleToggle('partnerNudges')}
+            checked={settings.day1CheckIn}
+            onCheckedChange={() => handleToggle('day1CheckIn')}
             className="data-[state=checked]:bg-cyan-500"
-            data-testid="toggle-partner-nudges"
+            data-testid="toggle-day1-checkin"
           />
         </div>
 

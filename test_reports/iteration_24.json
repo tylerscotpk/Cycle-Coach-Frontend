@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend-only testing of the notification system overhaul (phase copy from phaseContent.js, Day 1 Check-in replacing Partner Nudges, cold-start disclaimers, cycle extension alert). Full onboarding flow completed in a fresh browser session (login -> privacy/location waiver -> partner consent -> partner profile TEST_Ava with start date 8 days ago), then verified Dashboard phase card, cold-start disclaimers on Dashboard + Phase Predictor, NotificationSettings (2 toggles, defaults, toasts, persistence across reload), 'Based on X logged cycles' after seeding cycle history, Coaching Manual tab, and Phase Predictor page. All 12 requested checks passed with 0 console errors and 0 page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Phase Predictor / Partner profile setup", "issues": ["Still uses the native browser date input (mm/dd/yyyy) instead of the shadcn Calendar component - inconsistent with the dark theme (repeat finding from iteration 23)"]},
+      {"screen": "Partner Consent modal / Privacy & Location waiver", "issues": ["No data-testid on the two consent checkboxes, the 'I Understand and Have Consent - Continue' button, or the location Select trigger - forced role/text selectors (repeat finding from iteration 23)"]}
+    ]
+  },
+  "test_report_links": ["Playwright scripts executed inline via browser automation tool (frontend-only scope; no pytest files created)"],
+  "action_items": [
+    "Optional: add data-testid to PartnerConsent checkboxes/continue button and the privacy waiver location Select (still missing).",
+    "Product decision: the web-path cycle-extension alert is gated on settings.phaseReminders (notificationService.js runNotificationChecks) - consider gating it on day1CheckIn or an independent setting, since it is a period/day-1 style prompt, not a phase reminder.",
+    "Product decision: Day 1 Check-in has no web fallback (only native scheduling). On web the toggle is a no-op, so web users get nothing despite the toggle showing ON by default.",
+    "Dashboard.jsx remains >700 lines (approx 1850) - split into modules."
+  ],
+  "critical_code_review_comments": [
+    "buildReminderMessage correctly resolves display names via PHASE_CONTENT (Early Luteal -> 'Luteal', Late Luteal/PMS -> 'PMS') and appends '(Estimated - no history yet)' when total_cycles_tracked === 0. Verified by code read; native scheduling cannot execute on web (Capacitor.isNativePlatform() === false).",
+    "logDay1FromNotification adds a cycle entry unconditionally; if the user also logs Day 1 manually in the app the same date could be recorded twice - consider de-duping by cycle_start_date.",
+    "In headless Chromium Notification.permission is 'denied' even after context.grant_permissions(), so the granted banner / 'Send Test' path and the web fallback notification copy are untestable in this environment (verified attempt).",
+    "localStorageManager.getNotificationSettings has correct backward compatibility (day1CheckIn falls back to legacy partnerNudges, then true); persisted blob confirmed as {\"phaseReminders\":true,\"day1CheckIn\":false,\"savedAt\":...}."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (out of scope)", "frontend": "100% (12/12 requested checks passed)"},
+  "seed_data_creation": "Local-only (localStorage) partner profile 'TEST_Ava' (cycle start = today-8) created in the headless session; cycle_history seeded with 3 entries (today-64, today-36, today-8) via page.evaluate to validate the 'Based on X logged cycles' path. Nothing persisted server-side.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "testuser@test.com / Test1234 worked (grandfathered access)",
+  "context_for_next_testing_agent": "Login page email field is input[placeholder*='your@email'] (type=text, NOT type=email) and submit is [data-testid=login-submit-btn] (nav also has a 'Log In' button - use testid to avoid strict-mode violation). Fresh Playwright sessions have empty localStorage so onboarding is forced: (1) [data-testid=state-privacy-waiver] -> button[role=combobox] -> 'Outside the United States' -> privacy-continue-btn; (2) Partner Consent modal uses NATIVE input[type=checkbox] x2 (no testids) + button 'I Understand and Have Consent - Continue'; (3) partner-name-input + cycle-start-date-input (yyyy-mm-dd) + create-partner-button. Notification settings live on /privacy (notification-settings-card) with exactly 2 switches: toggle-phase-reminders and toggle-day1-checkin, both default ON. Because a fresh session has no cycle history, total_cycles_tracked === 0 and both cold-start disclaimers render by default; to test the non-cold-start path seed localStorage key cyclecoach_cycle_history_<userId> = btoa(JSON.stringify([{id,cycle_start_date}...])) (last entry counts as 'current', so 3 entries => 'Based on 2 logged cycles').",
+  "rca_of_the_issue": "Verified results: (1) Home/login/dashboard render, login redirects to /app. (2) Dashboard phase card shows 'Follicular', punchline 'Preseason hype! She's warming up.', Day 9, 'Phase 2: Day 4', and 4 Game Plan tips. (3) MoodMap uses display names 'Luteal: Days 17-23' and 'PMS: Days 24-28' (no 'Early Luteal'/'Late Luteal'). (4) estimate-disclaimer-dashboard present with exact copy 'Estimated cycle - accuracy improves with more data.' in amber rgba(251,191,36,0.7). (5) estimate-disclaimer-predictor present with exact copy 'Estimated using a typical cycle - accuracy improves as you log more history.' in the same amber. (6) Notification Preferences card renders exactly 2 switches, both data-state=checked by default; no 'Partner Nudge'/'Reflection'/'Feedback'/'Rating' text in the card or anywhere on the page. (7) Toggling Day 1 Check-in off and on flips data-state and shows toast 'Notification settings updated' both times; Phase Reminders toggle behaves the same. (8) Turning Day 1 Check-in off persists across page reload (data-state=unchecked after reload; phaseReminders stayed checked). (9) After seeding cycle history, Phase Predictor shows 'Based on 2 logged cycles' and BOTH disclaimers disappear (counts 0). (10) Phase Predictor loads with live-average 'Current average cycle: 28 days', date input, Advanced Settings and Phase Reference. (11) Coaching Manual tab renders hormone/phase accordions. 0 error elements, 0 console errors, 0 page errors."
+}

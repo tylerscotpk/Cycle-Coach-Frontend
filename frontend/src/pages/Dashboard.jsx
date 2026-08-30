@@ -23,7 +23,7 @@ import { LocalStorage } from '../utils/localStorageManager';
 import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod, getDisplayCycleDay, getCycleExtensionStatus, getCappedCycleMessages, calculateEWMA } from '../utils/cycleCalculations';
 import { RESOURCES, getRelevantResources, getNextPhase, getPhasePrioritizedResources, getUnarchivedResources, archiveResource, getPhaseEmoji, getPhaseColor, getPhaseLabel, getPhaseDays, PHASE_LABELS } from '../utils/resourcesData';
 import { getUnseenFact } from '../utils/cycleFacts';
-import { initializeNotifications, runNotificationChecks, rescheduleNotifications } from '../utils/notificationService';
+import { initializeNotifications, runNotificationChecks, rescheduleNotifications, getDay1DismissedMessage } from '../utils/notificationService';
 
 const Dashboard = () => {
   // LOCAL-ONLY MODE: No user prop needed
@@ -103,6 +103,12 @@ const Dashboard = () => {
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     });
+
+    // Check if Day 1 check-in was dismissed (native "Not Yet" action)
+    const dismissedMsg = getDay1DismissedMessage();
+    if (dismissedMsg) {
+      setTimeout(() => toast.info(dismissedMsg, { duration: 8000 }), 1500);
+    }
   }, []);
   
   // Check if we should show a feedback prompt
@@ -286,6 +292,7 @@ const Dashboard = () => {
         prep: phaseInfo.prep,
         action: phaseInfo.action,
         fullContent: phaseInfo.fullContent,
+        isEstimate: stats.total_cycles_tracked === 0,
       });
 
       // Check extension state
@@ -1106,6 +1113,9 @@ const Dashboard = () => {
                 <span className="text-xl sm:text-2xl font-bold text-white" data-testid="current-phase">{cycleInfo.phase}</span>
               </div>
               <p className="text-slate-300 text-sm" data-testid="phase-punchline-card">{cycleInfo.punchline}</p>
+              {cycleInfo.isEstimate && (
+                <p className="text-amber-400/70 text-xs mt-1" data-testid="estimate-disclaimer-dashboard">Estimated cycle &mdash; accuracy improves with more data.</p>
+              )}
             </div>
 
             {/* Stat row: Overall Cycle + Phase Progress side by side */}

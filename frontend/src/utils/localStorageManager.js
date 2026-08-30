@@ -194,7 +194,7 @@ export const LocalStorage = {
   saveNotificationSettings: (settings) => {
     const encrypted = encrypt({
       phaseReminders: settings.phaseReminders ?? true,
-      partnerNudges: settings.partnerNudges ?? false,
+      day1CheckIn: settings.day1CheckIn ?? true,
       savedAt: new Date().toISOString()
     });
     if (encrypted) localStorage.setItem(_key('notification_settings'), encrypted);
@@ -204,9 +204,12 @@ export const LocalStorage = {
     const data = localStorage.getItem(_key('notification_settings'));
     if (data) {
       const parsed = decrypt(data);
-      return { phaseReminders: parsed?.phaseReminders ?? true, partnerNudges: parsed?.partnerNudges ?? false };
+      return {
+        phaseReminders: parsed?.phaseReminders ?? true,
+        day1CheckIn: parsed?.day1CheckIn ?? parsed?.partnerNudges ?? true,
+      };
     }
-    return { phaseReminders: true, partnerNudges: false };
+    return { phaseReminders: true, day1CheckIn: true };
   },
 
   // License Key Management

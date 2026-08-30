@@ -1,3 +1,9 @@
 {
-  "ignorePatterns": ["android/", "ios/", "build/"]
+  "ignorePatterns": [
+    "android/**",
+    "ios/**",
+    "build/**",
+    "**/assets/**",
+    "**/*.min.js"
+  ]
 }
