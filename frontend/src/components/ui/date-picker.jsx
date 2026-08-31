@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -10,14 +10,17 @@ import { cn } from '@/lib/utils';
  * Dark-themed date picker using Shadcn Calendar + Popover.
  *
  * Props:
- *   value     – YYYY-MM-DD string (same format as <input type="date">)
- *   onChange  – receives YYYY-MM-DD string (same as <input type="date"> onChange)
- *   max       – optional YYYY-MM-DD string to disable future dates
- *   placeholder – display text when no date selected
- *   className – extra classes on the trigger button
- *   testId    – data-testid for the trigger
+ *   value        – YYYY-MM-DD string (same format as <input type="date">)
+ *   onChange      – receives YYYY-MM-DD string
+ *   max          – optional YYYY-MM-DD string to disable future dates
+ *   placeholder  – display text when no date selected
+ *   className    – extra classes on the trigger button
+ *   testId       – data-testid for the trigger
+ *   portalContainer – optional DOM node; when set, Popover renders inside it
+ *                     (required when DatePicker lives inside a Radix Dialog to
+ *                      avoid iOS Safari pointer-event conflicts)
  */
-const DatePicker = ({ value, onChange, max, placeholder = 'Pick a date', className, testId }) => {
+const DatePicker = ({ value, onChange, max, placeholder = 'Pick a date', className, testId, portalContainer }) => {
   const [open, setOpen] = useState(false);
 
   // Parse YYYY-MM-DD to local Date (no timezone shift)
@@ -39,17 +42,22 @@ const DatePicker = ({ value, onChange, max, placeholder = 'Pick a date', classNa
   const selected = parseLocal(value);
   const maxDate = parseLocal(max);
 
-  const handleSelect = (date) => {
-    if (date) {
-      onChange(toDateStr(date));
-    }
+  const handleSelect = useCallback((date) => {
+    if (date) onChange(toDateStr(date));
     setOpen(false);
-  };
+  }, [onChange]);
+
+  // Stabilise open/close — prevents the double-fire onOpenChange that
+  // vaul + Radix Dialog cause on iOS Safari / WebKit.
+  const handleOpenChange = useCallback((next) => {
+    setOpen(next);
+  }, []);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant="outline"
           data-testid={testId}
           className={cn(
@@ -64,14 +72,24 @@ const DatePicker = ({ value, onChange, max, placeholder = 'Pick a date', classNa
           {value ? format(selected, 'MMM d, yyyy') : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700" align="start">
+      <PopoverContent
+        className="w-auto p-0 bg-slate-800 border-slate-700"
+        align="start"
+        side={portalContainer ? 'top' : 'bottom'}
+        avoidCollisions
+        collisionPadding={8}
+        // Prevent Dialog focus-trap from stealing focus back on iOS
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        // When inside a Dialog, render in the Dialog container to stay
+        // within its pointer-events: auto zone on WebKit
+        {...(portalContainer ? { container: portalContainer } : {})}
+      >
         <Calendar
           mode="single"
           selected={selected}
           onSelect={handleSelect}
           disabled={maxDate ? (date) => date > maxDate : undefined}
           defaultMonth={selected || new Date()}
-          initialFocus
           className="text-white"
           classNames={{
             months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',

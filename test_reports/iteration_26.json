@@ -1,0 +1,35 @@
+{
+  "summary": "Frontend-only verification of the DatePicker-inside-Dialog fix (modal={false}, type=button, onOpenAutoFocus preventDefault, portalContainer). Ran 3 full Playwright sessions against the public URL with complete onboarding (login testuser@test.com -> privacy waiver -> partner consent -> partner setup DatePicker). Functionally everything works in Chromium (desktop 1920x1080 and mobile 390x844): Cycle History dialog opens, log-period-date-input opens the calendar, days are clickable, date selection + 'Log Period' shows 'Period logged!' toast and adds the entry to Recent Cycles; prediction-date-input and cycle-start-date-input still work; 0 native input[type=date] on Dashboard/Predictor; 0 console errors. HOWEVER the central iOS mechanism (fix #4 portalContainer) is INERT on the first open: DOM inspection shows the popover portal lands in BODY (body computed pointer-events: none because the Dialog is modal), i.e. exactly the iOS Safari failure zone the fix intended to escape. Proven root cause + proven working code path (see rca_of_the_issue).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Dashboard.jsx:1329 (Log Period DatePicker portalContainer)", "issue": "portalContainer={historyDialogRef.current} is null during the render in which DialogContent mounts, so Radix Portal falls back to document.body. Verified: on the FIRST open of the calendar after opening the History dialog, [data-radix-popper-content-wrapper].parentElement === BODY and insideDialog === false; the wrapper's computed pointer-events is 'none' (inherited from body, which the modal Dialog sets to none). Only after an unrelated Dashboard re-render (e.g. after logging a period) does a second open portal correctly into DIV[role=dialog]. The iOS fix therefore does not apply in the real user path.", "selector": "[data-testid=log-period-date-input]", "priority": "HIGH"},
+      {"component": "Cycle History Dialog + calendar (once container fix works)", "issue": "When the popover IS rendered inside DialogContent (observed on 2nd open), the calendar is clipped by DialogContent's overflow-y-auto / max-h-[90vh] — bottom rows (16..31) are cut off and require scrolling the dialog. This will also hit iOS once the container fix lands. Consider collisionPadding/side='top', avoidCollisions, or rendering the calendar inline in the dialog.", "selector": "[role=dialog] [data-radix-popper-content-wrapper]", "priority": "MEDIUM"},
+      {"component": "DialogContent (Cycle History)", "issue": "React/Radix a11y warning repeated on every open: 'Missing `Description` or `aria-describedby={undefined}` for {DialogContent}'. Add DialogDescription or aria-describedby={undefined} explicitly.", "selector": "[role=dialog]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cycle History dialog (mobile 390x844)", "issues": ["Calendar popover opens upward and covers the 'Log New Period' row/stat cards; usable but visually overlaps the trigger area."]}
+    ]
+  },
+  "test_report_links": ["Playwright scripts executed inline via browser automation tool (frontend-only scope; no pytest files created)"],
+  "action_items": [
+    "Replace the ref-read with a callback-ref state in Dashboard.jsx so the container is available on first render: const [historyDialogEl, setHistoryDialogEl] = useState(null); <DialogContent ref={setHistoryDialogEl} ...> and portalContainer={historyDialogEl}. (Callback ref triggers a re-render; a plain useRef never does, which is why the fix is inert.)",
+    "After the container fix, handle calendar clipping inside the scrollable DialogContent (max-h-[90vh] overflow-y-auto).",
+    "Add DialogDescription (or aria-describedby={undefined}) to the Cycle History DialogContent to clear the Radix warning.",
+    "iOS Safari/WebKit behaviour still needs manual device verification after the above fix."
+  ],
+  "critical_code_review_comments": [
+    "date-picker.jsx spreads {...(portalContainer ? {container: portalContainer} : {})} — correct, and popover.jsx correctly forwards `container` to PopoverPrimitive.Portal; the mechanism is verified working (portal parent became DIV[role=dialog] once a non-null node was passed). Only the timing of the value is wrong.",
+    "modal={false} on Popover + modal Dialog means the popper wrapper inherits body{pointer-events:none}; only the content element gets pointer-events:auto. This is fragile on WebKit — the in-dialog container is the real safeguard, so it must be non-null on first open.",
+    "Dashboard.jsx is ~1861 lines (>700) — split into modules (repeat finding from iterations 24/25)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (out of scope)", "frontend": "8/9 requested checks passed; 1 failed (calendar does NOT render inside the Dialog on first open)"},
+  "seed_data_creation": "Local-only (localStorage) partner profile TEST_Ava and 1-2 logged cycles per headless session; nothing persisted server-side.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "testuser@test.com / Test1234 worked",
+  "context_for_next_testing_agent": "Onboarding unchanged: login (input[placeholder*='your@email'] + [data-testid=login-submit-btn]) -> [data-testid=state-privacy-waiver] combobox 'Outside the United States' -> [data-testid=privacy-continue-btn] -> check both native checkboxes + text 'I Understand and Have Consent' -> partner-name-input + cycle-start-date-input (button, react-day-picker v8: button[name='day']:not([disabled])) + create-partner-button. To verify the portal fix use: document.querySelector('[data-radix-popper-content-wrapper]') and check document.querySelector('[role=dialog]').contains(wrapper) === true on the FIRST calendar open after the History dialog opens (this is the assertion that currently fails).",
+  "rca_of_the_issue": "portalContainer={historyDialogRef.current} is evaluated during render. On the render that mounts DialogContent, historyDialogRef.current is still null (refs are attached during commit, after the child DatePicker has already received its props), and ref mutations do not schedule a re-render — so PopoverContent receives no container and Radix Portal defaults to document.body, whose computed pointer-events is 'none' under the modal Dialog. Empirical proof: open #1 -> wrapperParent=BODY, insideDialog=false; then log a period (Dashboard state change forces re-render) -> open #2 -> wrapperParent=DIV[role=dialog], insideDialog=true. Fix: use a callback ref stored in state (setHistoryDialogEl) so the container node is available on the next render before the user ever opens the picker."
+}

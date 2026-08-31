@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only retest of the DatePicker-inside-Radix-Dialog fix (callback-ref-in-state historyDialogEl + side='top' + DialogDescription). Ran two full E2E Playwright sessions against the public URL with complete onboarding (login testuser@test.com -> privacy waiver -> partner consent -> partner setup DatePicker) on Desktop 1920x1080 and Mobile 390x844. The previously failing CRITICAL assertion now PASSES: on the FIRST click of [data-testid=log-period-date-input] after opening the Cycle History dialog, document.querySelector('[role=dialog]').contains([data-radix-popper-content-wrapper]) === TRUE, wrapper computed pointer-events = 'auto' (no longer inheriting body's pointer-events:none), data-side = 'top'. Date selection works, 'Log Period' shows the 'Period logged!' toast and the entry appears in Recent Cycles (7/30/2026). Predictor DatePicker and partner-setup DatePicker still work. 0 console errors and 0 React/Radix warnings (aria-describedby warning gone). Second open of the picker also stays inside the dialog.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cycle History dialog (desktop 1920x1080)", "issues": ["With side='top' the calendar popover opens upward and overlays the stat cards / dialog title; on the desktop screenshot the top week row of the calendar sits at the very top edge of the scrollable DialogContent and is visually cut (mobile 390x844 measured clippedTop=false, clippedBottom=false, so this is cosmetic/desktop-only). Consider rendering the calendar inline in the dialog or reserving space above the trigger."]}
+    ]
+  },
+  "test_report_links": ["Playwright scripts executed inline via browser automation tool (frontend-only scope; no pytest files created)"],
+  "action_items": [
+    "Optional/cosmetic only: reduce calendar overlay of the dialog header/stat cards on desktop (side='top' places it over the 'Cycle History & Statistics' title area).",
+    "Real iOS Safari device/simulator verification is still recommended (headless Chromium cannot fully reproduce WebKit pointer-event behaviour), but the DOM invariant the fix depends on is now satisfied on first render.",
+    "Repeat finding: Dashboard.jsx is ~1861 lines (>700) — split into modules."
+  ],
+  "critical_code_review_comments": [
+    "Fix is correct: DialogContent ref={setHistoryDialogEl} (callback ref stored in state) forces a re-render so portalContainer is a live DOM node before the user's first interaction; popover.jsx forwards `container` to PopoverPrimitive.Portal and date-picker.jsx spreads it conditionally — verified end-to-end.",
+    "date-picker.jsx couples `side` to the presence of portalContainer (side={portalContainer ? 'top' : 'bottom'}); this conflates 'inside a dialog' with 'must open upward'. Prefer an explicit `side` prop for clarity/reuse."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (out of scope)", "frontend": "8/8 requested checks passed (100%)"},
+  "seed_data_creation": "Per-session partner profile TEST_Ava + 1 logged cycle (created via the app's own onboarding/log flows in each headless session).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "testuser@test.com / Test1234 worked",
+  "context_for_next_testing_agent": "Onboarding flow unchanged: login (input[placeholder*='your@email'] + [data-testid=login-submit-btn]) -> [data-testid=state-privacy-waiver] -> 'Outside the United States' -> [data-testid=privacy-continue-btn] -> click both checkboxes + 'I Understand and Have Consent' -> [data-testid=partner-name-input] + [data-testid=cycle-start-date-input] (react-day-picker v8: button[name='day']:not([disabled])) + [data-testid=create-partner-button]. Verification snippet for the portal fix: document.querySelector('[role=dialog]').contains(document.querySelector('[data-radix-popper-content-wrapper]')) — now TRUE on the first open on both desktop and mobile viewports.",
+  "rca_of_the_issue": "Iteration 26 root cause (portalContainer={ref.current} evaluated during render while refs attach in commit, and ref mutation schedules no re-render, so Radix Portal fell back to document.body whose pointer-events is 'none' under a modal Dialog) is resolved by storing the node in state via a callback ref. Empirical confirmation this iteration: first open -> insideDialog=true, wrapper pointer-events='auto'."
+}
