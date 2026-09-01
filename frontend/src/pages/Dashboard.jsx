@@ -45,6 +45,7 @@ const Dashboard = () => {
   const [cycleHistory, setCycleHistory] = useState(null);
   const [logPeriodDate, setLogPeriodDate] = useState('');
   const [cycleSettings] = useState(() => LocalStorage.getCycleSettings());
+  const [historyDialogEl, setHistoryDialogEl] = useState(null);
   
   // Subscription tier state (for feedback prompts)
   const [subscriptionTier, setSubscriptionTier] = useState(null);
@@ -1276,9 +1277,10 @@ const Dashboard = () => {
 
         {/* Cycle History Dialog */}
         <Dialog open={showCycleHistory} onOpenChange={setShowCycleHistory}>
-          <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent ref={setHistoryDialogEl} className="bg-slate-800 border-slate-700 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl">Cycle History & Statistics</DialogTitle>
+              <DialogDescription className="sr-only">View and manage your cycle history</DialogDescription>
             </DialogHeader>
             
             {cycleHistory && (
@@ -1325,6 +1327,7 @@ const Dashboard = () => {
                       placeholder="Select period start"
                       className="flex-1"
                       testId="log-period-date-input"
+                      portalContainer={historyDialogEl}
                     />
                     <Button
                       type="submit"
