@@ -129,6 +129,10 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Dashboard.jsx split into sub-components (1862→1341 lines) (DONE Sep 27)
 - [x] Server.py modularization — admin, AI, contact routes extracted (2394→1694 lines) (DONE Sep 27)
 - [ ] Connect real Stripe Payment Links for Basic ($5/mo) and Advanced ($8/mo)
+- [x] Downgrade retains Advanced until period end (DONE Sep 27)
+- [x] Price IDs moved to environment variables (DONE Sep 27)
+- [x] Legacy cancel endpoint removed (DONE Sep 27)
+- [x] Webhook signature verification enforced (DONE Sep 27)
 
 ### P2 — Medium Priority
 - [x] Unify static vs dynamic day ranges in PhaseDetailModal/PhasePredictor/MoodMap (DONE Aug 30)
