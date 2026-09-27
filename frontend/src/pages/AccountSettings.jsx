@@ -112,21 +112,24 @@ const AccountSettings = () => {
         result = {};
       }
       if (response.ok && result.success) {
+        // Keep advanced locally — user retains access until period end
         setSubscription(prev => ({
           ...prev,
-          subscription_tier: 'basic',
-          plan_type: 'basic',
+          downgrade_at_period_end: true,
+          downgrade_to: 'basic',
+          downgrade_date: result.effective_date,
         }));
         setShowDowngradeModal(false);
         const effectiveDate = result.effective_date
           ? formatDate(result.effective_date)
           : 'the end of your current billing period';
         toast.success(`Downgrade scheduled. You'll keep Advanced access until ${effectiveDate}.`);
-        // Update localStorage
+        // Update localStorage — keep tier as advanced
         try {
           const user = JSON.parse(localStorage.getItem('user') || '{}');
-          user.plan_type = 'basic';
-          user.subscription_tier = 'basic';
+          user.downgrade_at_period_end = true;
+          user.downgrade_to = 'basic';
+          user.downgrade_date = result.effective_date;
           localStorage.setItem('user', JSON.stringify(user));
         } catch { /* ignore localStorage error */ }
       } else {
@@ -375,6 +378,17 @@ const AccountSettings = () => {
               </div>
             )}
 
+            {/* Downgrade Scheduled Notice */}
+            {subscription?.downgrade_at_period_end && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4" data-testid="downgrade-scheduled-notice">
+                <p className="text-amber-400 font-medium">Downgrade Scheduled</p>
+                <p className="text-amber-300/80 text-sm mt-1">
+                  You&apos;ll switch to Basic on {subscription.downgrade_date ? formatDate(subscription.downgrade_date) : 'the end of your current billing period'}.
+                  You keep full Advanced access — including AI Wingman — until then.
+                </p>
+              </div>
+            )}
+
             {/* Upgrade Button — Basic users only */}
             {(subscription?.subscription_tier === 'basic' || subscription?.plan_type === 'basic') &&
              subscription?.subscription_status === 'active' && (
@@ -393,9 +407,9 @@ const AccountSettings = () => {
               </div>
             )}
 
-            {/* Downgrade Button — Advanced users only */}
+            {/* Downgrade Button — Advanced users only, hidden if downgrade already scheduled */}
             {(subscription?.subscription_tier === 'advanced' || subscription?.plan_type === 'advanced') &&
-             subscription?.subscription_status === 'active' && (
+             subscription?.subscription_status === 'active' && !subscription?.downgrade_at_period_end && (
               <div className="pt-4 border-t border-slate-700">
                 <Button
                   onClick={() => setShowDowngradeModal(true)}

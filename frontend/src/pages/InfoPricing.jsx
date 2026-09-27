@@ -150,7 +150,8 @@ const InfoPricing = () => {
         throw new Error(data.detail || 'Downgrade failed');
       }
       setDowngradeDate(data.effective_date ? new Date(data.effective_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '');
-      const updated = { ...user, plan_type: 'basic', subscription_tier: 'basic' };
+      // Keep advanced locally — user retains access until period end
+      const updated = { ...user, downgrade_at_period_end: true, downgrade_to: 'basic', downgrade_date: data.effective_date };
       localStorage.setItem('user', JSON.stringify(updated));
       setUser(updated);
       setShowDowngradeModal(false);
