@@ -124,6 +124,8 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Native Capacitor Local Notifications — phase reminders + partner nudges (DONE Aug 27)
 - [x] Notification overhaul — phaseContent.js copy, Day 1 check-in, cold-start disclaimers, extension on native (DONE Aug 30)
 - [x] Dynamic day ranges in Phase Detail Modal (DONE Aug 30)
+- [x] iOS Safari DatePicker-in-Dialog fix (DONE Aug 30)
+- [x] Age confirmation + Terms of Service on signup (DONE Sep 27)
 - [ ] Connect real Stripe Payment Links for Basic ($5/mo) and Advanced ($8/mo)
 - [ ] Refactor `backend/server.py` remaining routes into modular router files
 
