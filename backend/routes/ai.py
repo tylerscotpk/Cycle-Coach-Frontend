@@ -73,16 +73,16 @@ Guidelines:
 
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
-            model="gpt-4o",
+            session_id=anonymous_session,
             system_message=system_prompt,
-        )
+        ).with_model("openai", "gpt-5")
 
-        response = await chat.send_message_async(
+        response = await chat.send_message(
             UserMessage(text=request.message)
         )
 
         return {
-            "response": response.text,
+            "response": response,
             "session_id": anonymous_session,
             "context_used": {
                 "cycle_day": request.cycle_day,
@@ -125,16 +125,17 @@ Requirements:
 - Include one tip about emotional support
 - Format as a simple numbered list (1. 2. 3. etc.)"""
 
+        import secrets as _s
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
-            model="gpt-4o",
+            session_id=f"tips_{_s.token_hex(4)}",
             system_message="You are a concise relationship advisor specializing in cycle-aware tips. Be direct and helpful.",
-        )
+        ).with_model("openai", "gpt-5")
 
-        response = await chat.send_message_async(UserMessage(text=prompt))
+        response = await chat.send_message(UserMessage(text=prompt))
 
         tips = []
-        for line in response.text.split("\n"):
+        for line in response.split("\n"):
             clean = line.strip()
             if clean and (clean[0].isdigit() or clean.startswith("-")):
                 clean = clean.lstrip("0123456789.-) ").strip()

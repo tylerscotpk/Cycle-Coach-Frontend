@@ -126,14 +126,15 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Dynamic day ranges in Phase Detail Modal (DONE Aug 30)
 - [x] iOS Safari DatePicker-in-Dialog fix (DONE Aug 30)
 - [x] Age confirmation + Terms of Service on signup (DONE Sep 27)
+- [x] Dashboard.jsx split into sub-components (1862→1341 lines) (DONE Sep 27)
+- [x] Server.py modularization — admin, AI, contact routes extracted (2394→1694 lines) (DONE Sep 27)
 - [ ] Connect real Stripe Payment Links for Basic ($5/mo) and Advanced ($8/mo)
-- [ ] Refactor `backend/server.py` remaining routes into modular router files
 
 ### P2 — Medium Priority
 - [x] Unify static vs dynamic day ranges in PhaseDetailModal/PhasePredictor/MoodMap (DONE Aug 30)
 - [ ] Remove `verification_token` from admin users API response
 - [ ] Remove `verification_token` from admin users API response
-- [ ] Refactor `Dashboard.jsx` into smaller components
+- [x] Refactor `Dashboard.jsx` into smaller components (DONE Sep 27)
 - [ ] Refactor `App.js` routing with ProtectedRoute/PublicRoute wrappers
 - [ ] iOS App Store deployment (user needs Mac or CI/CD pipeline)
 
