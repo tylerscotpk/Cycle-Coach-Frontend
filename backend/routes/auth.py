@@ -440,7 +440,10 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
                 "trial_ends_at": trial_ends_at,
                 "email_verified": user.get("email_verified", True),
                 "stripe_subscription_id": user.get("stripe_subscription_id"),
-                "cancels_at": user.get("cancels_at")
+                "cancels_at": user.get("cancels_at"),
+                "downgrade_at_period_end": user.get("downgrade_at_period_end", False),
+                "downgrade_to": user.get("downgrade_to"),
+                "downgrade_date": user.get("downgrade_date"),
             }
         }
     except Exception as e:
@@ -474,6 +477,9 @@ async def get_account_subscription(session_token: Optional[str] = Cookie(None), 
         "trial_start_date": user.get("trial_start_date"),
         "stripe_subscription_id": user.get("stripe_subscription_id"),
         "cancels_at": user.get("cancels_at"),
+        "downgrade_at_period_end": user.get("downgrade_at_period_end", False),
+        "downgrade_to": user.get("downgrade_to"),
+        "downgrade_date": user.get("downgrade_date"),
         "created_at": user.get("created_at"),
     }
 
