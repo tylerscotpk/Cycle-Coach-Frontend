@@ -218,6 +218,13 @@ const InfoSignUp = () => {
 
                 {/* Legal checkboxes */}
                 <div className="space-y-4 pt-2">
+                  {/* Trial feature disclosure */}
+                  <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3" data-testid="trial-disclosure">
+                    <p className="text-cyan-300/90 text-sm">
+                      During your free trial, you get full Advanced features. After your trial ends, you&apos;ll be switched to Basic unless you choose Advanced.
+                    </p>
+                  </div>
+
                   <div className="flex items-start gap-3">
                     <Checkbox
                       id="age-confirm"

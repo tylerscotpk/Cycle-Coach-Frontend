@@ -216,6 +216,11 @@ const AccountSettings = () => {
     return names[tier] || tier || 'Unknown';
   };
 
+  // Effective tier: plan_type takes priority over subscription_tier because
+  // during a trial, subscription_tier = "basic" (the underlying Stripe price)
+  // while plan_type = "trial" (the actual account state).
+  const effectiveTier = subscription?.plan_type || subscription?.subscription_tier;
+
   const getTierBadgeColor = (tier) => {
     const colors = {
       'trial': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
@@ -260,10 +265,10 @@ const AccountSettings = () => {
   const isCancelling = subscription?.subscription_status === 'cancelling';
 
   const canCancel = () => {
-    const tier = subscription?.subscription_tier || subscription?.plan_type;
+    const tier = effectiveTier;
     return (
       subscription?.stripe_subscription_id &&
-      subscription?.subscription_status === 'active' &&
+      ['active', 'trialing'].includes(subscription?.subscription_status) &&
       !['lifetime', 'grandfathered'].includes(tier)
     );
   };
@@ -301,9 +306,9 @@ const AccountSettings = () => {
           <CardHeader>
             <CardTitle className="text-white flex flex-wrap items-center gap-2" data-testid="subscription-status-title">
               Subscription Status
-              {(subscription?.subscription_tier || subscription?.plan_type) && (
-                <span className={`px-3 py-1 rounded-full text-xs sm:text-sm border ${getTierBadgeColor(subscription.subscription_tier || subscription.plan_type)}`}>
-                  {getTierDisplayName(subscription.subscription_tier || subscription.plan_type)}
+              {effectiveTier && (
+                <span className={`px-3 py-1 rounded-full text-xs sm:text-sm border ${getTierBadgeColor(effectiveTier)}`}>
+                  {getTierDisplayName(effectiveTier)}
                 </span>
               )}
             </CardTitle>
@@ -344,7 +349,7 @@ const AccountSettings = () => {
                 </div>
               )}
 
-              {(subscription?.subscription_tier || subscription?.plan_type) && !['lifetime', 'grandfathered'].includes(subscription?.subscription_tier || subscription?.plan_type) && (
+              {effectiveTier && !['lifetime', 'grandfathered', 'trial'].includes(effectiveTier) && (
                 <>
                   <div className="bg-slate-900/50 rounded-lg p-4">
                     <p className="text-slate-400 text-sm">
@@ -390,7 +395,7 @@ const AccountSettings = () => {
             )}
 
             {/* Upgrade Button — Basic users only */}
-            {(subscription?.subscription_tier === 'basic' || subscription?.plan_type === 'basic') &&
+            {(effectiveTier === 'basic') &&
              subscription?.subscription_status === 'active' && (
               <div className="pt-4 border-t border-slate-700">
                 <Button
@@ -408,7 +413,7 @@ const AccountSettings = () => {
             )}
 
             {/* Downgrade Button — Advanced users only, hidden if downgrade already scheduled */}
-            {(subscription?.subscription_tier === 'advanced' || subscription?.plan_type === 'advanced') &&
+            {effectiveTier === 'advanced' &&
              subscription?.subscription_status === 'active' && !subscription?.downgrade_at_period_end && (
               <div className="pt-4 border-t border-slate-700">
                 <Button
@@ -464,8 +469,7 @@ const AccountSettings = () => {
           </CardHeader>
           <CardContent>
             {(() => {
-              const tier = subscription?.subscription_tier || subscription?.plan_type;
-              const hasAI = tier === 'advanced' || tier === 'grandfathered' || tier === 'trial';
+              const hasAI = ['advanced', 'grandfathered', 'trial'].includes(effectiveTier);
               const baseFeatures = [
                 'Cycle Tracking & Phase Detection',
                 'MoodMap Visualizer',

@@ -3,6 +3,7 @@
     "frontend/android/**/*",
     "frontend/ios/**/*",
     "frontend/build/**/*",
-    "**/main.*.js"
+    "**/main.*.js",
+    "**/static/**"
   ]
 }
