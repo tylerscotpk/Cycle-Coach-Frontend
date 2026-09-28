@@ -222,7 +222,7 @@ const AdminDashboard = () => {
   };
 
   const getTierBadge = (user) => {
-    const tier = user.subscription_tier || user.plan_type;
+    const tier = user.plan_type || user.subscription_tier;
     const map = {
       trial: { label: 'Free Trial', cls: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
       basic: { label: 'Basic', cls: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },

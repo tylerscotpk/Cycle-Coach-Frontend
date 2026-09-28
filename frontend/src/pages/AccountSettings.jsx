@@ -561,7 +561,7 @@ const AccountSettings = () => {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300 space-y-3">
               <p>
-                Are you sure you want to cancel your <span className="text-cyan-400 font-medium">{getTierDisplayName(subscription?.subscription_tier)}</span> subscription?
+                Are you sure you want to cancel your <span className="text-cyan-400 font-medium">{getTierDisplayName(effectiveTier)}</span> subscription?
               </p>
               <div className="bg-slate-900/50 rounded-lg p-4 mt-4">
                 <p className="text-slate-400 text-sm mb-2">What happens when you cancel:</p>
