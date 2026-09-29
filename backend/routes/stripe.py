@@ -26,6 +26,13 @@ SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'info@cyclecoach.net')
 BASIC_PRICE_ID = os.environ.get('STRIPE_BASIC_PRICE_ID')
 ADVANCED_PRICE_ID = os.environ.get('STRIPE_ADVANCED_PRICE_ID')
 
+if not BASIC_PRICE_ID or not ADVANCED_PRICE_ID:
+    logger.error(
+        "STRIPE_BASIC_PRICE_ID and/or STRIPE_ADVANCED_PRICE_ID not set. "
+        "PRICE_TO_PLAN lookups will fail and tier resolution will rely on fallbacks. "
+        "Add both env vars to prevent incorrect entitlement."
+    )
+
 PRICE_TO_PLAN = {
     BASIC_PRICE_ID: "basic",
     ADVANCED_PRICE_ID: "advanced",
@@ -288,10 +295,11 @@ async def stripe_webhook(request: Request):
 
                 update = {"stripe_customer_id": customer_id}
 
-                # Resolve plan_type from price ID
+                # Resolve plan_type from price ID, with metadata fallback
                 items = subscription.get("items", {}).get("data", [])
                 price_id = items[0].get("price", {}).get("id", "") if items else ""
-                resolved_tier = PRICE_TO_PLAN.get(price_id, auth_user.get("subscription_tier", "basic"))
+                metadata_tier = subscription.get("metadata", {}).get("tier")
+                resolved_tier = PRICE_TO_PLAN.get(price_id) or metadata_tier or auth_user.get("subscription_tier") or "basic"
 
                 if status == "active":
                     update["subscription_status"] = "active"

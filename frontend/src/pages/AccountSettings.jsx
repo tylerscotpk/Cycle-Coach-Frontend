@@ -64,29 +64,56 @@ const AccountSettings = () => {
     setCancelling(true);
     try {
       const sessionToken = localStorage.getItem('session_token');
-      const response = await fetch(`${API}/api/account/cancel-subscription`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      });
 
-      let result;
+      // 1. Attempt the cancellation
+      let cancelOk = false;
       try {
-        result = await response.json();
+        const response = await fetch(`${API}/api/account/cancel-subscription`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
+        });
+        let result;
+        try { result = await response.json(); } catch { result = {}; }
+        cancelOk = response.ok && result.success;
+        if (!cancelOk && !response.ok) {
+          // Definitive server error — don't bother re-fetching
+          setShowCancelModal(false);
+          toast.error(result.detail || result.message || 'Failed to cancel subscription');
+          setCancelling(false);
+          return;
+        }
       } catch {
-        result = {};
+        // Network error / timeout — cancellation may or may not have succeeded
+        // Fall through to verification step
       }
 
-      if (response.ok && result.success) {
-        setSubscription(prev => ({
-          ...prev,
-          subscription_status: 'cancelling',
-          cancels_at: result.cancels_at
-        }));
+      // 2. Verify authoritative state regardless of cancel response
+      try {
+        const subResp = await fetch(`${API}/api/account/subscription`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
+        });
+        if (subResp.ok) {
+          const subData = await subResp.json();
+          if (subData.subscription_status === 'cancelling' && subData.cancels_at) {
+            // Cancellation confirmed
+            setSubscription(prev => ({ ...prev, ...subData }));
+            setShowCancelModal(false);
+            toast.success('Subscription cancelled. You have access until ' + formatDate(subData.cancels_at));
+            setCancelling(false);
+            return;
+          }
+        }
+      } catch { /* verification fetch failed */ }
+
+      // 3. If we reach here: cancel request said OK but verification couldn't confirm
+      if (cancelOk) {
+        // Cancel API returned success but re-fetch didn't confirm yet (propagation delay)
+        setSubscription(prev => ({ ...prev, subscription_status: 'cancelling' }));
         setShowCancelModal(false);
-        toast.success('Subscription cancelled. You have access until ' + formatDate(result.cancels_at));
+        toast.success('Cancellation processing. Refresh in a moment to see the updated status.');
       } else {
         setShowCancelModal(false);
-        toast.error(result.detail || result.message || 'Failed to cancel subscription');
+        toast.error('Could not confirm cancellation. Please refresh and check your subscription status.');
       }
     } catch (error) {
       console.error('Error cancelling subscription:', error);

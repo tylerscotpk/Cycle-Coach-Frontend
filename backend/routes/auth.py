@@ -556,6 +556,9 @@ async def cancel_user_subscription(session_token: Optional[str] = Cookie(None), 
     except stripe.StripeError as e:
         logger.error(f"Stripe error cancelling subscription: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to cancel: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error cancelling subscription {subscription_id} for {user.get('email')}: {str(e)}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while cancelling. Please check your Account Settings to verify the current status.")
 
 
 

@@ -1,9 +1,7 @@
 {
   "ignorePatterns": [
-    "frontend/android/**/*",
-    "frontend/ios/**/*",
-    "frontend/build/**/*",
-    "**/main.*.js",
-    "**/static/**"
+    "frontend/android/**",
+    "frontend/ios/**",
+    "frontend/build/**"
   ]
 }
