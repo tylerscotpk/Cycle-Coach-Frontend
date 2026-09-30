@@ -162,9 +162,8 @@ export const LocalStorage = {
     }
   },
 
-  // Clear everything on logout (user-specific data + session)
+  // Clear session on logout — preserves user-specific data (namespaced by userId)
   clearOnLogout: () => {
-    LocalStorage.clearAllData();
     localStorage.removeItem('session_token');
     localStorage.removeItem('user');
     localStorage.removeItem('pending_plan');

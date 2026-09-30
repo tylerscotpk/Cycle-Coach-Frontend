@@ -421,8 +421,19 @@ const AccountSettings = () => {
               </div>
             )}
 
-            {/* Upgrade Button — Basic users only */}
-            {(effectiveTier === 'basic') &&
+            {/* Trial → Advanced confirmation notice */}
+            {effectiveTier === 'advanced' && subscription?.subscription_status === 'trialing' && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4" data-testid="trial-advanced-notice">
+                <p className="text-emerald-400 font-medium">Advanced Selected</p>
+                <p className="text-emerald-300/80 text-sm mt-1">
+                  Your free trial ends {subscription?.trial_ends_at ? formatDate(subscription.trial_ends_at) : 'soon'}.
+                  Advanced ($8/month) begins after that. You can cancel anytime before then.
+                </p>
+              </div>
+            )}
+
+            {/* Upgrade Button — Basic users */}
+            {effectiveTier === 'basic' &&
              subscription?.subscription_status === 'active' && (
               <div className="pt-4 border-t border-slate-700">
                 <Button
@@ -435,6 +446,24 @@ const AccountSettings = () => {
                 </Button>
                 <p className="text-slate-500 text-xs mt-2">
                   Unlock AI Wingman and personalized advice. Prorated for this billing period.
+                </p>
+              </div>
+            )}
+
+            {/* Upgrade Button — Trial users */}
+            {effectiveTier === 'trial' &&
+             subscription?.subscription_status === 'trialing' && (
+              <div className="pt-4 border-t border-slate-700" data-testid="trial-upgrade-section">
+                <Button
+                  onClick={handleUpgradeToAdvanced}
+                  disabled={upgrading}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                  data-testid="trial-upgrade-to-advanced-btn"
+                >
+                  {upgrading ? 'Processing...' : 'Upgrade to Advanced — $8/mo'}
+                </Button>
+                <p className="text-slate-400 text-xs mt-2">
+                  Keep all your Advanced features after your free trial. You won&apos;t be charged until your trial ends.
                 </p>
               </div>
             )}

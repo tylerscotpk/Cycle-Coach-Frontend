@@ -3,5 +3,9 @@
     "frontend/android/**",
     "frontend/ios/**",
     "frontend/build/**"
-  ]
+  ],
+  "globals": {
+    "WorkerGlobalScope": "readonly",
+    "__REACT_DEVTOOLS_GLOBAL_HOOK__": "readonly"
+  }
 }

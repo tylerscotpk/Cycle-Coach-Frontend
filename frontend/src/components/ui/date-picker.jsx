@@ -75,7 +75,8 @@ const DatePicker = ({ value, onChange, max, placeholder = 'Pick a date', classNa
       <PopoverContent
         className="w-auto p-0 bg-slate-800 border-slate-700"
         align="start"
-        side={portalContainer ? 'top' : 'bottom'}
+        side="bottom"
+        sideOffset={5}
         avoidCollisions
         collisionPadding={8}
         // Prevent Dialog focus-trap from stealing focus back on iOS
