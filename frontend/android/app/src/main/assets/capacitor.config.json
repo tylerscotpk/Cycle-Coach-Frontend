@@ -1,28 +1,33 @@
 {
-  "appId": "net.cyclecoach.app",
-  "appName": "Cycle Coach",
-  "webDir": "build",
-  "bundledWebRuntime": false,
-  "server": {
-    "url": "https://cyclecoach.net",
-    "androidScheme": "https"
-  },
-  "ios": {
-    "contentInset": "automatic",
-    "allowsLinkPreview": false
-  },
-  "android": {
-    "allowMixedContent": false
-  },
-  "plugins": {
-    "SplashScreen": {
-      "launchShowDuration": 2000,
-      "backgroundColor": "#0f172a",
-      "showSpinner": false
-    },
-    "StatusBar": {
-      "style": "Dark",
-      "backgroundColor": "#0f172a"
-    }
-  }
+	"appId": "net.cyclecoach.app",
+	"appName": "Cycle Coach",
+	"webDir": "build",
+	"bundledWebRuntime": false,
+	"server": {
+		"url": "https://cyclecoach.net",
+		"androidScheme": "https"
+	},
+	"ios": {
+		"contentInset": "automatic",
+		"allowsLinkPreview": false
+	},
+	"android": {
+		"allowMixedContent": false
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 2000,
+			"backgroundColor": "#0f172a",
+			"showSpinner": false
+		},
+		"StatusBar": {
+			"style": "Dark",
+			"backgroundColor": "#0f172a"
+		},
+		"LocalNotifications": {
+			"smallIcon": "ic_launcher",
+			"iconColor": "#06b6d4",
+			"sound": "default"
+		}
+	}
 }
