@@ -706,11 +706,13 @@ async def downgrade_subscription(
             metadata={"tier": "basic", "pending_downgrade": "true"},
         )
 
-        # Compute when the downgrade takes effect
-        current_period_end = getattr(sub, 'current_period_end', None)
-        downgrade_date = None
-        if current_period_end:
-            downgrade_date = datetime.fromtimestamp(current_period_end, tz=timezone.utc).isoformat()
+        # Compute when the downgrade takes effect.
+        # Stripe API 2025-03-31+ moved current_period_end to SubscriptionItem.
+        try:
+            period_end = sub["items"].data[0].current_period_end
+        except (AttributeError, IndexError, KeyError, TypeError):
+            period_end = None
+        downgrade_date = datetime.fromtimestamp(period_end, tz=timezone.utc).isoformat() if period_end else None
 
         # Flag the pending downgrade but KEEP subscription_tier as "advanced"
         await db.auth_users.update_one(
