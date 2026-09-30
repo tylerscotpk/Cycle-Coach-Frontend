@@ -134,14 +134,21 @@ export const LocalStorage = {
   },
 
   // Partner Consent
-  saveConsent: (consent) => {
+  saveConsent: (granted) => {
     const consentRecord = {
-      granted: consent,
+      granted,
       timestamp: new Date().toISOString(),
-      acknowledgedRisks: true
+      acknowledgedRisks: true,
+      ...(granted ? {} : { revokedAt: new Date().toISOString() }),
     };
     const encrypted = encrypt(consentRecord);
     if (encrypted) localStorage.setItem(_key('consent'), encrypted);
+    // Sync the onboarding boolean gate so the consent modal
+    // doesn't re-appear after a grant. Revocation does NOT
+    // clear the gate — user manages consent via Privacy Settings.
+    if (granted && _userId) {
+      localStorage.setItem(`cyclecoach_consent_granted_${_userId}`, 'true');
+    }
   },
 
   getConsent: () => {
