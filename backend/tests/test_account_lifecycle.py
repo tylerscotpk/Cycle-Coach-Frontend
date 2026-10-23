@@ -23,6 +23,7 @@ NOW = int(time.time())
 
 
 SENT = []
+TEST_ADMIN_PW = secrets.token_urlsafe(24)  # random per run; never a real credential
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +31,7 @@ def safe_email(monkeypatch):
     """Never send real email: capture Resend payloads in memory."""
     SENT.clear()
     monkeypatch.setenv("RESEND_API_KEY", "re_test_dummy")
+    monkeypatch.setenv("ADMIN_PASSWORD", TEST_ADMIN_PW)
     monkeypatch.setattr(resend.Emails, "send", lambda params: SENT.append(params) or {"id": "email_test"})
 
 
@@ -49,7 +51,7 @@ def block_real_stripe(monkeypatch):
     monkeypatch.setattr(stripe.checkout.Session, "list", boom, raising=False)
 
 
-@pytest_asyncio.fixture(loop_scope="module", scope="module", autouse=True)
+@pytest_asyncio.fixture(loop_scope="session", scope="module", autouse=True)
 async def remove_test_users_after():
     yield
     ids = [u["id"] async for u in db.auth_users.find({"email": {"$regex": r"^del_[0-9a-f]{8}@test\.com$"}}, {"id": 1})]
@@ -63,7 +65,7 @@ async def remove_test_users_after():
     await db.admin_sessions.delete_many({"token": {"$in": TEST_ADMIN_TOKENS}})
 
 
-@pytest_asyncio.fixture(loop_scope="module", autouse=True)
+@pytest_asyncio.fixture(loop_scope="session", autouse=True)
 async def clean_refund_records():
     # Fake invoice ids are reused across tests (real Stripe ids are unique)
     refs = [d["reference"] async for d in db.deletion_refunds.find({"subscription_id": {"$in": ["sub_a", "sub_t"]}})]
@@ -72,7 +74,7 @@ async def clean_refund_records():
     yield
 
 
-@pytest_asyncio.fixture(loop_scope="module")
+@pytest_asyncio.fixture(loop_scope="session")
 async def client():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://test") as c:
         yield c
@@ -174,7 +176,7 @@ async def assert_purged(uid, email):
 
 # ---------------- Deletion ----------------
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_delete_trial_account_no_stripe(client):
     uid, email, h = await make_user(plan_type="trial", subscription_status="trialing")
     other_uid, _, _ = await make_user()
@@ -190,7 +192,7 @@ async def test_delete_trial_account_no_stripe(client):
     assert r2.json()["authenticated"] is False
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_delete_requires_password_and_confirmation(client):
     uid, _, h = await make_user()
     r = await client.post("/api/account/delete", json={"password": "wrong", "confirmation": "DELETE"}, headers=h)
@@ -202,7 +204,7 @@ async def test_delete_requires_password_and_confirmation(client):
     assert r.status_code == 401
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_delete_lifetime_account(client):
     uid, email, h = await make_user(plan_type="grandfathered", subscription_tier="grandfathered", subscription_status="active")
     r = await client.post("/api/account/delete", json={"password": PW, "confirmation": "delete"}, headers=h)
@@ -210,7 +212,7 @@ async def test_delete_lifetime_account(client):
     await assert_purged(uid, email)
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.parametrize("cancelling", [False, True])
 async def test_delete_paid_and_pending_cancel_refunds_and_cancels(client, monkeypatch, cancelling):
     uid, email, h = await paid_user()
@@ -231,7 +233,7 @@ async def test_delete_paid_and_pending_cancel_refunds_and_cancels(client, monkey
     await assert_purged(uid, email)
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_refund_after_upgrade_uses_actual_paid_lines(client, monkeypatch):
     uid, email, h = await paid_user()
     start, up, end = NOW - 10 * DAY, NOW - 5 * DAY, NOW + 20 * DAY
@@ -250,7 +252,7 @@ async def test_refund_after_upgrade_uses_actual_paid_lines(client, monkeypatch):
     await assert_purged(uid, email)
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_refund_capped_by_prior_refunds_and_never_duplicated(client, monkeypatch):
     uid, _, h = await paid_user()
     calls = {}
@@ -272,7 +274,7 @@ async def test_refund_capped_by_prior_refunds_and_never_duplicated(client, monke
     await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.parametrize("mode", ["fail_refund", "no_pi", "fail_invoice_list"])
 async def test_refund_failure_never_blocks_deletion_and_is_recorded(client, monkeypatch, mode):
     await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
@@ -292,7 +294,7 @@ async def test_refund_failure_never_blocks_deletion_and_is_recorded(client, monk
     await assert_purged(uid, email)
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_cancel_failure_keeps_account_then_retry_single_refund(client, monkeypatch):
     await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
     uid, email, h = await paid_user()
@@ -312,7 +314,7 @@ async def test_cancel_failure_keeps_account_then_retry_single_refund(client, mon
     await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_admin_can_retry_and_resolve_failed_refunds(client, monkeypatch):
     await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
     _, _, h = await paid_user()
@@ -320,9 +322,7 @@ async def test_admin_can_retry_and_resolve_failed_refunds(client, monkeypatch):
     calls = {}
     mock_billing(monkeypatch, subs, calls, fail_refund=True)
     ref = (await delete(client, h)).json()["refunds"][0]["reference"]
-    token = secrets.token_urlsafe(16)
-    await db.admin_sessions.insert_one({"token": token, "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()})
-    ah = {"Authorization": f"Bearer {token}"}
+    ah = await admin_headers()
     assert (await client.get("/api/admin/deletion-refunds")).status_code == 401
     lst = (await client.get("/api/admin/deletion-refunds", headers=ah)).json()
     assert any(d["reference"] == ref for d in lst) and all("user_ref" not in d for d in lst)
@@ -335,10 +335,9 @@ async def test_admin_can_retry_and_resolve_failed_refunds(client, monkeypatch):
     r = await client.post(f"/api/admin/deletion-refunds/{ref}/mark-resolved", headers=ah)
     assert r.json()["status"] == "resolved_manually"
     await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
-    await db.admin_sessions.delete_one({"token": token})
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_delete_trialing_stripe_sub_no_refund(client, monkeypatch):
     uid, email, h = await make_user(plan_type="trial", subscription_status="trialing",
                                     stripe_customer_id="cus_t", stripe_subscription_id="sub_t")
@@ -357,7 +356,7 @@ def _email_for(addr):
     return [m for m in SENT if m["to"] == [addr]]
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.parametrize("refund_status,expect,absent", [("succeeded", "Issued", "Pending"), ("pending", "Pending", "Issued")])
 async def test_email_paid_refund_state_follows_stripe(client, monkeypatch, refund_status, expect, absent):
     uid, email, h = await paid_user()
@@ -375,7 +374,7 @@ async def test_email_paid_refund_state_follows_stripe(client, monkeypatch, refun
     assert r.json()["refunds"][0]["state"] == ("issued" if refund_status == "succeeded" else "pending")
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_email_needs_attention_and_pending_cancellation(client, monkeypatch):
     uid, email, h = await paid_user(cancels_at=datetime.fromtimestamp(NOW + 20 * DAY, tz=timezone.utc).isoformat())
     await db.auth_users.update_one({"id": uid}, {"$set": {"subscription_status": "cancelling"}})
@@ -389,7 +388,7 @@ async def test_email_needs_attention_and_pending_cancellation(client, monkeypatc
     assert "No future subscription charges" in body
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 @pytest.mark.parametrize("fields,expected", [
     ({"plan_type": "trial", "subscription_status": "trialing"}, "You had no active recurring subscription"),
     ({"plan_type": "grandfathered", "subscription_tier": "grandfathered", "subscription_status": "active"}, "Lifetime access has ended"),
@@ -404,7 +403,7 @@ async def test_email_trial_lifetime_expired(client, fields, expected):
     assert expected in body and "No refund was due" in body
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_email_trial_with_stripe_sub(client, monkeypatch):
     _, email, h = await make_user(plan_type="trial", subscription_status="trialing",
                                   stripe_customer_id="cus_t2", stripe_subscription_id="sub_t")
@@ -414,7 +413,7 @@ async def test_email_trial_with_stripe_sub(client, monkeypatch):
     assert "free trial was cancelled. You will not be charged" in _email_for(email)[0]["html"]
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_email_failure_or_unconfigured_never_blocks_deletion(client, monkeypatch):
     def broken(params):
         raise RuntimeError("email service down")
@@ -431,7 +430,7 @@ async def test_email_failure_or_unconfigured_never_blocks_deletion(client, monke
     await assert_purged(uid2, email2)
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_no_email_for_unverified_address(client):
     _, email, h = await make_user(email_verified=False)
     r = await delete(client, h)
@@ -450,9 +449,10 @@ TEST_ADMIN_TOKENS = []
 
 
 async def admin_headers():
-    token = secrets.token_urlsafe(16)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://test") as c:
+        r = await c.post("/api/admin/login", json={"password": TEST_ADMIN_PW})
+    token = r.json()["token"]
     TEST_ADMIN_TOKENS.append(token)
-    await db.admin_sessions.insert_one({"token": token, "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()})
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -466,7 +466,7 @@ def set_refund_status(refunds_by_pi, status):
             r["status"] = status
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_pending_refund_followup_sent_once_after_stripe_confirms(client, monkeypatch):
     uid, email, h = await paid_user()
     store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls := {}, refund_status="pending")
@@ -492,7 +492,7 @@ async def test_pending_refund_followup_sent_once_after_stripe_confirms(client, m
     assert len(followups(email)) == 1 and len(calls["refunds"]) == 1  # no duplicate email or refund
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_failed_refund_admin_retry_sends_followup(client, monkeypatch):
     _, email, h = await paid_user()
     mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, fail_refund=True)
@@ -505,7 +505,7 @@ async def test_failed_refund_admin_retry_sends_followup(client, monkeypatch):
     assert len(followups(email)) == 1 and len(calls["refunds"]) == 1
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_followup_email_failure_does_not_touch_refund(client, monkeypatch):
     _, email, h = await paid_user()
     store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls := {}, refund_status="pending")
@@ -523,7 +523,7 @@ async def test_followup_email_failure_does_not_touch_refund(client, monkeypatch)
     assert len(followups(email)) == 1 and len(calls["refunds"]) == 1
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_webhook_refund_update_triggers_followup(client, monkeypatch):
     _, email, h = await paid_user()
     store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, refund_status="pending")
@@ -538,7 +538,7 @@ async def test_webhook_refund_update_triggers_followup(client, monkeypatch):
     assert len(followups(email)) == 1
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_stripe_refund_fails_later_marks_attention_no_email(client, monkeypatch):
     _, email, h = await paid_user()
     store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, refund_status="pending")
@@ -550,7 +550,7 @@ async def test_stripe_refund_fails_later_marks_attention_no_email(client, monkey
     assert followups(email) == []
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_recalculated_refund_keeps_contact_and_mark_resolved_forgets(client, monkeypatch):
     _, email, h = await paid_user()
     mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, fail_invoice_list=True)
@@ -573,7 +573,7 @@ async def test_recalculated_refund_keeps_contact_and_mark_resolved_forgets(clien
     assert await db.refund_contacts.find_one({"reference": ref2}) is None and followups(email2) == []
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_issued_at_deletion_stores_no_contact(client, monkeypatch):
     _, _, h = await paid_user()
     mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {})
@@ -586,7 +586,7 @@ async def test_issued_at_deletion_stores_no_contact(client, monkeypatch):
 import os as _os
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_cron_endpoint_auth_body_and_idempotency(client, monkeypatch):
     monkeypatch.setenv("WEBHOOK_CRON_SECRET", "test-cron-secret-1234567890abcdef")
     url = "/api/cron/refund-check"
@@ -605,7 +605,7 @@ async def test_cron_endpoint_auth_body_and_idempotency(client, monkeypatch):
     await db.cron_runs.delete_many({"run_id": run_id})
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_daily_check_confirms_flags_and_never_retries(client, monkeypatch):
     # A: pending → succeeded (email); B: pending → failed (flag); C: needs_attention (must NOT be retried)
     _, email_a, ha = await paid_user()
@@ -650,7 +650,7 @@ async def test_daily_check_confirms_flags_and_never_retries(client, monkeypatch)
     await db.refund_contacts.delete_many({"reference": {"$in": [ref_a, ref_b, ref_c]}})
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_daily_check_lock_prevents_concurrent_runs():
     await db.cron_locks.update_one({"_id": "refund-check"}, {"$set": {
         "locked_until": datetime.now(timezone.utc) + timedelta(minutes=5)}}, upsert=True)
@@ -664,7 +664,7 @@ async def test_daily_check_lock_prevents_concurrent_runs():
 
 # ---------------- Undo cancellation ----------------
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_undo_cancellation_success(client, monkeypatch):
     uid, _, h = await make_user(plan_type="advanced", subscription_tier="advanced", subscription_status="cancelling",
                                 cancels_at=datetime.fromtimestamp(NOW + 86400 * 5, tz=timezone.utc).isoformat(),
@@ -686,7 +686,7 @@ async def test_undo_cancellation_success(client, monkeypatch):
     assert u["subscription_status"] == "active" and u["cancels_at"] is None and u["plan_type"] == "advanced"
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_undo_cancellation_rejects_expired_and_lifetime(client, monkeypatch):
     _, _, h = await make_user(subscription_status="cancelled", stripe_subscription_id="sub_e")
     monkeypatch.setattr(stripe.Subscription, "retrieve", lambda sid: sub_obj(sid, status="canceled"))
@@ -697,7 +697,7 @@ async def test_undo_cancellation_rejects_expired_and_lifetime(client, monkeypatc
     assert r.status_code == 400
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_undo_cancellation_not_pending_is_noop(client, monkeypatch):
     _, _, h = await make_user(plan_type="basic", subscription_status="active", stripe_subscription_id="sub_n")
     monkeypatch.setattr(stripe.Subscription, "retrieve", lambda sid: sub_obj(sid))
@@ -707,7 +707,7 @@ async def test_undo_cancellation_not_pending_is_noop(client, monkeypatch):
 
 # ---------------- Sync activation ----------------
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_sync_sets_plan_type_from_price(client, monkeypatch):
     uid, _, h = await make_user()
     sub = SimpleNamespace(**sub_obj("sub_s"))

@@ -36,7 +36,7 @@
     "/app/backend/tests/test_refactor_i29.py"
   ],
   "success_rate": {"backend": "100% (9/9 after fix)", "frontend": "partial — login/admin/ToS verified; Dashboard sub-components blocked behind pre-existing privacy gate"},
-  "test_credentials": "testuser@test.com / Test1234 (login OK), Admin password cyclecoach2024 (login OK).",
+  "test_credentials": "testuser@test.com / Test1234 (login OK), Admin password <redacted> (login OK).",
   "seed_data_creation": "None.",
   "retest_needed": true,
   "main_agent_can_self_test": true,

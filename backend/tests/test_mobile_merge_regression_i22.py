@@ -19,7 +19,7 @@ BASE_URL = base_url.rstrip("/")
 
 TEST_EMAIL = "testuser@test.com"
 TEST_PASSWORD = "Test1234"
-ADMIN_PASSWORD = "cyclecoach2024"
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]  # supplied securely via env, never hardcoded
 
 
 @pytest.fixture(scope="module")

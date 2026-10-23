@@ -40,7 +40,7 @@
     "frontend": "100% for admin dashboard scenarios tested; AccountSettings cancel/downgrade verified by code review (UI functional test skipped — test user lacks stripe_subscription_id so cancel button not rendered)"
   },
   "test_credentials": {
-    "admin_password": "cyclecoach2024",
+    "admin_password": "<redacted>",
     "note": "trialtest@test.com was upgraded to grandfathered/lifetime during grant-lifetime endpoint test — no longer a valid Trial User"
   },
   "seed_data_creation": "None (used existing users). Test upgraded trialtest@test.com via /api/admin/grant-lifetime — persistent state change.",

@@ -17,7 +17,7 @@
 
 ## Admin Dashboard
 - URL: /admin
-- Password: cyclecoach2024
+- Password: (stored only in the ADMIN_PASSWORD secret — never recorded in files)
 
 ## Account deletion / Undo-cancellation test accounts (password for all: Test1234, seeded in preview DB)
 - del_trial@test.com — trial (trialing, no Stripe ids) → safe to DELETE

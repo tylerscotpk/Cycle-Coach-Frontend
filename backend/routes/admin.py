@@ -1,10 +1,12 @@
 """Admin routes — authentication, user management, stats, feedback."""
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, Request
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from database import db
 import secrets
+import hmac
+import hashlib
 import uuid
 import string
 import os
@@ -16,25 +18,58 @@ import stripe
 router = APIRouter(prefix="/api")
 logger = logging.getLogger(__name__)
 
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'info@cyclecoach.net')
+
+LOGIN_WINDOW = timedelta(minutes=15)
+MAX_FAILS_PER_IP = 5
+MAX_FAILS_GLOBAL = 30
+_verified_tokens = {}  # (token, password hash) -> verified fingerprint; process-local cache
+
+
+def _admin_password():
+    return os.environ.get('ADMIN_PASSWORD')
+
+
+def _password_fp(password, salt):
+    """Per-session fingerprint of the admin password; a session is valid only while the password is unchanged."""
+    return hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000).hex()
+
+
+def _client_ip(request: Request):
+    fwd = request.headers.get("x-forwarded-for")
+    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+
+
+async def _session_valid(token):
+    session = await db.admin_sessions.find_one({"token": token})
+    if not session:
+        return False
+    expires_at = datetime.fromisoformat(session['expires_at'])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    password = _admin_password()
+    if expires_at < datetime.now(timezone.utc) or not password or not session.get("pw_salt") or not session.get("pw_fp"):
+        await db.admin_sessions.delete_one({"token": token})
+        return False
+    cache_key = (token, hashlib.sha256(password.encode()).hexdigest())  # in-memory only; misses if password changes
+    if _verified_tokens.get(cache_key) == session["pw_fp"]:
+        return True
+    if not hmac.compare_digest(_password_fp(password, session["pw_salt"]), session["pw_fp"]):
+        # Password changed since this session was created → revoke it
+        await db.admin_sessions.delete_one({"token": token})
+        return False
+    _verified_tokens[cache_key] = session["pw_fp"]
+    return True
+
 
 # ── Admin auth dependency ───────────────────────────────────────────
 
 async def require_admin(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Admin authentication required")
-    token = authorization.replace("Bearer ", "")
-    session = await db.admin_sessions.find_one({"token": token})
-    if not session:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
-    expires_at = datetime.fromisoformat(session['expires_at'])
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < datetime.now(timezone.utc):
-        await db.admin_sessions.delete_one({"token": token})
-        raise HTTPException(status_code=401, detail="Admin token expired")
+    if not await _session_valid(authorization[7:]):
+        raise HTTPException(status_code=401, detail="Invalid or expired admin session")
     return True
 
 # ── Models ──────────────────────────────────────────────────────────
@@ -54,21 +89,34 @@ class GrantKeyRequest(BaseModel):
 # ── Auth endpoints ──────────────────────────────────────────────────
 
 @router.post("/admin/login")
-async def admin_login(request: AdminLoginRequest):
-    if not ADMIN_PASSWORD:
+async def admin_login(body: AdminLoginRequest, request: Request):
+    password = _admin_password()
+    if not password:
         logger.error("ADMIN_PASSWORD not configured")
         raise HTTPException(status_code=500, detail="Admin authentication not configured")
-    if request.password == ADMIN_PASSWORD:
+    ip = _client_ip(request)
+    since = datetime.now(timezone.utc) - LOGIN_WINDOW
+    await db.admin_login_failures.create_index("at", expireAfterSeconds=int(LOGIN_WINDOW.total_seconds()) * 2)
+    ip_fails = await db.admin_login_failures.count_documents({"ip": ip, "at": {"$gte": since}})
+    all_fails = await db.admin_login_failures.count_documents({"at": {"$gte": since}})
+    if ip_fails >= MAX_FAILS_PER_IP or all_fails >= MAX_FAILS_GLOBAL:
+        logger.warning("Admin login temporarily locked after repeated failures")
+        raise HTTPException(status_code=429, detail="Too many failed attempts. Please wait 15 minutes and try again.",
+                            headers={"Retry-After": str(int(LOGIN_WINDOW.total_seconds()))})
+    if hmac.compare_digest(body.password.encode(), password.encode()):
         admin_token = secrets.token_urlsafe(32)
-        admin_session = {
-            "token": admin_token,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat(),
-        }
+        salt = secrets.token_hex(16)
+        now = datetime.now(timezone.utc)
         await db.admin_sessions.delete_many({})
-        await db.admin_sessions.insert_one(admin_session)
+        _verified_tokens.clear()
+        await db.admin_sessions.insert_one({
+            "token": admin_token, "pw_salt": salt, "pw_fp": _password_fp(password, salt),
+            "created_at": now.isoformat(), "expires_at": (now + timedelta(hours=24)).isoformat(),
+        })
+        await db.admin_login_failures.delete_many({"ip": ip})
         logger.info("Admin login successful")
         return AdminLoginResponse(success=True, message="Admin access granted", token=admin_token)
+    await db.admin_login_failures.insert_one({"ip": ip, "at": datetime.now(timezone.utc)})
     logger.warning("Failed admin login attempt")
     raise HTTPException(status_code=401, detail="Invalid password")
 
@@ -76,16 +124,8 @@ async def admin_login(request: AdminLoginRequest):
 async def verify_admin_token(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="No token provided")
-    token = authorization.replace("Bearer ", "")
-    session = await db.admin_sessions.find_one({"token": token})
-    if not session:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    expires_at = datetime.fromisoformat(session['expires_at'])
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < datetime.now(timezone.utc):
-        await db.admin_sessions.delete_one({"token": token})
-        raise HTTPException(status_code=401, detail="Token expired")
+    if not await _session_valid(authorization[7:]):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     return {"valid": True}
 
 @router.post("/admin/logout")
@@ -93,6 +133,7 @@ async def admin_logout(authorization: Optional[str] = Header(None)):
     if authorization and authorization.startswith("Bearer "):
         token = authorization.replace("Bearer ", "")
         await db.admin_sessions.delete_one({"token": token})
+        _verified_tokens.clear()
     return {"message": "Logged out successfully"}
 
 # ── Feedback ────────────────────────────────────────────────────────

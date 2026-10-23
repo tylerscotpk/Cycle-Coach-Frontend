@@ -36,7 +36,7 @@
   },
   "test_credentials": {
     "grandfathered_keys": ["CYCLE-COACH-2024-ALPHA", "CC-FOUNDER-SPECIAL"],
-    "admin_dashboard": {"url": "/admin", "password": "cyclecoach2024"}
+    "admin_dashboard": {"url": "/admin", "password": "<redacted>"}
   },
   "seed_data_creation": "Multiple free trial licenses created during testing (test_trial_*, test_dashboard_*, test_locked_*, etc.)",
   "retest_needed": false,

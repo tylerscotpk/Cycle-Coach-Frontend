@@ -184,3 +184,9 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - Tests: test_account_lifecycle.py 36/36 (Stripe + Resend mocked). Preview endpoint verified (401 no-auth, 202 + completed run).
 - Secrets REFUND_CONTACT_KEY + WEBHOOK_CRON_SECRET registered (live+test slots). Do not rotate REFUND_CONTACT_KEY (stored contacts would become unreadable).
 - GitHub: push via "Save to GitHub" to NEW branch apple-fixes-build9; never Real. When merging, exclude frontend/ios (workspace iOS project predates crash fix).
+
+## 2026-10-23 — Admin auth hardening (NOT deployed)
+- Exposed admin password removed from 4 test files (now os.environ["ADMIN_PASSWORD"]), test_credentials.md, 6 test reports. History not rewritten.
+- routes/admin.py: password read from env at call time; hmac.compare_digest; rate limit 5 fails/IP/15min + 30 global/15min → 429 (admin_login_failures, TTL); sessions store salted PBKDF2 fingerprint of password → changing ADMIN_PASSWORD revokes all prior sessions (legacy sessions without fingerprint rejected).
+- tests/test_admin_security.py (10) + test_account_lifecycle.py (36) = 46 pass; pytest loop_scope=session.
+- Pending: user sets new ADMIN_PASSWORD (separate preview/production) via secrets card, then deploy.

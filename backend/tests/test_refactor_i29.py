@@ -4,7 +4,7 @@ import pytest
 import requests
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://partner-guide-4.preview.emergentagent.com').rstrip('/')
-ADMIN_PASSWORD = "cyclecoach2024"
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]  # supplied securely via env, never hardcoded
 
 
 @pytest.fixture(scope="module")
