@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import InfoNav from '@/components/InfoNav';
 import AuthModal from '@/components/AuthModal';
 import { toast } from 'sonner';
+import { redirectToCheckout, checkoutSuccessUrl } from '@/utils/checkout';
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
@@ -46,6 +47,17 @@ const InfoPricing = () => {
     }
   }, []);
 
+  const refreshUser = async (sessionToken) => {
+    try {
+      const res = await fetch(`${API}/api/auth/check`, { headers: { 'Authorization': `Bearer ${sessionToken}` } });
+      const data = await res.json();
+      if (!data.authenticated) return null;
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
+      return data.user;
+    } catch { return null; }
+  };
+
   const createCheckout = async (plan, currentUser = null) => {
     const u = currentUser || user;
     const sessionToken = localStorage.getItem('session_token');
@@ -57,21 +69,25 @@ const InfoPricing = () => {
       return;
     }
 
-    if (!u.email_verified) {
-      localStorage.setItem('pending_plan', plan);
-      navigate('/verify-email');
-      return;
-    }
-
     setLoading(plan);
     try {
+      if (!u.email_verified) {
+        // Stored user can be stale if the email was verified in Safari — re-check before blocking
+        const fresh = await refreshUser(sessionToken);
+        if (!fresh?.email_verified) {
+          localStorage.setItem('pending_plan', plan);
+          setLoading(null);
+          navigate('/verify-email');
+          return;
+        }
+      }
       const origin = window.location.origin;
       const res = await fetch(`${API}/api/subscription/create-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
         body: JSON.stringify({
           plan,
-          success_url: `${origin}/checkout-success?plan=${plan}`,
+          success_url: checkoutSuccessUrl(plan),
           cancel_url: `${origin}/pricing`,
         }),
       });
@@ -79,9 +95,9 @@ const InfoPricing = () => {
       if (!res.ok) {
         throw new Error(data.detail || 'Failed to create checkout');
       }
-      window.location.href = data.checkout_url;
+      if (redirectToCheckout(data.checkout_url)) setLoading(null);
     } catch (err) {
-      toast.error(err.message || 'Something went wrong');
+      toast.error(err.message || 'Could not start checkout. Please try again.');
       setLoading(null);
     }
   };
@@ -115,6 +131,24 @@ const InfoPricing = () => {
     setActionLoading(true);
     const sessionToken = localStorage.getItem('session_token');
     try {
+      // Existing subscribers upgrade in place (prorated) — never a second subscription
+      const up = await fetch(`${API}/api/subscription/upgrade`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+      });
+      let upData;
+      try { upData = await up.json(); } catch { upData = {}; }
+      if (up.ok && upData.success) {
+        const updated = { ...user, plan_type: 'advanced', subscription_tier: 'advanced' };
+        localStorage.setItem('user', JSON.stringify(updated));
+        setUser(updated);
+        setShowUpgradeModal(false);
+        setShowUpgradeSuccess(true);
+        setActionLoading(false);
+        return;
+      }
+      if (!upData.use_checkout) throw new Error(upData.detail || 'Upgrade failed');
+
       const origin = window.location.origin;
       const res = await fetch(`${API}/api/subscription/create-checkout`, {
         method: 'POST',
@@ -124,15 +158,16 @@ const InfoPricing = () => {
         },
         body: JSON.stringify({
           plan: 'advanced',
-          success_url: `${origin}/checkout-success?plan=advanced`,
+          success_url: checkoutSuccessUrl('advanced'),
           cancel_url: `${origin}/pricing`,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Upgrade failed');
-      window.location.href = data.checkout_url;
+      setShowUpgradeModal(false);
+      if (redirectToCheckout(data.checkout_url)) setActionLoading(false);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Something went wrong. Please try again.');
       setActionLoading(false);
     }
   };

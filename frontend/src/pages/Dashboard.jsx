@@ -22,6 +22,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const API = BACKEND_URL;
 
 import { LocalStorage } from '../utils/localStorageManager';
+import { redirectToCheckout, checkoutSuccessUrl } from '../utils/checkout';
 import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod, getDisplayCycleDay, getCycleExtensionStatus, getCappedCycleMessages, calculateEWMA } from '../utils/cycleCalculations';
 import { RESOURCES, getRelevantResources, getNextPhase, getPhasePrioritizedResources, getUnarchivedResources, archiveResource, getPhaseEmoji, getPhaseColor, getPhaseLabel, getPhaseDays, PHASE_LABELS } from '../utils/resourcesData';
 import { getUnseenFact } from '../utils/cycleFacts';
@@ -797,13 +798,13 @@ const Dashboard = () => {
           },
           body: JSON.stringify({
             plan: 'advanced',
-            success_url: `${origin}/checkout-success?plan=advanced`,
+            success_url: checkoutSuccessUrl('advanced'),
             cancel_url: `${origin}/app`,
           }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed to create checkout');
-        window.location.href = data.checkout_url;
+        if (redirectToCheckout(data.checkout_url)) { setUpgrading(false); setShowUpgradeModal(false); }
       }
     } catch (err) {
       toast.error(err.message || 'Something went wrong');

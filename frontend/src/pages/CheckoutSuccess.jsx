@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -7,9 +7,13 @@ const CYCLE_COACH_ICON = "https://customer-assets.emergentagent.com/job_partner-
 
 export default function CheckoutSuccess() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Opened in Safari from the iOS app: send the user back to the app instead of the web dashboard
+  const fromApp = searchParams.get('src') === 'app' && !window.Capacitor?.isNativePlatform?.();
   const [countdown, setCountdown] = useState(8);
 
   useEffect(() => {
+    if (fromApp) return;
     const timer = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
@@ -21,7 +25,7 @@ export default function CheckoutSuccess() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [navigate]);
+  }, [navigate, fromApp]);
 
   return (
     <div className="min-h-screen  flex items-center justify-center px-6" data-testid="checkout-success-page">
@@ -50,17 +54,32 @@ export default function CheckoutSuccess() {
           </p>
         </div>
 
-        <Button
-          onClick={() => navigate('/app')}
-          className="bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-3 text-base rounded-full"
-          data-testid="go-to-app-btn"
-        >
-          Go to the App
-        </Button>
+        {fromApp ? (
+          <>
+            <a href="cyclecoach://checkout-complete"
+              className="inline-block bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-3 text-base rounded-full"
+              data-testid="return-to-app-btn">
+              Return to the Cycle Coach App
+            </a>
+            <p className="text-slate-500 text-sm" data-testid="return-to-app-hint">
+              Your plan activates automatically. If the app doesn&apos;t open, switch back to Cycle Coach manually.
+            </p>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={() => navigate('/app')}
+              className="bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-3 text-base rounded-full"
+              data-testid="go-to-app-btn"
+            >
+              Go to the App
+            </Button>
 
-        <p className="text-slate-500 text-sm">
-          Redirecting in {countdown}s...
-        </p>
+            <p className="text-slate-500 text-sm">
+              Redirecting in {countdown}s...
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

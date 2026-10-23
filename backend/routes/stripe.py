@@ -41,6 +41,19 @@ PRICE_TO_PLAN = {
 ENTITLED_STATUSES = {"active", "trialing", "cancelling"}
 
 
+def _plan_fields_from_sub(sub, fallback_tier="basic"):
+    """Resolve plan_type/subscription_tier from a Stripe subscription's price."""
+    try:
+        price_id = sub["items"]["data"][0]["price"]["id"]
+    except (KeyError, IndexError, TypeError):
+        price_id = None
+    tier = PRICE_TO_PLAN.get(price_id) or (sub.get("metadata") or {}).get("tier") or fallback_tier
+    fields = {"subscription_tier": tier, "plan_type": "trial" if sub.get("status") == "trialing" else tier}
+    if sub.get("trial_end"):
+        fields["trial_ends_at"] = datetime.fromtimestamp(sub["trial_end"], tz=timezone.utc).isoformat()
+    return fields
+
+
 async def send_purchase_confirmation_email(email: str, tier: str):
     if not RESEND_API_KEY:
         logger.warning("RESEND_API_KEY not configured - skipping purchase confirmation email")
@@ -447,6 +460,7 @@ async def sync_subscription_from_stripe(
                             "stripe_subscription_id": sub.id,
                             "stripe_customer_id": sess.customer,
                             "updated_at": datetime.now(timezone.utc).isoformat(),
+                            **_plan_fields_from_sub(sub),
                         }
                         await db.auth_users.update_one({"id": user["id"]}, {"$set": update_fields})
                         logger.info(f"SYNC SUCCESS (via session): {email} → status={sub.status}")
@@ -470,8 +484,7 @@ async def sync_subscription_from_stripe(
                         "stripe_customer_id": customer.id,
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                     }
-                    if tier:
-                        update_fields["subscription_tier"] = tier
+                    update_fields.update(_plan_fields_from_sub(sub, tier))
 
                     await db.auth_users.update_one(
                         {"id": user["id"]},

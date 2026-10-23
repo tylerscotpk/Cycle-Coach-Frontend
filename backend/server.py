@@ -1675,6 +1675,7 @@ from routes.health import router as health_router
 from routes.admin import router as admin_router
 from routes.ai import router as ai_router
 from routes.contact import router as contact_router
+from routes.account import router as account_router
 
 app.include_router(api_router)
 app.include_router(auth_router)
@@ -1683,6 +1684,7 @@ app.include_router(health_router)
 app.include_router(admin_router)
 app.include_router(ai_router)
 app.include_router(contact_router)
+app.include_router(account_router)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

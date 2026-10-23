@@ -169,6 +169,19 @@ export const LocalStorage = {
     }
   },
 
+  // Permanent account deletion: remove every key namespaced to this user, plus the session
+  deleteAllUserData: (userId) => {
+    if (userId) {
+      Object.keys(localStorage)
+        .filter((k) => k.includes(userId))
+        .forEach((k) => localStorage.removeItem(k));
+    }
+    localStorage.removeItem('session_token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('pending_plan');
+    _userId = null;
+  },
+
   // Clear session on logout — preserves user-specific data (namespaced by userId)
   clearOnLogout: () => {
     localStorage.removeItem('session_token');

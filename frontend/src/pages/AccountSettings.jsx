@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { LocalStorage } from '../utils/localStorageManager';
+import { redirectToCheckout, checkoutSuccessUrl } from '../utils/checkout';
+import { UndoCancellationSection } from '@/components/account/UndoCancellationSection';
+import { DeleteAccountSection } from '@/components/account/DeleteAccountSection';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -205,13 +208,13 @@ const AccountSettings = () => {
           },
           body: JSON.stringify({
             plan: 'advanced',
-            success_url: `${origin}/checkout-success?plan=advanced`,
+            success_url: checkoutSuccessUrl('advanced'),
             cancel_url: `${origin}/account`,
           }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed to create checkout');
-        window.location.href = data.checkout_url;
+        redirectToCheckout(data.checkout_url);
       }
     } catch (err) {
       toast.error(err.message || 'Something went wrong');
@@ -410,6 +413,13 @@ const AccountSettings = () => {
               </div>
             )}
 
+            <UndoCancellationSection
+              subscription={subscription}
+              tierName={getTierDisplayName(effectiveTier)}
+              formatDate={formatDate}
+              onRestored={loadSubscriptionData}
+            />
+
             {/* Downgrade Scheduled Notice */}
             {subscription?.downgrade_at_period_end && (
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4" data-testid="downgrade-scheduled-notice">
@@ -606,6 +616,8 @@ const AccountSettings = () => {
             </Button>
           </CardContent>
         </Card>
+
+        <DeleteAccountSection subscription={subscription} />
       </div>
 
       {/* Cancel Subscription Modal */}

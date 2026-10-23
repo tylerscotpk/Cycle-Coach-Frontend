@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL || "";
 
-const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
+// iPadOS Safari reports a Mac user agent, so also detect touch-capable 'Macs'
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isCapacitor = () => typeof window !== 'undefined' && !!window.Capacitor;
 
 const VerifyEmail = () => {
@@ -16,6 +18,36 @@ const VerifyEmail = () => {
   const hasVerified = useRef(false);
 
   const token = searchParams.get('token');
+  const [checking, setChecking] = useState(false);
+
+  // In-app "waiting" screen: the link is opened in Safari, so re-check the server when the user comes back
+  const checkVerified = async (manual) => {
+    const sessionToken = localStorage.getItem('session_token');
+    if (!sessionToken) { if (manual) navigate('/login'); return; }
+    setChecking(true);
+    try {
+      const res = await fetch(`${API}/api/auth/check`, { headers: { 'Authorization': `Bearer ${sessionToken}` } });
+      const data = await res.json();
+      if (data.authenticated && data.user?.email_verified) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+        toast.success('Email verified!');
+        navigate('/pricing');
+      } else if (manual) {
+        toast.error("We haven't seen the verification yet. Tap the link in your email, then try again.");
+      }
+    } catch {
+      if (manual) toast.error('Connection problem. Please try again.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (status !== 'waiting') return;
+    const onVisible = () => { if (document.visibilityState === 'visible') checkVerified(false); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [status]);
 
   useEffect(() => {
     if (token && !hasVerified.current) {
@@ -170,6 +202,11 @@ const VerifyEmail = () => {
             <p className="text-slate-400">
               We&apos;ve sent a verification link to your email. Click it to activate your account and continue.
             </p>
+            <Button onClick={() => checkVerified(true)} disabled={checking}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white w-full"
+              data-testid="verify-check-btn">
+              {checking ? 'Checking…' : "I've Verified — Continue"}
+            </Button>
             <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4 mt-4">
               <p className="text-slate-300 text-sm">
                 Didn&apos;t get the email? Check your spam folder, or:
