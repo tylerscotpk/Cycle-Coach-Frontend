@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from database import db
 from routes.auth import hash_password
+from routes.deletion_refunds import plan_refunds, record_plan, record_calc_failure, run_refund, public_status
 import hashlib
 import logging
 import stripe
@@ -104,39 +105,6 @@ class DeleteAccountRequest(BaseModel):
     confirmation: str
 
 
-def _invoice_payment_intent(invoice_id):
-    payments = stripe.InvoicePayment.list(invoice=invoice_id, limit=5)
-    for p in payments.data:
-        pay = p.get("payment") or {}
-        if p.get("status") == "paid" and pay.get("payment_intent"):
-            return pay["payment_intent"]
-    return None
-
-
-def _refund_unused(sub):
-    """Refund the unused portion of the current paid period. Idempotent per invoice."""
-    if sub.get("status") == "trialing" or not sub.get("latest_invoice"):
-        return None
-    invoice = stripe.Invoice.retrieve(sub["latest_invoice"])
-    paid = invoice.get("amount_paid") or 0
-    start, end = _period_bounds(sub)
-    now_ts = int(datetime.now(timezone.utc).timestamp())
-    if paid <= 0 or not start or not end or end <= now_ts or end <= start:
-        return None
-    amount = int(paid * (end - now_ts) / (end - start))
-    if amount < 50:
-        return None
-    pi = _invoice_payment_intent(invoice["id"])
-    if not pi:
-        return None
-    refund = stripe.Refund.create(
-        payment_intent=pi, amount=amount, reason="requested_by_customer",
-        metadata={"reason": "account_deletion"},
-        idempotency_key=f"cc-acctdel-refund-{invoice['id']}",
-    )
-    return {"refund_id": refund.get("id"), "amount": amount, "currency": invoice.get("currency")}
-
-
 def _billable_subscriptions(user):
     subs, seen = [], set()
     customer_id = user.get("stripe_customer_id")
@@ -184,33 +152,61 @@ async def delete_account(request: DeleteAccountRequest, session_token: Optional[
     if user.get("password_hash") != hash_password(request.password):
         raise HTTPException(status_code=401, detail="Incorrect password. Your account was not deleted.")
 
-    cancelled, refunds = [], []
-    if user.get("stripe_customer_id") or user.get("stripe_subscription_id"):
+    user_ref = hashlib.sha256(user["id"].encode()).hexdigest()
+    customer_id = user.get("stripe_customer_id")
+    as_of = int(datetime.now(timezone.utc).timestamp())
+    cancelled, refund_docs = [], []
+    if customer_id or user.get("stripe_subscription_id"):
         try:
-            for sub in _billable_subscriptions(user):
-                r = _refund_unused(sub)
-                if r:
-                    refunds.append(r)
-                stripe.Subscription.cancel(sub["id"], prorate=False, invoice_now=False)
-                cancelled.append(sub["id"])
+            subs = _billable_subscriptions(user)
         except stripe.StripeError as e:
-            logger.error(f"ACCOUNT DELETE billing step failed for user={user['id']}: {e}")
+            logger.error(f"ACCOUNT DELETE could not list subscriptions for user_ref={user_ref[:12]}: {e}")
             raise HTTPException(status_code=409, detail=(
-                "We could not stop your subscription billing, so your account was NOT deleted. "
-                "Please try again in a moment or contact support."))
+                "We could not confirm your subscription billing is stopped, so your account was NOT deleted yet. "
+                "Please try again in a moment."))
+        for sub in subs:
+            planned = []
+            if sub.get("status") != "trialing":
+                try:
+                    for item in plan_refunds(sub["id"], as_of):
+                        planned.append(await record_plan(user_ref, customer_id, sub["id"], item, as_of))
+                except stripe.StripeError as e:
+                    planned.append(await record_calc_failure(user_ref, customer_id, sub["id"], as_of, str(e)[:200]))
+            try:
+                stripe.Subscription.cancel(sub["id"], prorate=False, invoice_now=False)
+            except stripe.StripeError as e:
+                if getattr(e, "code", None) != "resource_missing":
+                    logger.error(f"ACCOUNT DELETE cancel failed sub={sub['id']}: {e}")
+                    raise HTTPException(status_code=409, detail=(
+                        "We could not stop your subscription billing, so your account was NOT deleted yet. "
+                        "Please try again in a moment."))
+            cancelled.append(sub["id"])
+            # Billing is stopped; refunds never block deletion. Failures are recorded for resolution.
+            for doc in planned:
+                refund_docs.append(doc if doc["status"] == "needs_attention" else await run_refund(doc))
+
+    # Resume any refund planned by an earlier interrupted attempt for this customer
+    if customer_id:
+        seen = {d["reference"] for d in refund_docs}
+        async for doc in db.deletion_refunds.find({"stripe_customer_id": customer_id, "user_ref": user_ref,
+                                                   "status": {"$in": ["planned", "needs_attention"]}}, {"_id": 0}):
+            if doc["reference"] not in seen:
+                refund_docs.append(doc if doc.get("invoice_id") is None else await run_refund(doc))
 
     # Minimal retained record: financial audit only, no email or personal data
     await db.account_deletions.insert_one({
-        "user_ref": hashlib.sha256(user["id"].encode()).hexdigest(),
+        "user_ref": user_ref,
         "deleted_at": datetime.now(timezone.utc).isoformat(),
-        "stripe_customer_id": user.get("stripe_customer_id"),
+        "stripe_customer_id": customer_id,
         "cancelled_subscriptions": cancelled,
-        "refunds": refunds,
+        "refund_references": [d["reference"] for d in refund_docs],
     })
     await _purge_user_records(user)
-    logger.info(f"ACCOUNT DELETED: user_ref={hashlib.sha256(user['id'].encode()).hexdigest()[:12]} subs={len(cancelled)} refunds={len(refunds)}")
+    refunds = [public_status(d) for d in refund_docs]
+    logger.info(f"ACCOUNT DELETED: user_ref={user_ref[:12]} subs={len(cancelled)} refunds={[r['status'] for r in refunds]}")
     return {
         "success": True,
         "cancelled_subscriptions": len(cancelled),
-        "refunds": [{"amount": r["amount"], "currency": r["currency"]} for r in refunds],
+        "refunds": refunds,
+        "refund_needs_attention": any(r["status"] == "needs_attention" for r in refunds),
     }

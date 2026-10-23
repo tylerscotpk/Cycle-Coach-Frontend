@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { DeletionRefundsPanel } from '@/components/admin/DeletionRefundsPanel';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -339,6 +340,8 @@ const AdminDashboard = () => {
             Logout
           </Button>
         </div>
+
+        <DeletionRefundsPanel headers={getAdminHeaders} />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

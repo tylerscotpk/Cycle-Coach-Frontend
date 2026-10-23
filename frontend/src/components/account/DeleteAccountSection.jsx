@@ -14,7 +14,7 @@ const billingNotice = (sub) => {
   const lifetime = ['grandfathered', 'lifetime'].includes(sub?.plan_type) || ['grandfathered', 'lifetime'].includes(sub?.subscription_tier);
   if (lifetime) return 'Your Lifetime access will end permanently. Lifetime access cannot be restored after deletion.';
   if (status === 'trialing' || sub?.plan_type === 'trial') return 'Your free trial will be cancelled immediately. You will not be charged.';
-  if (['active', 'cancelling', 'past_due'].includes(status)) return 'Your subscription will be cancelled immediately so you are never charged again, and the unused part of your current billing period will be refunded to your original payment method (typically 5–10 business days).';
+  if (['active', 'cancelling', 'past_due'].includes(status)) return 'Your subscription will be cancelled immediately so you are never charged again, and the unused part of what you paid for the current billing period will be refunded to your original payment method (typically 5–10 business days). If the refund can’t be processed automatically, you’ll get a reference number and our team will complete it.';
   return 'You have no active subscription, so there is nothing to cancel or refund.';
 };
 
@@ -25,10 +25,12 @@ export const DeleteAccountSection = ({ subscription }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const finish = async () => {
+  const finish = async (result) => {
     const uid = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').id; } catch { return null; } })();
     await cancelAllScheduled();
     LocalStorage.deleteAllUserData(uid);
+    // Non-personal refund status for the confirmation screen (references + amounts only)
+    try { sessionStorage.setItem('cc_deletion_result', JSON.stringify({ refunds: result?.refunds || [] })); } catch { /* ignore */ }
     window.location.replace('/account-deleted');
   };
 
@@ -43,7 +45,7 @@ export const DeleteAccountSection = ({ subscription }) => {
         body: JSON.stringify({ password, confirmation: confirmText }),
       });
       let data; try { data = await res.json(); } catch { data = {}; }
-      if ((res.ok && data.success) || res.status === 404) { await finish(); return; }
+      if ((res.ok && data.success) || res.status === 404) { await finish(data); return; }
       setError(data.detail || 'Your account could not be deleted. Please try again.');
     } catch {
       setError('Network error — your account was not deleted. Check your connection and try again.');

@@ -30,6 +30,24 @@ def block_real_stripe(monkeypatch):
     monkeypatch.setattr(stripe.checkout.Session, "list", boom, raising=False)
 
 
+@pytest_asyncio.fixture(loop_scope="module", scope="module", autouse=True)
+async def remove_test_users_after():
+    yield
+    ids = [u["id"] async for u in db.auth_users.find({"email": {"$regex": r"^del_[0-9a-f]{8}@test\.com$"}}, {"id": 1})]
+    await db.auth_users.delete_many({"id": {"$in": ids}})
+    for coll in (db.user_sessions, db.partner_profiles, db.ai_conversations):
+        await coll.delete_many({"user_id": {"$in": ids}})
+    await db.cycle_history.delete_many({"partner_id": {"$in": [f"p_{i}" for i in ids]}})
+    await db.deletion_refunds.delete_many({"subscription_id": {"$in": ["sub_a", "sub_t"]}})
+
+
+@pytest_asyncio.fixture(loop_scope="module", autouse=True)
+async def clean_refund_records():
+    # Fake invoice ids are reused across tests (real Stripe ids are unique)
+    await db.deletion_refunds.delete_many({"invoice_id": {"$regex": "^in_"}})
+    yield
+
+
 @pytest_asyncio.fixture(loop_scope="module")
 async def client():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://test") as c:
@@ -57,16 +75,43 @@ def sub_obj(sid, status="active", cancel_at_period_end=False, cancel_at=None, st
                                 "current_period_start": start, "current_period_end": end}]}}
 
 
-def mock_billing(monkeypatch, subs, calls, fail_cancel=False):
+DAY = 86400
+
+
+def inv(iid, paid, lines):
+    return {"id": iid, "amount_paid": paid, "currency": "usd",
+            "lines": {"data": [{"amount": amt, "period": {"start": st, "end": en}} for amt, st, en in lines]}}
+
+
+def mock_billing(monkeypatch, subs, calls, invoices=None, existing_refunds=None, fail_cancel=False,
+                 fail_refund=False, no_pi=False, fail_invoice_list=False):
+    invoices = invoices if invoices is not None else {
+        sid: [inv(f"in_{sid}", 800, [(800, NOW - 10 * DAY, NOW + 20 * DAY)])] for sid in subs}
+    refunds_by_pi = existing_refunds if existing_refunds is not None else {}
+    used_keys = {}
     monkeypatch.setattr(stripe.Subscription, "list", lambda **k: SimpleNamespace(data=list(subs.values())))
     monkeypatch.setattr(stripe.Subscription, "retrieve", lambda sid: subs[sid])
-    monkeypatch.setattr(stripe.Invoice, "retrieve", lambda iid: {"id": iid, "amount_paid": 800, "currency": "usd"})
-    monkeypatch.setattr(stripe.InvoicePayment, "list", lambda **k: SimpleNamespace(
-        data=[{"status": "paid", "payment": {"payment_intent": "pi_123"}}]), raising=False)
+
+    def inv_list(subscription, **k):
+        if fail_invoice_list:
+            raise stripe.APIConnectionError("stripe down")
+        return SimpleNamespace(data=invoices.get(subscription, []))
+    monkeypatch.setattr(stripe.Invoice, "list", inv_list)
+    monkeypatch.setattr(stripe.InvoicePayment, "list", lambda invoice, **k: SimpleNamespace(
+        data=[] if no_pi else [{"status": "paid", "payment": {"payment_intent": f"pi_{invoice}"}}]), raising=False)
+    monkeypatch.setattr(stripe.Refund, "list", lambda payment_intent, **k: SimpleNamespace(
+        data=list(refunds_by_pi.get(payment_intent, []))), raising=False)
 
     def refund(**k):
+        if fail_refund:
+            raise stripe.InvalidRequestError("charge disputed", param=None)
+        if k["idempotency_key"] in used_keys:
+            return used_keys[k["idempotency_key"]]
+        r = {"id": f"re_{len(used_keys) + 1}", "amount": k["amount"], "status": "succeeded", "metadata": k["metadata"]}
+        used_keys[k["idempotency_key"]] = r
+        refunds_by_pi.setdefault(k["payment_intent"], []).append(r)
         calls.setdefault("refunds", []).append(k)
-        return {"id": "re_1"}
+        return r
 
     def cancel(sid, **k):
         if fail_cancel:
@@ -76,6 +121,15 @@ def mock_billing(monkeypatch, subs, calls, fail_cancel=False):
         return subs[sid]
     monkeypatch.setattr(stripe.Refund, "create", refund)
     monkeypatch.setattr(stripe.Subscription, "cancel", cancel)
+
+
+async def paid_user(**extra):
+    return await make_user(plan_type="advanced", subscription_tier="advanced", subscription_status="active",
+                           stripe_customer_id=f"cus_{uuid.uuid4().hex[:6]}", stripe_subscription_id="sub_a", **extra)
+
+
+async def delete(client, h):
+    return await client.post("/api/account/delete", json={"password": PW, "confirmation": "DELETE"}, headers=h)
 
 
 async def assert_purged(uid, email):
@@ -127,20 +181,129 @@ async def test_delete_lifetime_account(client):
 @pytest.mark.asyncio(loop_scope="module")
 @pytest.mark.parametrize("cancelling", [False, True])
 async def test_delete_paid_and_pending_cancel_refunds_and_cancels(client, monkeypatch, cancelling):
-    uid, email, h = await make_user(plan_type="advanced", subscription_tier="advanced",
-                                    subscription_status="cancelling" if cancelling else "active",
-                                    stripe_customer_id="cus_x", stripe_subscription_id="sub_a")
-    subs = {"sub_a": sub_obj("sub_a", cancel_at_period_end=cancelling, cancel_at=NOW + 20 * 86400 if cancelling else None)}
+    uid, email, h = await paid_user()
+    if cancelling:
+        await db.auth_users.update_one({"id": uid}, {"$set": {"subscription_status": "cancelling"}})
+    subs = {"sub_a": sub_obj("sub_a", cancel_at_period_end=cancelling, cancel_at=NOW + 20 * DAY if cancelling else None)}
     calls = {}
     mock_billing(monkeypatch, subs, calls)
-    r = await client.post("/api/account/delete", json={"password": PW, "confirmation": "DELETE"}, headers=h)
+    r = await delete(client, h)
     assert r.status_code == 200, r.text
     assert calls["cancelled"][0][0] == "sub_a"
     refund = calls["refunds"][0]
-    assert refund["payment_intent"] == "pi_123"
-    assert 520 <= refund["amount"] <= 540  # ~20/30 of $8.00
+    assert refund["payment_intent"] == "pi_in_sub_a"
+    assert 530 <= refund["amount"] <= 534  # 20/30 of $8.00
     assert refund["idempotency_key"] == "cc-acctdel-refund-in_sub_a"
+    body = r.json()
+    assert body["refunds"][0]["status"] == "refunded" and not body["refund_needs_attention"]
     await assert_purged(uid, email)
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_refund_after_upgrade_uses_actual_paid_lines(client, monkeypatch):
+    uid, email, h = await paid_user()
+    start, up, end = NOW - 10 * DAY, NOW - 5 * DAY, NOW + 20 * DAY
+    basic_credit, adv_charge = -round(500 * 25 / 30), round(800 * 25 / 30)
+    invoices = {"sub_a": [
+        inv("in_base", 500, [(500, start, end)]),
+        inv("in_upgrade", basic_credit + adv_charge, [(basic_credit, up, end), (adv_charge, up, end)]),
+    ]}
+    calls = {}
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls, invoices=invoices)
+    r = await delete(client, h)
+    assert r.status_code == 200
+    total = sum(c["amount"] for c in calls["refunds"])
+    assert abs(total - round(800 * 20 / 30)) <= 2  # unused time at the Advanced rate actually paid
+    assert {c["payment_intent"] for c in calls["refunds"]} == {"pi_in_base", "pi_in_upgrade"}
+    await assert_purged(uid, email)
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_refund_capped_by_prior_refunds_and_never_duplicated(client, monkeypatch):
+    uid, _, h = await paid_user()
+    calls = {}
+    existing = {"pi_in_sub_a": [{"id": "re_old", "amount": 600, "status": "succeeded", "metadata": {}}]}
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls, existing_refunds=existing)
+    r = await delete(client, h)
+    assert r.status_code == 200
+    assert calls["refunds"][0]["amount"] == 200  # 800 paid - 600 already refunded
+
+    _, _, h2 = await paid_user()
+    calls2 = {}
+    existing2 = {"pi_in_sub_a": [{"id": "re_prev", "amount": 533, "status": "succeeded",
+                                  "metadata": {"reason": "account_deletion"}}]}
+    await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls2, existing_refunds=existing2)
+    r = await delete(client, h2)
+    assert r.status_code == 200 and "refunds" not in calls2
+    assert r.json()["refunds"][0]["status"] == "refunded"
+    await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
+
+
+@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.parametrize("mode", ["fail_refund", "no_pi", "fail_invoice_list"])
+async def test_refund_failure_never_blocks_deletion_and_is_recorded(client, monkeypatch, mode):
+    await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
+    uid, email, h = await paid_user()
+    calls = {}
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls, **{mode: True})
+    r = await delete(client, h)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["refund_needs_attention"] is True
+    ref = body["refunds"][0]
+    assert ref["status"] == "needs_attention" and ref["reference"].startswith("RF-")
+    assert calls["cancelled"][0][0] == "sub_a"  # billing stopped regardless
+    doc = await db.deletion_refunds.find_one({"reference": ref["reference"]})
+    assert doc["status"] == "needs_attention" and doc["error"]
+    assert email not in str(doc) and uid not in str(doc)
+    await assert_purged(uid, email)
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_cancel_failure_keeps_account_then_retry_single_refund(client, monkeypatch):
+    await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
+    uid, email, h = await paid_user()
+    subs = {"sub_a": sub_obj("sub_a")}
+    calls, existing = {}, {}
+    mock_billing(monkeypatch, subs, calls, existing_refunds=existing, fail_cancel=True)
+    r = await delete(client, h)
+    assert r.status_code == 409
+    assert await db.auth_users.find_one({"id": uid}) is not None
+    assert "refunds" not in calls  # nothing refunded before billing is stopped
+    mock_billing(monkeypatch, subs, calls, existing_refunds=existing)
+    r = await delete(client, h)
+    assert r.status_code == 200
+    assert len(calls["refunds"]) == 1
+    assert await db.deletion_refunds.count_documents({"invoice_id": "in_sub_a"}) == 1
+    await assert_purged(uid, email)
+    await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_admin_can_retry_and_resolve_failed_refunds(client, monkeypatch):
+    await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
+    _, _, h = await paid_user()
+    subs = {"sub_a": sub_obj("sub_a")}
+    calls = {}
+    mock_billing(monkeypatch, subs, calls, fail_refund=True)
+    ref = (await delete(client, h)).json()["refunds"][0]["reference"]
+    token = secrets.token_urlsafe(16)
+    await db.admin_sessions.insert_one({"token": token, "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()})
+    ah = {"Authorization": f"Bearer {token}"}
+    assert (await client.get("/api/admin/deletion-refunds")).status_code == 401
+    lst = (await client.get("/api/admin/deletion-refunds", headers=ah)).json()
+    assert any(d["reference"] == ref for d in lst) and all("user_ref" not in d for d in lst)
+    mock_billing(monkeypatch, subs, calls)
+    r = await client.post(f"/api/admin/deletion-refunds/{ref}/retry", headers=ah)
+    assert r.json()["status"] == "refunded"
+    assert 530 <= calls["refunds"][0]["amount"] <= 534  # measured at deletion time
+    r = await client.post(f"/api/admin/deletion-refunds/{ref}/retry", headers=ah)
+    assert len(calls["refunds"]) == 1  # no duplicate on second retry
+    r = await client.post(f"/api/admin/deletion-refunds/{ref}/mark-resolved", headers=ah)
+    assert r.json()["status"] == "resolved_manually"
+    await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
+    await db.admin_sessions.delete_one({"token": token})
 
 
 @pytest.mark.asyncio(loop_scope="module")
@@ -150,28 +313,9 @@ async def test_delete_trialing_stripe_sub_no_refund(client, monkeypatch):
     subs = {"sub_t": sub_obj("sub_t", status="trialing")}
     calls = {}
     mock_billing(monkeypatch, subs, calls)
-    r = await client.post("/api/account/delete", json={"password": PW, "confirmation": "DELETE"}, headers=h)
+    r = await delete(client, h)
     assert r.status_code == 200
     assert "refunds" not in calls and calls["cancelled"][0][0] == "sub_t"
-    await assert_purged(uid, email)
-
-
-@pytest.mark.asyncio(loop_scope="module")
-async def test_delete_billing_failure_keeps_account_then_retry_succeeds(client, monkeypatch):
-    uid, email, h = await make_user(plan_type="basic", subscription_status="active",
-                                    stripe_customer_id="cus_f", stripe_subscription_id="sub_f")
-    subs = {"sub_f": sub_obj("sub_f")}
-    calls = {}
-    mock_billing(monkeypatch, subs, calls, fail_cancel=True)
-    r = await client.post("/api/account/delete", json={"password": PW, "confirmation": "DELETE"}, headers=h)
-    assert r.status_code == 409
-    assert await db.auth_users.find_one({"id": uid}) is not None
-    mock_billing(monkeypatch, subs, calls)
-    r = await client.post("/api/account/delete", json={"password": PW, "confirmation": "DELETE"}, headers=h)
-    assert r.status_code == 200
-    # same idempotency key used both attempts → Stripe would return one refund
-    keys = {c["idempotency_key"] for c in calls["refunds"]}
-    assert keys == {"cc-acctdel-refund-in_sub_f"}
     await assert_purged(uid, email)
 
 

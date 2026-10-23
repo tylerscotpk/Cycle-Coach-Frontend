@@ -156,3 +156,10 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - /account reachable for logged-in users without a plan; nav "Account" link.
 - Startup: inline HTML spinner, 12s auth-check timeout with Retry screen; VerifyEmail "I've Verified — Continue" + iPadOS detection.
 - Tests: backend/tests/test_account_lifecycle.py (Stripe mocked, 11 pass); iteration_31 frontend 100%.
+
+## 2026-10-23 — Deletion refund hardening (approved; NOT deployed)
+- New backend/routes/deletion_refunds.py: line-by-line unused-paid calculation across all paid invoices in period (upgrades, discounts, multiple payments), capped by remaining refundable, dedup via existing account_deletion refunds + per-invoice idempotency key.
+- Order: plan recorded (deletion_refunds, no email) → subscription cancelled → refunds attempted. Refund/calculation failure never blocks deletion: status needs_attention, admin email alert, reference shown to user on /account-deleted.
+- Cancellation failure still returns 409 (temporary; account kept); retry resumes the planned refund without duplicating.
+- Admin: GET /api/admin/deletion-refunds, POST .../{ref}/retry (recomputes as of deletion time), POST .../{ref}/mark-resolved; panel in AdminDashboard.
+- Tests: backend/tests/test_account_lifecycle.py 17/17 (Stripe fully mocked; real Stripe calls raise).

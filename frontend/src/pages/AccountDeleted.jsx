@@ -1,7 +1,36 @@
-import { CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const money = (cents, currency) =>
+  typeof cents === 'number'
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: (currency || 'usd').toUpperCase() }).format(cents / 100)
+    : 'the unused amount';
+
+const readResult = () => {
+  try { return JSON.parse(sessionStorage.getItem('cc_deletion_result') || '{}'); } catch { return {}; }
+};
+
+const RefundLine = ({ r }) => {
+  if (r.status === 'refunded') {
+    return <li data-testid="refund-status-refunded">Refund of {money(r.amount, r.currency)} issued to your original payment method (allow 5–10 business days).</li>;
+  }
+  if (r.status === 'needs_attention' || r.status === 'planned') {
+    return (
+      <li className="text-amber-300" data-testid="refund-status-pending">
+        <AlertTriangle className="inline w-4 h-4 mr-1" />
+        Your refund of {money(r.amount, r.currency)} couldn&apos;t be processed automatically. Our team has been notified and will issue it.
+        Reference: <strong>{r.reference}</strong> — contact cyclecoach4men@gmail.com with this reference if you have questions.
+      </li>
+    );
+  }
+  return null;
+};
+
 export default function AccountDeleted() {
+  const [result] = useState(readResult);
+  const refunds = (result.refunds || []).filter((r) => r.status !== 'none_due');
+
   return (
     <div className="min-h-screen flex items-center justify-center px-6" data-testid="account-deleted-page">
       <div className="max-w-md w-full text-center space-y-6">
@@ -13,7 +42,13 @@ export default function AccountDeleted() {
           Your Cycle Coach account, its server records and all data stored on this device have been permanently removed.
           Any active subscription was cancelled and you will not be charged again.
         </p>
-        <Button onClick={() => window.location.replace('/')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-8" data-testid="account-deleted-home-btn">
+        {refunds.length > 0 && (
+          <ul className="text-left text-sm text-slate-300 bg-slate-900/60 rounded-lg p-4 space-y-2" data-testid="refund-status-list">
+            {refunds.map((r) => <RefundLine key={r.reference} r={r} />)}
+          </ul>
+        )}
+        <Button onClick={() => { sessionStorage.removeItem('cc_deletion_result'); window.location.replace('/'); }}
+          className="bg-cyan-600 hover:bg-cyan-500 text-white px-8" data-testid="account-deleted-home-btn">
           Return to Home
         </Button>
       </div>
