@@ -58,7 +58,7 @@ async def undo_cancellation(session_token: Optional[str] = Cookie(None), authori
         sub = stripe.Subscription.retrieve(sub_id)
     except stripe.StripeError as e:
         logger.error(f"UNDO CANCEL retrieve error for {user.get('email')}: {e}")
-        raise HTTPException(status_code=502, detail="Could not reach the billing provider. Please try again.")
+        raise HTTPException(status_code=409, detail="Could not reach the billing provider. Please try again.")
 
     _, period_end = _period_bounds(sub)
     now_ts = int(datetime.now(timezone.utc).timestamp())
@@ -81,10 +81,10 @@ async def undo_cancellation(session_token: Optional[str] = Cookie(None), authori
         verified = stripe.Subscription.retrieve(sub_id)
     except stripe.StripeError as e:
         logger.error(f"UNDO CANCEL modify error for {user.get('email')}: {e}")
-        raise HTTPException(status_code=502, detail="Could not restore your subscription. No changes were made.")
+        raise HTTPException(status_code=409, detail="Could not restore your subscription. No changes were made.")
 
     if verified.get("cancel_at_period_end") or verified.get("cancel_at") or verified.get("status") not in ("active", "trialing"):
-        raise HTTPException(status_code=502, detail="The billing provider did not confirm the change. Please refresh and check your status.")
+        raise HTTPException(status_code=409, detail="The billing provider did not confirm the change. Please refresh and check your status.")
 
     now_iso = datetime.now(timezone.utc).isoformat()
     await db.auth_users.update_one({"id": user["id"]}, {"$set": {
@@ -195,7 +195,7 @@ async def delete_account(request: DeleteAccountRequest, session_token: Optional[
                 cancelled.append(sub["id"])
         except stripe.StripeError as e:
             logger.error(f"ACCOUNT DELETE billing step failed for user={user['id']}: {e}")
-            raise HTTPException(status_code=502, detail=(
+            raise HTTPException(status_code=409, detail=(
                 "We could not stop your subscription billing, so your account was NOT deleted. "
                 "Please try again in a moment or contact support."))
 

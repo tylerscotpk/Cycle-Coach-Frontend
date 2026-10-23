@@ -164,7 +164,7 @@ async def test_delete_billing_failure_keeps_account_then_retry_succeeds(client, 
     calls = {}
     mock_billing(monkeypatch, subs, calls, fail_cancel=True)
     r = await client.post("/api/account/delete", json={"password": PW, "confirmation": "DELETE"}, headers=h)
-    assert r.status_code == 502
+    assert r.status_code == 409
     assert await db.auth_users.find_one({"id": uid}) is not None
     mock_billing(monkeypatch, subs, calls)
     r = await client.post("/api/account/delete", json={"password": PW, "confirmation": "DELETE"}, headers=h)

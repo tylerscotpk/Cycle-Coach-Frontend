@@ -52,7 +52,7 @@ export const UndoCancellationSection = ({ subscription, tierName, formatDate, on
             <AlertDialogDescription asChild>
               <div className="text-slate-300 space-y-3 text-sm">
                 <p>Your subscription is currently set to end on <span className="text-orange-400">{formatDate(subscription.cancels_at)}</span>.</p>
-                <ul className="bg-slate-900/50 rounded-lg p-4 space-y-1">
+                <ul className="bg-slate-900/50 rounded-lg p-4 space-y-1 text-left">
                   <li>• You will not be charged today.</li>
                   <li>• Your plan renews at its current price on {formatDate(subscription.cancels_at)}.</li>
                   <li>• You can cancel again anytime before then.</li>

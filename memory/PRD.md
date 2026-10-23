@@ -146,3 +146,13 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Replace native date inputs with Shadcn Calendar component (DONE Aug 30)
 - [ ] Multi-partner support
 - [ ] Analytics dashboard improvements
+
+## 2026-10-23 — Apple rejection fixes (Build 9 prep) — NOT DEPLOYED (awaiting approval)
+- iOS external checkout sheet (utils/checkout.js, components/ExternalCheckoutDialog.jsx): iOS-native only; tap opens Stripe in Safari; "I've completed payment" + auto re-check on app foreground. Web/Android unchanged redirect.
+- Fixed stuck "Loading..." plan buttons after Safari handoff; stale email_verified re-checked before blocking checkout; Pricing "Upgrade" now upgrades in place (no duplicate sub).
+- /api/subscription/sync now sets plan_type/tier from Stripe price (activation fix when webhook missed).
+- /api/account/delete (password + "DELETE"; refunds unused paid days, cancels Stripe subs, purges server records, keeps anonymized account_deletions audit; billing failure → 409, account kept; idempotent refund keys) + local data wipe + /account-deleted page.
+- /api/account/undo-cancellation (verifies with Stripe before success) + UI section.
+- /account reachable for logged-in users without a plan; nav "Account" link.
+- Startup: inline HTML spinner, 12s auth-check timeout with Retry screen; VerifyEmail "I've Verified — Continue" + iPadOS detection.
+- Tests: backend/tests/test_account_lifecycle.py (Stripe mocked, 11 pass); iteration_31 frontend 100%.

@@ -249,7 +249,10 @@ const AccountSettings = () => {
   // Effective tier: plan_type takes priority over subscription_tier because
   // during a trial, subscription_tier = "basic" (the underlying Stripe price)
   // while plan_type = "trial" (the actual account state).
-  const effectiveTier = subscription?.plan_type || subscription?.subscription_tier;
+  const rawTier = subscription?.plan_type || subscription?.subscription_tier;
+  const hasPlan = !!rawTier && !['none', 'expired'].includes(rawTier) &&
+    !['cancelled', 'expired'].includes(subscription?.subscription_status);
+  const effectiveTier = hasPlan ? rawTier : null;
 
   const getTierBadgeColor = (tier) => {
     const colors = {
@@ -324,10 +327,10 @@ const AccountSettings = () => {
             variant="outline"
             size="sm"
             className="border-slate-600 text-slate-300 text-xs sm:text-sm"
-            onClick={() => navigate('/app')}
+            onClick={() => navigate(hasPlan ? '/app' : '/pricing')}
             data-testid="back-to-dashboard-btn"
           >
-            Back to Dashboard
+            {hasPlan ? 'Back to Dashboard' : 'Choose a Plan'}
           </Button>
         </div>
 
@@ -360,7 +363,7 @@ const AccountSettings = () => {
                       Free Trial{subscription?.trial_ends_at ? ` — ends ${formatDate(subscription.trial_ends_at)}` : ''}
                     </span>
                   ) : (
-                    <span className="text-slate-400">{subscription?.subscription_status || 'None'}</span>
+                    <span className="text-slate-400">{hasPlan ? subscription?.subscription_status : 'No active plan'}</span>
                   )}
                 </p>
               </div>
@@ -515,7 +518,7 @@ const AccountSettings = () => {
             )}
 
             {/* No subscription */}
-            {!subscription?.subscription_status && (
+            {!hasPlan && (
               <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-4">
                 <p className="text-slate-400 text-sm">
                   No active subscription. <a href="/pricing" className="text-cyan-400 hover:text-cyan-300">Choose a plan</a> to get started.
@@ -526,7 +529,7 @@ const AccountSettings = () => {
         </Card>
 
         {/* Features Card */}
-        <Card className="bg-slate-800/50 border-slate-700">
+        {hasPlan && <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
             <CardTitle className="text-white">Your Features</CardTitle>
             <CardDescription className="text-slate-400">
@@ -564,7 +567,7 @@ const AccountSettings = () => {
               );
             })()}
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Quick Links */}
         <Card className="bg-slate-800/50 border-slate-700">
@@ -591,10 +594,10 @@ const AccountSettings = () => {
             <Button
               variant="outline"
               className="w-full justify-start border-slate-600 text-slate-300 hover:bg-slate-700"
-              onClick={() => navigate('/app')}
+              onClick={() => navigate(hasPlan ? '/app' : '/pricing')}
               data-testid="dashboard-link"
             >
-              Back to Dashboard
+              {hasPlan ? 'Back to Dashboard' : 'Choose a Plan'}
             </Button>
             <Button
               variant="outline"
