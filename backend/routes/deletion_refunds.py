@@ -9,6 +9,9 @@ import os
 import uuid
 import resend
 import stripe
+from cryptography.fernet import Fernet, InvalidToken
+from datetime import timedelta
+from routes.deletion_email import send_refund_followup_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -103,7 +106,11 @@ async def record_calc_failure(user_ref, customer_id, sub_id, as_of, error):
 
 async def run_refund(doc):
     """Attempt the refund for a stored record; update it to refunded / none_due / needs_attention."""
-    if doc.get("status") in ("refunded", "none_due", "resolved_manually", "resolved_by_recalculation"):
+    if doc.get("status") == "refunded":
+        doc = await refresh_refund_status(doc)
+        await maybe_send_followup(doc)
+        return doc
+    if doc.get("status") in ("none_due", "resolved_manually", "resolved_by_recalculation"):
         return doc
     try:
         result = _execute_refund(doc)
@@ -118,7 +125,107 @@ async def run_refund(doc):
     if doc["status"] == "needs_attention":
         logger.error(f"DELETION REFUND NEEDS ATTENTION ref={doc['reference']} invoice={doc.get('invoice_id')} err={doc['error']}")
         await _alert_admin(doc)
+    await maybe_send_followup(doc)
     return doc
+
+
+# ── Follow-up email contact (encrypted, expiring, deleted once used) ──
+
+CONTACT_RETENTION_DAYS = 180
+
+
+def _fernet():
+    key = os.environ.get("REFUND_CONTACT_KEY")
+    return Fernet(key.encode()) if key else None
+
+
+async def store_followup_contact(reference, email):
+    """Keep only an encrypted address, only for refunds not yet confirmed by Stripe."""
+    f = _fernet()
+    if not f or not email:
+        logger.warning(f"Follow-up contact not stored for {reference} (REFUND_CONTACT_KEY missing or no email)")
+        return False
+    await db.refund_contacts.create_index("expires_at", expireAfterSeconds=0)
+    await db.refund_contacts.update_one({"reference": reference}, {"$setOnInsert": {
+        "reference": reference, "email_enc": f.encrypt(email.encode()).decode(),
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=CONTACT_RETENTION_DAYS),
+        "created_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    return True
+
+
+async def forget_contact(reference):
+    await db.refund_contacts.delete_one({"reference": reference})
+
+
+async def refresh_refund_status(doc):
+    """Re-read a submitted refund from Stripe; only Stripe's 'succeeded' counts as issued."""
+    if doc.get("status") != "refunded" or not doc.get("refund_id") or doc.get("refund_stripe_status") == "succeeded":
+        return doc
+    try:
+        r = stripe.Refund.retrieve(doc["refund_id"])
+    except stripe.StripeError as e:
+        logger.warning(f"Refund status check failed ref={doc['reference']}: {e}")
+        return doc
+    update = {"refund_stripe_status": r.get("status"), "updated_at": datetime.now(timezone.utc).isoformat()}
+    if r.get("status") in ("failed", "canceled"):
+        update.update({"status": "needs_attention", "error": f"Stripe refund {r.get('status')}: {r.get('failure_reason')}"})
+    await db.deletion_refunds.update_one({"reference": doc["reference"]}, {"$set": update})
+    doc = {**doc, **update}
+    if doc["status"] == "needs_attention":
+        await _alert_admin(doc)
+    return doc
+
+
+async def maybe_send_followup(doc):
+    """Email once, only after Stripe confirms the refund succeeded. Never touches the refund itself."""
+    if refund_state(doc) != "issued":
+        return False
+    contact = await db.refund_contacts.find_one({"reference": doc["reference"]})
+    if not contact:
+        return False
+    claim = await db.deletion_refunds.update_one(
+        {"reference": doc["reference"], "followup_email_sent_at": None, "followup_claimed": {"$ne": True}},
+        {"$set": {"followup_claimed": True}})
+    if not claim.modified_count:
+        return False
+    try:
+        email = _fernet().decrypt(contact["email_enc"].encode()).decode()
+    except (InvalidToken, AttributeError):
+        logger.error(f"Follow-up contact unreadable for {doc['reference']}")
+        await db.deletion_refunds.update_one({"reference": doc["reference"]}, {"$set": {"followup_claimed": False}})
+        return False
+    amount = doc.get("refunded_amount") or doc.get("unused_amount")
+    sent = await send_refund_followup_email(email, amount, doc.get("currency"), doc["reference"])
+    if sent:
+        await db.deletion_refunds.update_one({"reference": doc["reference"]}, {"$set": {
+            "followup_email_sent_at": datetime.now(timezone.utc).isoformat()}})
+        await forget_contact(doc["reference"])
+    else:
+        await db.deletion_refunds.update_one({"reference": doc["reference"]}, {"$set": {"followup_claimed": False}})
+    return sent
+
+
+async def process_open_refunds():
+    """Check submitted-but-unconfirmed refunds and send any owed follow-up emails."""
+    results = []
+    async for doc in db.deletion_refunds.find({"status": "refunded", "followup_email_sent_at": None}, {"_id": 0}):
+        if not await db.refund_contacts.find_one({"reference": doc["reference"]}, {"_id": 1}) and \
+                doc.get("refund_stripe_status") == "succeeded":
+            continue
+        doc = await refresh_refund_status(doc)
+        sent = await maybe_send_followup(doc)
+        results.append({"reference": doc["reference"], "state": refund_state(doc), "followup_sent": sent})
+    return results
+
+
+async def handle_refund_webhook(refund_obj):
+    doc = await db.deletion_refunds.find_one({"refund_id": refund_obj.get("id")}, {"_id": 0})
+    if not doc:
+        return False
+    await db.deletion_refunds.update_one({"reference": doc["reference"]}, {"$set": {
+        "refund_stripe_status": refund_obj.get("status"), "updated_at": datetime.now(timezone.utc).isoformat()}})
+    doc = await refresh_refund_status({**doc, "refund_stripe_status": None})
+    return await maybe_send_followup(doc)
 
 
 async def _alert_admin(doc):
@@ -156,9 +263,18 @@ def public_status(doc):
 # ── Admin resolution ────────────────────────────────────────────────
 
 @router.get("/admin/deletion-refunds")
-async def list_deletion_refunds(status: str = "needs_attention", _: bool = Depends(require_admin)):
-    query = {} if status == "all" else {"status": status}
+async def list_deletion_refunds(status: str = "open", _: bool = Depends(require_admin)):
+    if status == "open":
+        query = {"$or": [{"status": "needs_attention"},
+                         {"status": "refunded", "refund_stripe_status": {"$ne": "succeeded"}}]}
+    else:
+        query = {} if status == "all" else {"status": status}
     return await db.deletion_refunds.find(query, {"_id": 0, "user_ref": 0}).sort("created_at", -1).to_list(200)
+
+
+@router.post("/admin/deletion-refunds/check-pending")
+async def check_pending_deletion_refunds(_: bool = Depends(require_admin)):
+    return {"results": await process_open_refunds()}
 
 
 @router.post("/admin/deletion-refunds/{reference}/retry")
@@ -173,9 +289,14 @@ async def retry_deletion_refund(reference: str, _: bool = Depends(require_admin)
         except stripe.StripeError as e:
             raise HTTPException(status_code=409, detail=f"Stripe unavailable: {e}")
         results = []
+        contact = await db.refund_contacts.find_one({"reference": reference}, {"_id": 0})
         for item in items:
             planned = await record_plan(doc["user_ref"], doc["stripe_customer_id"], doc["subscription_id"], item, doc["as_of"])
+            if contact:
+                await db.refund_contacts.update_one({"reference": planned["reference"]}, {"$setOnInsert": {
+                    **contact, "reference": planned["reference"]}}, upsert=True)
             results.append(public_status(await run_refund(planned)))
+        await forget_contact(reference)
         await db.deletion_refunds.update_one({"reference": reference}, {"$set": {
             "status": "resolved_by_recalculation", "updated_at": datetime.now(timezone.utc).isoformat()}})
         return {"reference": reference, "results": results}
@@ -188,4 +309,5 @@ async def mark_deletion_refund_resolved(reference: str, _: bool = Depends(requir
         "status": "resolved_manually", "updated_at": datetime.now(timezone.utc).isoformat()}})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="Refund record not found")
+    await forget_contact(reference)  # resolved outside our system: no Stripe confirmation, so no automated email
     return {"reference": reference, "status": "resolved_manually"}

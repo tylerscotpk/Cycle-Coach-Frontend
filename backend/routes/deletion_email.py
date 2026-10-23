@@ -79,3 +79,41 @@ async def send_deletion_email(email, plan_kind, cancelled_count, refunds):
     except Exception as e:
         logger.error(f"Deletion confirmation email failed: {e}")
         return False
+
+
+def build_followup_email(amount, currency, reference):
+    return f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #0f172a; color: white; padding: 24px; border-radius: 10px 10px 0 0;">
+        <h1 style="margin: 0; font-size: 22px;">Your Cycle Coach refund has been issued</h1>
+      </div>
+      <div style="background: #f8fafc; padding: 24px; border-radius: 0 0 10px 10px; color: #0f172a;">
+        <p>Stripe has confirmed your refund of <b>{html.escape(_money(amount, currency))}</b> was issued to your original payment method.</p>
+        <p>Reference: <code>{html.escape(reference)}</code></p>
+        <p>Your bank or card issuer may take additional time — typically 5–10 business days — to post the refund to your statement.</p>
+        <p>Questions? Contact <a href="mailto:{SUPPORT_EMAIL}">{SUPPORT_EMAIL}</a> and include your reference.</p>
+        <p style="color: #64748b; font-size: 12px; margin-top: 24px;">This is the final message about your deleted Cycle Coach account. We no longer keep your email address.</p>
+        <p style="color: #64748b; font-size: 12px;">Cycle Coach — Stars &amp; Honey, LLC</p>
+      </div>
+    </div>"""
+
+
+async def send_refund_followup_email(email, amount, currency, reference):
+    """Best effort; never raises."""
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key or not email:
+        logger.warning(f"Refund follow-up email skipped for {reference} (email service not configured)")
+        return False
+    try:
+        resend.api_key = api_key
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": os.environ.get("SENDER_EMAIL", "info@cyclecoach.net"),
+            "to": [email],
+            "subject": "Your Cycle Coach refund has been issued",
+            "html": build_followup_email(amount, currency, reference),
+        })
+        logger.info(f"Refund follow-up email sent for {reference}")
+        return True
+    except Exception as e:
+        logger.error(f"Refund follow-up email failed for {reference}: {e}")
+        return False

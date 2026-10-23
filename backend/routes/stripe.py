@@ -387,6 +387,11 @@ async def stripe_webhook(request: Request):
             return {"status": "invoice_paid"}
 
         # ---- invoice.payment_failed ----
+        elif event_type in ("refund.updated", "refund.created", "charge.refund.updated"):
+            from routes.deletion_refunds import handle_refund_webhook
+            sent = await handle_refund_webhook(_extract_object(event))
+            return {"status": "refund_processed", "followup_sent": sent}
+
         elif event_type == "invoice.payment_failed":
             invoice = _extract_object(event)
             subscription_id = invoice.get("subscription")

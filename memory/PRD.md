@@ -170,3 +170,9 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - Billing line per plan kind (trial / lifetime / paid / none). No cycle/partner data.
 - AccountDeleted screen shows email note + issued/pending/needs-attention states.
 - Tests: test_account_lifecycle.py 26/26 (Stripe + Resend mocked).
+
+## 2026-10-23 — Refund follow-up email (NOT deployed)
+- refund_contacts collection: Fernet-encrypted email (REFUND_CONTACT_KEY in backend/.env), only for refunds not confirmed at deletion; TTL 180 days; deleted after follow-up sent or mark-resolved.
+- Follow-up sent only when Stripe refund status == succeeded (re-read from Stripe); atomic claim + followup_email_sent_at prevents duplicates; email failure releases claim, never touches refund.
+- Triggers: admin Retry, admin "Check Pending with Stripe" (POST /api/admin/deletion-refunds/check-pending), webhook refund.updated/refund.created/charge.refund.updated (only if enabled in Stripe — not changed).
+- Tests: test_account_lifecycle.py 33/33 (Stripe + Resend mocked).

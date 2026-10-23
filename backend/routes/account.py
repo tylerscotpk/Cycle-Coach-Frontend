@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from database import db
 from routes.auth import hash_password
-from routes.deletion_refunds import plan_refunds, record_plan, record_calc_failure, run_refund, public_status
+from routes.deletion_refunds import plan_refunds, record_plan, record_calc_failure, run_refund, public_status, store_followup_contact
 from routes.deletion_email import send_deletion_email
 import asyncio
 import hashlib
@@ -214,8 +214,13 @@ async def delete_account(request: DeleteAccountRequest, session_token: Optional[
         "cancelled_subscriptions": cancelled,
         "refund_references": [d["reference"] for d in refund_docs],
     })
-    await _purge_user_records(user)
     refunds = [public_status(d) for d in refund_docs]
+    if user.get("email_verified"):
+        # Encrypted address kept only for refunds Stripe hasn't confirmed yet, for the one follow-up email
+        for r in refunds:
+            if r["state"] in ("pending", "needs_attention"):
+                await store_followup_contact(r["reference"], user.get("email"))
+    await _purge_user_records(user)
     if user.get("email_verified"):
         # Fire-and-forget: deletion is already complete and never waits on the email service
         _email_tasks.add(t := asyncio.create_task(send_deletion_email(

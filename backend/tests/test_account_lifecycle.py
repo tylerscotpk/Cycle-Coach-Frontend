@@ -57,12 +57,17 @@ async def remove_test_users_after():
     for coll in (db.user_sessions, db.partner_profiles, db.ai_conversations):
         await coll.delete_many({"user_id": {"$in": ids}})
     await db.cycle_history.delete_many({"partner_id": {"$in": [f"p_{i}" for i in ids]}})
+    refs = [d["reference"] async for d in db.deletion_refunds.find({"subscription_id": {"$in": ["sub_a", "sub_t"]}})]
+    await db.refund_contacts.delete_many({"reference": {"$in": refs}})
     await db.deletion_refunds.delete_many({"subscription_id": {"$in": ["sub_a", "sub_t"]}})
+    await db.admin_sessions.delete_many({"token": {"$in": TEST_ADMIN_TOKENS}})
 
 
 @pytest_asyncio.fixture(loop_scope="module", autouse=True)
 async def clean_refund_records():
     # Fake invoice ids are reused across tests (real Stripe ids are unique)
+    refs = [d["reference"] async for d in db.deletion_refunds.find({"subscription_id": {"$in": ["sub_a", "sub_t"]}})]
+    await db.refund_contacts.delete_many({"reference": {"$in": refs}})
     await db.deletion_refunds.delete_many({"invoice_id": {"$regex": "^in_"}})
     yield
 
@@ -138,8 +143,16 @@ def mock_billing(monkeypatch, subs, calls, invoices=None, existing_refunds=None,
         calls.setdefault("cancelled", []).append((sid, k))
         subs[sid]["status"] = "canceled"
         return subs[sid]
+    def retrieve_refund(rid):
+        for lst in refunds_by_pi.values():
+            for r in lst:
+                if r["id"] == rid:
+                    return r
+        raise stripe.InvalidRequestError("no such refund", param=None)
     monkeypatch.setattr(stripe.Refund, "create", refund)
+    monkeypatch.setattr(stripe.Refund, "retrieve", retrieve_refund)
     monkeypatch.setattr(stripe.Subscription, "cancel", cancel)
+    return refunds_by_pi
 
 
 async def paid_user(**extra):
@@ -426,6 +439,146 @@ async def test_no_email_for_unverified_address(client):
     await flush_emails()
     assert _email_for(email) == []
     assert email not in str(await db.account_deletions.find_one({}, sort=[("_id", -1)]))
+
+
+# ---------------- Refund follow-up email ----------------
+
+from routes import deletion_refunds as dr
+
+
+TEST_ADMIN_TOKENS = []
+
+
+async def admin_headers():
+    token = secrets.token_urlsafe(16)
+    TEST_ADMIN_TOKENS.append(token)
+    await db.admin_sessions.insert_one({"token": token, "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()})
+    return {"Authorization": f"Bearer {token}"}
+
+
+def followups(addr):
+    return [m for m in SENT if m["to"] == [addr] and "refund has been issued" in m["subject"]]
+
+
+def set_refund_status(refunds_by_pi, status):
+    for lst in refunds_by_pi.values():
+        for r in lst:
+            r["status"] = status
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_pending_refund_followup_sent_once_after_stripe_confirms(client, monkeypatch):
+    uid, email, h = await paid_user()
+    store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls := {}, refund_status="pending")
+    r = await delete(client, h)
+    ref = r.json()["refunds"][0]["reference"]
+    await flush_emails()
+    contact = await db.refund_contacts.find_one({"reference": ref})
+    assert contact and email not in str(contact) and uid not in str(contact)  # encrypted, no user id
+    for coll in ("deletion_refunds", "account_deletions"):
+        assert email not in str(await getattr(db, coll).find({}).to_list(500))
+    ah = await admin_headers()
+    await client.post("/api/admin/deletion-refunds/check-pending", headers=ah)
+    assert followups(email) == []  # still pending at Stripe: no email
+    set_refund_status(store, "succeeded")
+    res = (await client.post("/api/admin/deletion-refunds/check-pending", headers=ah)).json()
+    assert any(x["reference"] == ref and x["followup_sent"] for x in res["results"])
+    [msg] = followups(email)
+    assert ref in msg["html"] and "$5.3" in msg["html"] and "original payment method" in msg["html"]
+    assert "additional time" in msg["html"] and "PARTNERSECRET" not in msg["html"]
+    assert await db.refund_contacts.find_one({"reference": ref}) is None  # address deleted after use
+    await client.post("/api/admin/deletion-refunds/check-pending", headers=ah)
+    await client.post(f"/api/admin/deletion-refunds/{ref}/retry", headers=ah)
+    assert len(followups(email)) == 1 and len(calls["refunds"]) == 1  # no duplicate email or refund
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_failed_refund_admin_retry_sends_followup(client, monkeypatch):
+    _, email, h = await paid_user()
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, fail_refund=True)
+    ref = (await delete(client, h)).json()["refunds"][0]["reference"]
+    await flush_emails()
+    assert await db.refund_contacts.find_one({"reference": ref})
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls := {})
+    ah = await admin_headers()
+    assert (await client.post(f"/api/admin/deletion-refunds/{ref}/retry", headers=ah)).json()["state"] == "issued"
+    assert len(followups(email)) == 1 and len(calls["refunds"]) == 1
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_followup_email_failure_does_not_touch_refund(client, monkeypatch):
+    _, email, h = await paid_user()
+    store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls := {}, refund_status="pending")
+    ref = (await delete(client, h)).json()["refunds"][0]["reference"]
+    await flush_emails()
+    set_refund_status(store, "succeeded")
+    monkeypatch.setattr(resend.Emails, "send", lambda p: (_ for _ in ()).throw(RuntimeError("down")))
+    ah = await admin_headers()
+    await client.post("/api/admin/deletion-refunds/check-pending", headers=ah)
+    doc = await db.deletion_refunds.find_one({"reference": ref})
+    assert doc["status"] == "refunded" and not doc.get("followup_email_sent_at") and not doc.get("followup_claimed")
+    assert await db.refund_contacts.find_one({"reference": ref})  # kept for a later attempt
+    monkeypatch.setattr(resend.Emails, "send", lambda params: SENT.append(params) or {"id": "ok"})
+    await client.post("/api/admin/deletion-refunds/check-pending", headers=ah)
+    assert len(followups(email)) == 1 and len(calls["refunds"]) == 1
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_webhook_refund_update_triggers_followup(client, monkeypatch):
+    _, email, h = await paid_user()
+    store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, refund_status="pending")
+    ref = (await delete(client, h)).json()["refunds"][0]["reference"]
+    await flush_emails()
+    doc = await db.deletion_refunds.find_one({"reference": ref})
+    # Event payload claims success, but we only trust Stripe's re-read status
+    assert await dr.handle_refund_webhook({"id": doc["refund_id"], "status": "succeeded"}) is False
+    set_refund_status(store, "succeeded")
+    assert await dr.handle_refund_webhook({"id": doc["refund_id"], "status": "succeeded"}) is True
+    assert await dr.handle_refund_webhook({"id": doc["refund_id"], "status": "succeeded"}) is False
+    assert len(followups(email)) == 1
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_stripe_refund_fails_later_marks_attention_no_email(client, monkeypatch):
+    _, email, h = await paid_user()
+    store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, refund_status="pending")
+    ref = (await delete(client, h)).json()["refunds"][0]["reference"]
+    await flush_emails()
+    set_refund_status(store, "failed")
+    await client.post("/api/admin/deletion-refunds/check-pending", headers=await admin_headers())
+    assert (await db.deletion_refunds.find_one({"reference": ref}))["status"] == "needs_attention"
+    assert followups(email) == []
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_recalculated_refund_keeps_contact_and_mark_resolved_forgets(client, monkeypatch):
+    _, email, h = await paid_user()
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, fail_invoice_list=True)
+    ref = (await delete(client, h)).json()["refunds"][0]["reference"]
+    await flush_emails()
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {})
+    ah = await admin_headers()
+    res = (await client.post(f"/api/admin/deletion-refunds/{ref}/retry", headers=ah)).json()
+    new_ref = res["results"][0]["reference"]
+    [msg] = followups(email)
+    assert new_ref in msg["html"]
+    assert await db.refund_contacts.find_one({"reference": ref}) is None
+
+    _, email2, h2 = await paid_user()
+    await db.deletion_refunds.delete_many({"invoice_id": "in_sub_a"})
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, fail_refund=True)
+    ref2 = (await delete(client, h2)).json()["refunds"][0]["reference"]
+    await flush_emails()
+    await client.post(f"/api/admin/deletion-refunds/{ref2}/mark-resolved", headers=ah)
+    assert await db.refund_contacts.find_one({"reference": ref2}) is None and followups(email2) == []
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_issued_at_deletion_stores_no_contact(client, monkeypatch):
+    _, _, h = await paid_user()
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {})
+    ref = (await delete(client, h)).json()["refunds"][0]["reference"]
+    assert await db.refund_contacts.find_one({"reference": ref}) is None
 
 
 # ---------------- Undo cancellation ----------------
