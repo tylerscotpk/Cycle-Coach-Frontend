@@ -176,3 +176,11 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - Follow-up sent only when Stripe refund status == succeeded (re-read from Stripe); atomic claim + followup_email_sent_at prevents duplicates; email failure releases claim, never touches refund.
 - Triggers: admin Retry, admin "Check Pending with Stripe" (POST /api/admin/deletion-refunds/check-pending), webhook refund.updated/refund.created/charge.refund.updated (only if enabled in Stripe — not changed).
 - Tests: test_account_lifecycle.py 33/33 (Stripe + Resend mocked).
+
+## 2026-10-23 — Daily Refund Check (NOT deployed)
+- .emergent/crons.yml: daily-refund-check "0 15 * * *" UTC → POST /api/cron/refund-check (Bearer WEBHOOK_CRON_SECRET, constant-time; 202 ack; run_id idempotency in cron_runs; background task; cron_locks single-runner).
+- Job = process_open_refunds(): Stripe status re-read + follow-up email only; never creates/retries refunds; failed → needs_attention + admin alert.
+- Admin panel shows last automatic check summary (GET /api/admin/deletion-refunds/last-check).
+- Tests: test_account_lifecycle.py 36/36 (Stripe + Resend mocked). Preview endpoint verified (401 no-auth, 202 + completed run).
+- Secrets REFUND_CONTACT_KEY + WEBHOOK_CRON_SECRET registered (live+test slots). Do not rotate REFUND_CONTACT_KEY (stored contacts would become unreadable).
+- GitHub: push via "Save to GitHub" to NEW branch apple-fixes-build9; never Real. When merging, exclude frontend/ios (workspace iOS project predates crash fix).

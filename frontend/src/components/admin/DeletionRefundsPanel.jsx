@@ -9,11 +9,14 @@ const money = (c, cur) => (typeof c === 'number' ? `${(c / 100).toFixed(2)} ${(c
 export const DeletionRefundsPanel = ({ headers }) => {
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState(null);
+  const [lastCheck, setLastCheck] = useState(null);
 
   const load = async () => {
     try {
       const res = await fetch(`${API}/api/admin/deletion-refunds?status=open`, { headers: headers() });
       if (res.ok) setRows(await res.json());
+      const lc = await fetch(`${API}/api/admin/deletion-refunds/last-check`, { headers: headers() });
+      if (lc.ok) setLastCheck(await lc.json());
     } catch { /* ignore */ }
   };
 
@@ -51,6 +54,11 @@ export const DeletionRefundsPanel = ({ headers }) => {
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
+        <p className="text-slate-500 text-xs" data-testid="deletion-refunds-last-check">
+          {lastCheck?.finished_at
+            ? `Last automatic daily check: ${new Date(lastCheck.finished_at).toLocaleString()} — ${lastCheck.status}${lastCheck.status === 'completed' ? `, ${lastCheck.checked} checked, ${lastCheck.followups_sent} follow-up email(s), ${lastCheck.flagged} flagged` : ''}`
+            : 'Automatic daily check has not run yet.'}
+        </p>
         {rows.length === 0 && <p className="text-slate-400 text-sm" data-testid="deletion-refunds-empty">None — all deletion refunds were processed.</p>}
         {rows.map((r) => (
           <div key={r.reference} className="bg-slate-900/60 rounded-lg p-3 text-sm text-slate-300 flex flex-wrap items-center gap-3 justify-between" data-testid={`deletion-refund-${r.reference}`}>

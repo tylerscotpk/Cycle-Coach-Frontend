@@ -1,0 +1,8 @@
+crons:
+  - name: daily-refund-check
+    description: "Daily check of pending account-deletion refunds with Stripe; sends confirmed-refund follow-up emails"
+    cron: "0 15 * * *"
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    endpoint: "{{BASE_URL}}/api/cron/refund-check"
+    method: POST
+    enabled: true

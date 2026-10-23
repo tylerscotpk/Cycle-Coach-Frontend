@@ -1,5 +1,8 @@
 """Prorated refunds for account deletion: planning, execution, failure records and admin resolution."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from pymongo.errors import DuplicateKeyError
+from typing import Optional
+import hmac
 from datetime import datetime, timezone
 from database import db
 from routes.admin import require_admin
@@ -311,3 +314,69 @@ async def mark_deletion_refund_resolved(reference: str, _: bool = Depends(requir
         raise HTTPException(status_code=404, detail="Refund record not found")
     await forget_contact(reference)  # resolved outside our system: no Stripe confirmation, so no automated email
     return {"reference": reference, "status": "resolved_manually"}
+
+
+# ── Daily scheduled check (platform cron) ──────────────────────────
+
+_cron_tasks = set()
+
+
+async def daily_refund_check(run_id):
+    """Status checks + follow-up emails only. Never creates or retries refunds."""
+    now = datetime.now(timezone.utc)
+    try:
+        # Single-runner lock: upsert fails with DuplicateKeyError while another run holds it
+        await db.cron_locks.find_one_and_update(
+            {"_id": "refund-check", "$or": [{"locked_until": None}, {"locked_until": {"$lt": now}}]},
+            {"$set": {"locked_until": now + timedelta(minutes=30), "run_id": run_id}}, upsert=True)
+    except DuplicateKeyError:
+        await db.cron_runs.update_one({"run_id": run_id}, {"$set": {"status": "skipped_locked"}})
+        return
+    try:
+        results = await process_open_refunds()
+        summary = {"status": "completed", "checked": len(results),
+                   "followups_sent": sum(1 for r in results if r["followup_sent"]),
+                   "flagged": sum(1 for r in results if r["state"] == "needs_attention")}
+    except Exception as e:
+        logger.error(f"DAILY REFUND CHECK failed run={run_id}: {e}", exc_info=True)
+        summary = {"status": "failed", "error": str(e)[:300]}
+    finally:
+        await db.cron_locks.update_one({"_id": "refund-check"}, {"$set": {"locked_until": None}})
+    summary["finished_at"] = datetime.now(timezone.utc).isoformat()
+    await db.cron_runs.update_one({"run_id": run_id}, {"$set": summary})
+    logger.info(f"DAILY REFUND CHECK run={run_id} {summary}")
+
+
+@router.post("/cron/refund-check", status_code=202)
+async def cron_refund_check(request: Request, authorization: Optional[str] = Header(None),
+                            x_webhook_id: Optional[str] = Header(None)):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    secret = os.environ.get("WEBHOOK_CRON_SECRET", "")
+    token = authorization[7:] if authorization and authorization.startswith("Bearer ") else ""
+    if not secret or not token or not hmac.compare_digest(token.encode(), secret.encode()):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        envelope = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid body")
+    if not isinstance(envelope, dict):
+        raise HTTPException(status_code=400, detail="Invalid body")
+    run_id = x_webhook_id or envelope.get("run_id")
+    if not run_id:
+        raise HTTPException(status_code=400, detail="Missing run id")
+    await db.cron_runs.create_index("run_id", unique=True)
+    try:
+        await db.cron_runs.insert_one({"run_id": run_id, "job": "refund-check", "status": "queued",
+                                       "queued_at": datetime.now(timezone.utc).isoformat()})
+    except DuplicateKeyError:
+        return {"accepted": True, "duplicate": True}
+    _cron_tasks.add(t := asyncio.create_task(daily_refund_check(run_id)))
+    t.add_done_callback(_cron_tasks.discard)
+    return {"accepted": True}
+
+
+@router.get("/admin/deletion-refunds/last-check")
+async def last_refund_check(_: bool = Depends(require_admin)):
+    run = await db.cron_runs.find_one({"job": "refund-check", "finished_at": {"$exists": True}},
+                                      {"_id": 0}, sort=[("finished_at", -1)])
+    return run or {}

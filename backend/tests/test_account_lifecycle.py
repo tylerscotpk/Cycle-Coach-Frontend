@@ -581,6 +581,87 @@ async def test_issued_at_deletion_stores_no_contact(client, monkeypatch):
     assert await db.refund_contacts.find_one({"reference": ref}) is None
 
 
+# ---------------- Daily refund check (cron) ----------------
+
+import os as _os
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_cron_endpoint_auth_body_and_idempotency(client, monkeypatch):
+    monkeypatch.setenv("WEBHOOK_CRON_SECRET", "test-cron-secret-1234567890abcdef")
+    url = "/api/cron/refund-check"
+    assert (await client.post(url, json={})).status_code == 401
+    assert (await client.post(url, json={}, headers={"Authorization": "Bearer wrong"})).status_code == 401
+    good = {"Authorization": "Bearer test-cron-secret-1234567890abcdef"}
+    assert (await client.post(url, content=b"not json", headers={**good, "Content-Type": "application/json"})).status_code == 400
+    run_id = f"run_{uuid.uuid4().hex}"
+    r1 = await client.post(url, json={"event": "schedule.triggered", "run_id": run_id, "data": None}, headers=good)
+    r2 = await client.post(url, json={"run_id": run_id}, headers={**good, "X-Webhook-Id": run_id})
+    assert r1.status_code == 202 and r1.json() == {"accepted": True}
+    assert r2.status_code == 202 and r2.json()["duplicate"] is True
+    await asyncio.gather(*list(dr._cron_tasks))
+    run = await db.cron_runs.find_one({"run_id": run_id})
+    assert run["status"] == "completed"
+    await db.cron_runs.delete_many({"run_id": run_id})
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_daily_check_confirms_flags_and_never_retries(client, monkeypatch):
+    # A: pending → succeeded (email); B: pending → failed (flag); C: needs_attention (must NOT be retried)
+    _, email_a, ha = await paid_user()
+    store = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, calls := {}, refund_status="pending")
+    ref_a = (await delete(client, ha)).json()["refunds"][0]["reference"]
+    await db.deletion_refunds.update_many({"reference": ref_a}, {"$set": {"invoice_id": "in_A", "refund_id": "re_A"}})
+    set_refund_status(store, "succeeded")
+    refund_a = store["pi_in_sub_a"][0]
+    refund_a["id"] = "re_A"
+
+    _, email_b, hb = await paid_user()
+    store_b = mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, refund_status="pending")
+    ref_b = (await delete(client, hb)).json()["refunds"][0]["reference"]
+    await db.deletion_refunds.update_many({"reference": ref_b}, {"$set": {"invoice_id": "in_B", "refund_id": "re_B"}})
+    set_refund_status(store_b, "failed")
+    refund_b = store_b["pi_in_sub_a"][0]
+    refund_b["id"] = "re_B"
+
+    _, email_c, hc = await paid_user()
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, fail_refund=True)
+    ref_c = (await delete(client, hc)).json()["refunds"][0]["reference"]
+    await flush_emails()
+
+    # Combine refund stores so Refund.retrieve sees A and B; Refund.create must never be called
+    by_id = {"re_A": refund_a, "re_B": refund_b}
+    monkeypatch.setattr(stripe.Refund, "retrieve", lambda rid: by_id[rid])
+    monkeypatch.setattr(stripe.Refund, "create", lambda **k: (_ for _ in ()).throw(AssertionError("cron must not refund")))
+    run_id = f"run_{uuid.uuid4().hex}"
+    await db.cron_runs.insert_one({"run_id": run_id, "job": "refund-check"})
+    await dr.daily_refund_check(run_id)
+    await dr.daily_refund_check(f"{run_id}-again")
+    assert len(followups(email_a)) == 1
+    assert followups(email_b) == [] and followups(email_c) == []
+    assert (await db.deletion_refunds.find_one({"reference": ref_b}))["status"] == "needs_attention"
+    assert (await db.deletion_refunds.find_one({"reference": ref_c}))["status"] == "needs_attention"
+    run = await db.cron_runs.find_one({"run_id": run_id})
+    assert run["status"] == "completed" and run["followups_sent"] == 1 and run["flagged"] >= 1
+    lst = (await client.get("/api/admin/deletion-refunds", headers=await admin_headers())).json()
+    assert {ref_b, ref_c} <= {d["reference"] for d in lst}
+    await db.cron_runs.delete_many({"run_id": {"$regex": f"^{run_id}"}})
+    await db.deletion_refunds.delete_many({"reference": {"$in": [ref_a, ref_b, ref_c]}})
+    await db.refund_contacts.delete_many({"reference": {"$in": [ref_a, ref_b, ref_c]}})
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_daily_check_lock_prevents_concurrent_runs():
+    await db.cron_locks.update_one({"_id": "refund-check"}, {"$set": {
+        "locked_until": datetime.now(timezone.utc) + timedelta(minutes=5)}}, upsert=True)
+    run_id = f"run_{uuid.uuid4().hex}"
+    await db.cron_runs.insert_one({"run_id": run_id, "job": "refund-check"})
+    await dr.daily_refund_check(run_id)
+    assert (await db.cron_runs.find_one({"run_id": run_id}))["status"] == "skipped_locked"
+    await db.cron_locks.update_one({"_id": "refund-check"}, {"$set": {"locked_until": None}})
+    await db.cron_runs.delete_many({"run_id": run_id})
+
+
 # ---------------- Undo cancellation ----------------
 
 @pytest.mark.asyncio(loop_scope="module")
