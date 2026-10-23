@@ -30,7 +30,7 @@ export const DeleteAccountSection = ({ subscription }) => {
     await cancelAllScheduled();
     LocalStorage.deleteAllUserData(uid);
     // Non-personal refund status for the confirmation screen (references + amounts only)
-    try { sessionStorage.setItem('cc_deletion_result', JSON.stringify({ refunds: result?.refunds || [] })); } catch { /* ignore */ }
+    try { sessionStorage.setItem('cc_deletion_result', JSON.stringify({ refunds: result?.refunds || [], confirmationEmail: !!result?.confirmation_email })); } catch { /* ignore */ }
     window.location.replace('/account-deleted');
   };
 

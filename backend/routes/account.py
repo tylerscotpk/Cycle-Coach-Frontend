@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from database import db
 from routes.auth import hash_password
 from routes.deletion_refunds import plan_refunds, record_plan, record_calc_failure, run_refund, public_status
+from routes.deletion_email import send_deletion_email
+import asyncio
 import hashlib
 import logging
 import stripe
@@ -144,6 +146,17 @@ async def _purge_user_records(user):
     await db.user_sessions.delete_many({"user_id": uid})
 
 
+_email_tasks = set()
+
+
+def _plan_kind(user):
+    if "grandfathered" in (user.get("plan_type"), user.get("subscription_tier")) or user.get("plan_type") == "lifetime":
+        return "lifetime"
+    if user.get("plan_type") == "trial" or user.get("subscription_status") == "trialing":
+        return "trial"
+    return "paid"
+
+
 @router.post("/account/delete")
 async def delete_account(request: DeleteAccountRequest, session_token: Optional[str] = Cookie(None), authorization: Optional[str] = Header(None)):
     user = await _session_user(session_token, authorization)
@@ -203,10 +216,16 @@ async def delete_account(request: DeleteAccountRequest, session_token: Optional[
     })
     await _purge_user_records(user)
     refunds = [public_status(d) for d in refund_docs]
+    if user.get("email_verified"):
+        # Fire-and-forget: deletion is already complete and never waits on the email service
+        _email_tasks.add(t := asyncio.create_task(send_deletion_email(
+            user.get("email"), _plan_kind(user), len(cancelled), refunds)))
+        t.add_done_callback(_email_tasks.discard)
     logger.info(f"ACCOUNT DELETED: user_ref={user_ref[:12]} subs={len(cancelled)} refunds={[r['status'] for r in refunds]}")
     return {
         "success": True,
         "cancelled_subscriptions": len(cancelled),
         "refunds": refunds,
-        "refund_needs_attention": any(r["status"] == "needs_attention" for r in refunds),
+        "refund_needs_attention": any(r["state"] == "needs_attention" for r in refunds),
+        "confirmation_email": bool(user.get("email_verified")),
     }

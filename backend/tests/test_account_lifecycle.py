@@ -8,15 +8,34 @@ from types import SimpleNamespace
 import httpx
 import pytest
 import pytest_asyncio
+import asyncio
+import resend
 import stripe
 
 import server
+from routes import account as account_routes
 from database import db
 from routes.auth import hash_password
 from routes import stripe as stripe_routes
 
 PW = "Passw0rd!"
 NOW = int(time.time())
+
+
+SENT = []
+
+
+@pytest.fixture(autouse=True)
+def safe_email(monkeypatch):
+    """Never send real email: capture Resend payloads in memory."""
+    SENT.clear()
+    monkeypatch.setenv("RESEND_API_KEY", "re_test_dummy")
+    monkeypatch.setattr(resend.Emails, "send", lambda params: SENT.append(params) or {"id": "email_test"})
+
+
+async def flush_emails():
+    if account_routes._email_tasks:
+        await asyncio.gather(*list(account_routes._email_tasks))
 
 
 @pytest.fixture(autouse=True)
@@ -62,7 +81,7 @@ async def make_user(**fields):
     token = secrets.token_urlsafe(24)
     await db.user_sessions.insert_one({"user_id": uid, "session_token": token,
                                        "expires_at": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()})
-    await db.partner_profiles.insert_one({"id": f"p_{uid}", "user_id": uid, "name": "x"})
+    await db.partner_profiles.insert_one({"id": f"p_{uid}", "user_id": uid, "name": "PARTNERSECRET"})
     await db.cycle_history.insert_one({"id": f"c_{uid}", "partner_id": f"p_{uid}"})
     await db.ai_conversations.insert_one({"user_id": uid, "partner_id": f"p_{uid}", "message": "hi"})
     return uid, email, {"Authorization": f"Bearer {token}"}
@@ -84,7 +103,7 @@ def inv(iid, paid, lines):
 
 
 def mock_billing(monkeypatch, subs, calls, invoices=None, existing_refunds=None, fail_cancel=False,
-                 fail_refund=False, no_pi=False, fail_invoice_list=False):
+                 fail_refund=False, no_pi=False, fail_invoice_list=False, refund_status="succeeded"):
     invoices = invoices if invoices is not None else {
         sid: [inv(f"in_{sid}", 800, [(800, NOW - 10 * DAY, NOW + 20 * DAY)])] for sid in subs}
     refunds_by_pi = existing_refunds if existing_refunds is not None else {}
@@ -107,7 +126,7 @@ def mock_billing(monkeypatch, subs, calls, invoices=None, existing_refunds=None,
             raise stripe.InvalidRequestError("charge disputed", param=None)
         if k["idempotency_key"] in used_keys:
             return used_keys[k["idempotency_key"]]
-        r = {"id": f"re_{len(used_keys) + 1}", "amount": k["amount"], "status": "succeeded", "metadata": k["metadata"]}
+        r = {"id": f"re_{len(used_keys) + 1}", "amount": k["amount"], "status": refund_status, "metadata": k["metadata"]}
         used_keys[k["idempotency_key"]] = r
         refunds_by_pi.setdefault(k["payment_intent"], []).append(r)
         calls.setdefault("refunds", []).append(k)
@@ -317,6 +336,96 @@ async def test_delete_trialing_stripe_sub_no_refund(client, monkeypatch):
     assert r.status_code == 200
     assert "refunds" not in calls and calls["cancelled"][0][0] == "sub_t"
     await assert_purged(uid, email)
+
+
+# ---------------- Deletion confirmation email ----------------
+
+def _email_for(addr):
+    return [m for m in SENT if m["to"] == [addr]]
+
+
+@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.parametrize("refund_status,expect,absent", [("succeeded", "Issued", "Pending"), ("pending", "Pending", "Issued")])
+async def test_email_paid_refund_state_follows_stripe(client, monkeypatch, refund_status, expect, absent):
+    uid, email, h = await paid_user()
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a")}, {}, refund_status=refund_status)
+    r = await delete(client, h)
+    assert r.status_code == 200 and r.json()["confirmation_email"] is True
+    await flush_emails()
+    [msg] = _email_for(email)
+    body = msg["html"]
+    assert "permanently deleted" in body and "No future subscription charges" in body
+    assert "$5.3" in body and r.json()["refunds"][0]["reference"] in body
+    assert expect in body and absent + " —" not in body
+    assert "cyclecoach4men@gmail.com" in body
+    assert "PARTNERSECRET" not in body and uid not in body
+    assert r.json()["refunds"][0]["state"] == ("issued" if refund_status == "succeeded" else "pending")
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_email_needs_attention_and_pending_cancellation(client, monkeypatch):
+    uid, email, h = await paid_user(cancels_at=datetime.fromtimestamp(NOW + 20 * DAY, tz=timezone.utc).isoformat())
+    await db.auth_users.update_one({"id": uid}, {"$set": {"subscription_status": "cancelling"}})
+    mock_billing(monkeypatch, {"sub_a": sub_obj("sub_a", cancel_at_period_end=True, cancel_at=NOW + 20 * DAY)}, {}, fail_refund=True)
+    r = await delete(client, h)
+    assert r.status_code == 200
+    await flush_emails()
+    body = _email_for(email)[0]["html"]
+    assert "Needs attention" in body and "Issued" not in body
+    assert r.json()["refunds"][0]["reference"] in body and "quote the reference" in body
+    assert "No future subscription charges" in body
+
+
+@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.parametrize("fields,expected", [
+    ({"plan_type": "trial", "subscription_status": "trialing"}, "You had no active recurring subscription"),
+    ({"plan_type": "grandfathered", "subscription_tier": "grandfathered", "subscription_status": "active"}, "Lifetime access has ended"),
+    ({"plan_type": "basic", "subscription_status": "cancelled"}, "You had no active recurring subscription"),
+])
+async def test_email_trial_lifetime_expired(client, fields, expected):
+    _, email, h = await make_user(**fields)
+    r = await delete(client, h)
+    assert r.status_code == 200
+    await flush_emails()
+    body = _email_for(email)[0]["html"]
+    assert expected in body and "No refund was due" in body
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_email_trial_with_stripe_sub(client, monkeypatch):
+    _, email, h = await make_user(plan_type="trial", subscription_status="trialing",
+                                  stripe_customer_id="cus_t2", stripe_subscription_id="sub_t")
+    mock_billing(monkeypatch, {"sub_t": sub_obj("sub_t", status="trialing")}, {})
+    assert (await delete(client, h)).status_code == 200
+    await flush_emails()
+    assert "free trial was cancelled. You will not be charged" in _email_for(email)[0]["html"]
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_email_failure_or_unconfigured_never_blocks_deletion(client, monkeypatch):
+    def broken(params):
+        raise RuntimeError("email service down")
+    monkeypatch.setattr(resend.Emails, "send", broken)
+    uid, email, h = await make_user(plan_type="basic", subscription_status="cancelled")
+    r = await delete(client, h)
+    assert r.status_code == 200
+    await flush_emails()
+    await assert_purged(uid, email)
+    monkeypatch.delenv("RESEND_API_KEY")
+    uid2, email2, h2 = await make_user()
+    assert (await delete(client, h2)).status_code == 200
+    await flush_emails()
+    await assert_purged(uid2, email2)
+
+
+@pytest.mark.asyncio(loop_scope="module")
+async def test_no_email_for_unverified_address(client):
+    _, email, h = await make_user(email_verified=False)
+    r = await delete(client, h)
+    assert r.status_code == 200 and r.json()["confirmation_email"] is False
+    await flush_emails()
+    assert _email_for(email) == []
+    assert email not in str(await db.account_deletions.find_one({}, sort=[("_id", -1)]))
 
 
 # ---------------- Undo cancellation ----------------

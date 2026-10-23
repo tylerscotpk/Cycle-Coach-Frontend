@@ -65,17 +65,17 @@ def _execute_refund(item):
     existing = stripe.Refund.list(payment_intent=pi, limit=100).data
     for r in existing:
         if (r.get("metadata") or {}).get("reason") == "account_deletion" and r.get("status") in ACTIVE_REFUND_STATUSES:
-            return {"payment_intent": pi, "refund_id": r["id"], "amount": r.get("amount")}
+            return {"payment_intent": pi, "refund_id": r["id"], "amount": r.get("amount"), "stripe_status": r.get("status")}
     already = sum(r.get("amount") or 0 for r in existing if r.get("status") in ACTIVE_REFUND_STATUSES)
     amount = min(item["unused_amount"], (item.get("amount_paid") or 0) - already)
     if amount <= 0:
-        return {"payment_intent": pi, "refund_id": None, "amount": 0}
+        return {"payment_intent": pi, "refund_id": None, "amount": 0, "stripe_status": None}
     refund = stripe.Refund.create(
         payment_intent=pi, amount=amount, reason="requested_by_customer",
         metadata={"reason": "account_deletion", "reference": item["reference"]},
         idempotency_key=f"cc-acctdel-refund-{item['invoice_id']}",
     )
-    return {"payment_intent": pi, "refund_id": refund.get("id"), "amount": amount}
+    return {"payment_intent": pi, "refund_id": refund.get("id"), "amount": amount, "stripe_status": refund.get("status")}
 
 
 async def record_plan(user_ref, customer_id, sub_id, item, as_of):
@@ -109,7 +109,7 @@ async def run_refund(doc):
         result = _execute_refund(doc)
         status = "refunded" if result["amount"] else "none_due"
         update = {"status": status, "payment_intent": result["payment_intent"], "refund_id": result["refund_id"],
-                  "refunded_amount": result["amount"], "error": None}
+                  "refunded_amount": result["amount"], "refund_stripe_status": result["stripe_status"], "error": None}
     except (stripe.StripeError, LookupError) as e:
         update = {"status": "needs_attention", "error": str(e)[:300]}
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -138,8 +138,17 @@ async def _alert_admin(doc):
         logger.error(f"Refund alert email failed for {doc['reference']}: {e}")
 
 
+def refund_state(doc):
+    """issued only when Stripe reports the refund succeeded; pending while Stripe is still processing."""
+    if doc["status"] == "refunded":
+        return "issued" if doc.get("refund_stripe_status") == "succeeded" else "pending"
+    if doc["status"] in ("needs_attention", "planned"):
+        return "needs_attention"
+    return doc["status"]
+
+
 def public_status(doc):
-    return {"reference": doc["reference"], "status": doc["status"],
+    return {"reference": doc["reference"], "status": doc["status"], "state": refund_state(doc),
             "amount": doc.get("refunded_amount") if doc["status"] == "refunded" else doc.get("unused_amount"),
             "currency": doc.get("currency")}
 

@@ -12,10 +12,13 @@ const readResult = () => {
 };
 
 const RefundLine = ({ r }) => {
-  if (r.status === 'refunded') {
-    return <li data-testid="refund-status-refunded">Refund of {money(r.amount, r.currency)} issued to your original payment method (allow 5–10 business days).</li>;
+  if (r.state === 'issued') {
+    return <li data-testid="refund-status-refunded">Refund of {money(r.amount, r.currency)} issued to your original payment method (allow 5–10 business days). Reference: {r.reference}</li>;
   }
-  if (r.status === 'needs_attention' || r.status === 'planned') {
+  if (r.state === 'pending') {
+    return <li data-testid="refund-status-processing">Refund of {money(r.amount, r.currency)} submitted — Stripe is still processing it. Reference: {r.reference}</li>;
+  }
+  if (r.state === 'needs_attention') {
     return (
       <li className="text-amber-300" data-testid="refund-status-pending">
         <AlertTriangle className="inline w-4 h-4 mr-1" />
@@ -29,7 +32,7 @@ const RefundLine = ({ r }) => {
 
 export default function AccountDeleted() {
   const [result] = useState(readResult);
-  const refunds = (result.refunds || []).filter((r) => r.status !== 'none_due');
+  const refunds = (result.refunds || []).filter((r) => ['issued', 'pending', 'needs_attention'].includes(r.state));
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6" data-testid="account-deleted-page">
@@ -42,6 +45,9 @@ export default function AccountDeleted() {
           Your Cycle Coach account, its server records and all data stored on this device have been permanently removed.
           Any active subscription was cancelled and you will not be charged again.
         </p>
+        {result.confirmationEmail && (
+          <p className="text-slate-400 text-sm" data-testid="deletion-email-note">A confirmation email is on its way to your verified email address.</p>
+        )}
         {refunds.length > 0 && (
           <ul className="text-left text-sm text-slate-300 bg-slate-900/60 rounded-lg p-4 space-y-2" data-testid="refund-status-list">
             {refunds.map((r) => <RefundLine key={r.reference} r={r} />)}

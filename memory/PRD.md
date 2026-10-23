@@ -163,3 +163,10 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - Cancellation failure still returns 409 (temporary; account kept); retry resumes the planned refund without duplicating.
 - Admin: GET /api/admin/deletion-refunds, POST .../{ref}/retry (recomputes as of deletion time), POST .../{ref}/mark-resolved; panel in AdminDashboard.
 - Tests: backend/tests/test_account_lifecycle.py 17/17 (Stripe fully mocked; real Stripe calls raise).
+
+## 2026-10-23 — Account deletion confirmation email (NOT deployed)
+- backend/routes/deletion_email.py (existing Resend). Sent fire-and-forget after purge, only to verified addresses; address not stored.
+- Refund state: issued only when Stripe refund status == succeeded; pending otherwise; needs_attention with reference + support email.
+- Billing line per plan kind (trial / lifetime / paid / none). No cycle/partner data.
+- AccountDeleted screen shows email note + issued/pending/needs-attention states.
+- Tests: test_account_lifecycle.py 26/26 (Stripe + Resend mocked).
