@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LocalStorage } from '../utils/localStorageManager';
 import NotificationSettings from '../components/NotificationSettings';
 import { toast } from 'sonner';
 
 const PrivacySettings = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showConsentConfirm, setShowConsentConfirm] = useState(false);
+  const [showConsentRevoke, setShowConsentRevoke] = useState(false);
+  const [consentState, setConsentState] = useState(() => LocalStorage.getConsent());
 
   const handleExport = () => {
     try {
@@ -57,9 +61,22 @@ const PrivacySettings = () => {
     }
   };
 
+  const handleConfirmConsent = () => {
+    LocalStorage.saveConsent(true);
+    setConsentState(LocalStorage.getConsent());
+    setShowConsentConfirm(false);
+    toast.success('Partner consent confirmed');
+  };
+
+  const handleRevokeConsent = () => {
+    LocalStorage.saveConsent(false);
+    setConsentState(LocalStorage.getConsent());
+    setShowConsentRevoke(false);
+    toast.success('Consent revoked');
+  };
+
   const profile = LocalStorage.getPartnerProfile();
   const history = LocalStorage.getCycleHistory();
-  const consent = LocalStorage.getConsent();
   const location = LocalStorage.getUserLocation();
 
   return (
@@ -94,7 +111,7 @@ const PrivacySettings = () => {
         {/* Data Summary */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white">📊 Your Data</CardTitle>
+            <CardTitle className="text-white">Your Data</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-slate-300">
             <div className="flex justify-between">
@@ -106,23 +123,164 @@ const PrivacySettings = () => {
               <span className="font-semibold">{history?.length || 0} entries</span>
             </div>
             <div className="flex justify-between">
-              <span>Partner Consent:</span>
-              <span className="font-semibold">{consent?.granted ? '✅ Granted' : '❌ Not granted'}</span>
-            </div>
-            <div className="flex justify-between">
               <span>Location:</span>
               <span className="font-semibold">
                 {location?.location === 'us' ? `U.S. - ${location.state}` : 
                  location?.location === 'outside_us' ? 'Outside U.S.' : 'Not set'}
               </span>
             </div>
-            {consent?.timestamp && (
-              <div className="text-xs text-slate-400 pt-2">
-                Consent granted: {new Date(consent.timestamp).toLocaleDateString()}
-              </div>
-            )}
           </CardContent>
         </Card>
+
+        {/* Partner Consent Management */}
+        <Card className="bg-slate-800/50 border-slate-700" data-testid="consent-management-card">
+          <CardHeader>
+            <CardTitle className="text-white">Partner Consent</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* State: Not recorded (null — deleted or never set) */}
+            {!consentState && (
+              <div className="space-y-3" data-testid="consent-not-recorded">
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-start gap-2">
+                  <span className="text-amber-400 text-lg leading-none mt-0.5">⚠️</span>
+                  <div>
+                    <p className="text-amber-300 font-medium text-sm">Not recorded</p>
+                    <p className="text-amber-300/70 text-xs mt-1">
+                      No consent confirmation is currently stored on this device.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowConsentConfirm(true)}
+                  className="bg-cyan-500 hover:bg-cyan-600 text-white w-full"
+                  data-testid="confirm-consent-btn"
+                >
+                  Confirm Partner Consent
+                </Button>
+              </div>
+            )}
+
+            {/* State: Explicitly revoked */}
+            {consentState && consentState.granted === false && (
+              <div className="space-y-3" data-testid="consent-revoked">
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-2">
+                  <span className="text-red-400 text-lg leading-none mt-0.5">❌</span>
+                  <div>
+                    <p className="text-red-300 font-medium text-sm">Revoked</p>
+                    <p className="text-red-300/70 text-xs mt-1">
+                      Consent was revoked{consentState.revokedAt ? ` on ${new Date(consentState.revokedAt).toLocaleDateString()}` : ''}.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowConsentConfirm(true)}
+                  variant="outline"
+                  className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 w-full"
+                  data-testid="reconfirm-consent-btn"
+                >
+                  Re-confirm Consent
+                </Button>
+              </div>
+            )}
+
+            {/* State: Granted */}
+            {consentState?.granted === true && (
+              <div className="space-y-3" data-testid="consent-granted">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 flex items-start gap-2">
+                  <span className="text-green-400 text-lg leading-none mt-0.5">✅</span>
+                  <div>
+                    <p className="text-green-300 font-medium text-sm">Granted</p>
+                    <p className="text-green-300/70 text-xs mt-1">
+                      Confirmed{consentState.timestamp ? ` on ${new Date(consentState.timestamp).toLocaleDateString()}` : ''}.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowConsentRevoke(true)}
+                  variant="outline"
+                  size="sm"
+                  className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                  data-testid="revoke-consent-btn"
+                >
+                  Revoke Consent
+                </Button>
+              </div>
+            )}
+
+            <p className="text-slate-500 text-xs pt-1">
+              This records whether your partner has given you consent to track their cycle information on this device.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Confirm Consent Dialog */}
+        <Dialog open={showConsentConfirm} onOpenChange={setShowConsentConfirm}>
+          <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-white">Confirm Partner Consent</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Please confirm that you have your partner&apos;s knowledge and consent.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <p className="text-slate-300 text-sm">
+                By confirming, you attest that your partner is aware you are using Cycle Coach 
+                to track their menstrual cycle and has given you consent to do so.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleConfirmConsent}
+                  className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white"
+                  data-testid="dialog-confirm-consent-btn"
+                >
+                  I Have My Partner&apos;s Consent
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-slate-600 text-slate-300"
+                  onClick={() => setShowConsentConfirm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Revoke Consent Dialog */}
+        <Dialog open={showConsentRevoke} onOpenChange={setShowConsentRevoke}>
+          <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-white">Revoke Consent</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                This will record that partner consent has been withdrawn.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <p className="text-slate-300 text-sm">
+                If your partner has withdrawn their consent for cycle tracking, 
+                you can record that here. You can re-confirm consent later from 
+                Privacy Settings if it is granted again.
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleRevokeConsent}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                  data-testid="dialog-revoke-consent-btn"
+                >
+                  Revoke Consent
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-slate-600 text-slate-300"
+                  onClick={() => setShowConsentRevoke(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Data Management */}
         <Card className="bg-slate-800/50 border-slate-700">

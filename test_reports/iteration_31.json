@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the account lifecycle work for the Apple resubmission: in-app account deletion, Undo Cancellation, checkout-success with src=app, verify-email, the public delete-account hint, the nav Account link and the Pricing auth modal. Backend: 11/11 mocked Stripe lifecycle tests pass, plus 7 new public-URL guard-rail tests (18/18 total). Frontend: every requested flow passed at 1920, 820x1180 (iPad) and 390x844 (mobile). Accounts del_lifetime, del_trial and del_expired were deleted for real: each redirected to /account-deleted, logging in again returns 401, and localStorage is empty apart from posthog. One integration issue: on the public URL every backend 502 response loses its JSON body (an edge-proxy HTML page replaces it), so the specific error messages never reach users.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/account/delete, /api/account/undo-cancellation", "issue": "The billing-failure branches return HTTP 502. Through the public ingress (Cloudflare) the JSON body is replaced by an HTML error page, so the frontend shows its generic fallback ('Could not restore your subscription.' / 'Your account could not be deleted...') instead of the backend detail, e.g. 'We could not stop your subscription billing, so your account was NOT deleted'. Verified with curl: localhost:8001 returns JSON 502, the public URL returns text/html 502. Fix: use a non-gateway status such as 409 or 424 (or 400) for Stripe failures."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Undo Cancellation confirm with a Stripe error / Delete with a billing failure", "issue": "Users see only the generic fallback message because of the 502 body stripping described above. No crash: the confirm button is re-enabled and the modal stays open.", "affected_selectors": ["[data-testid=undo-cancellation-confirm-btn]", "[data-testid=delete-account-error]"]}
+    ],
+    "design_issues": [
+      {"screen": "/account for an expired or no-plan user (del_expired)", "issues": ["The plan badge shows the raw value 'none' and the status shows lowercase 'cancelled'", "'Billing Amount $5 per month' is shown although there is no plan", "The 'Your Features' list shows Basic features with checkmarks as if included", "The 'Back to Dashboard' button sends a user without a plan back to /pricing; consider 'Choose a Plan' instead"]},
+      {"screen": "Undo cancellation modal on mobile (390px)", "issues": ["Bullet list text is centered (inherits text-center from AlertDialogHeader), so the bullets look ragged. Add text-left to the ul."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_account_lifecycle.py", "/app/backend/tests/test_account_endpoints_public_i31.py", "/app/test_reports/pytest/pytest_results_i31.xml"],
+  "action_items": [
+    "Change the HTTP 502 used for Stripe failures in routes/account.py (and any similar billing routes) to a non-5xx-gateway code (for example 409 or 424) so error details survive the ingress and reach the user",
+    "Polish AccountSettings for no-plan users: hide Billing Amount, map 'none' to 'No active plan', capitalise the status, and do not show features as included",
+    "Add text-left to the undo modal bullet list on mobile",
+    "Re-seed del_trial@test.com, del_lifetime@test.com and del_expired@test.com before the next test run; they were deleted in this iteration"
+  ],
+  "critical_code_review_comments": [
+    "account.py: _refund_unused runs before Subscription.cancel. If the refund succeeds and the cancel then fails, the user gets a 502 and keeps the account with a partial refund. Retrying is safe because of the idempotency key, but log or alert for this state.",
+    "DeleteAccountSection treats any HTTP 404 as a successful deletion. Safe for 'User not found', but a mis-routed API (404 from the router) would also wipe local data and show 'account deleted'. Consider checking data.detail === 'User not found'.",
+    "Deletion requires a password re-auth; accounts without a password_hash (if any OAuth or legacy accounts exist) could never delete in-app. No OAuth login was found in the routes, so this is low risk.",
+    "The Stripe SDK calls in account.py are synchronous and block the event loop; acceptable at low volume."
+  ],
+  "updated_files": ["/app/backend/tests/test_account_endpoints_public_i31.py"],
+  "success_rate": {"backend": "100% (18/18; the 502 body issue is noted as minor)", "frontend": "100% of requested flows passed"},
+  "seed_data_creation": "None created. The seeded accounts del_lifetime, del_trial and del_expired were permanently deleted as part of the requested tests.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Onboarding after login: in the state-privacy-waiver combobox pick 'Outside the United States', click privacy-continue-btn, then tick both checkboxes and click 'I Understand and Have Consent - Continue'. Login API field is email_or_phone. adv_active and undo_cancel have fake Stripe ids: undo confirm gives a 502 (HTML body through the ingress). Never confirm cancel or downgrade (the Stripe key is LIVE). The del_* accounts need re-seeding.",
+  "rca of the issue": "Generic error toasts: the backend raises HTTPException(502, detail=...). The Cloudflare/K8s ingress intercepts origin 502 responses and serves its own HTML page (content-type text/html). The frontend's res.json() fails, data={}, and the fallback message is shown. Mitigation: return 409 or 424 for upstream billing failures."
+}

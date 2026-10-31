@@ -21,9 +21,13 @@ import InfoSignUp from "@/pages/InfoSignUp";
 import InfoForgotPassword from "@/pages/InfoForgotPassword";
 import InfoResetPassword from "@/pages/InfoResetPassword";
 import InfoPrivacyPolicy from "@/pages/InfoPrivacyPolicy";
+import InfoTermsOfService from "@/pages/InfoTermsOfService";
 import DeleteAccount from "@/pages/DeleteAccount";
 import VerifyEmail from "@/pages/VerifyEmail";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
+import AccountDeleted from "@/pages/AccountDeleted";
+import { ExternalCheckoutDialog } from "@/components/ExternalCheckoutDialog";
+import { Loader2 } from "lucide-react";
 import AppBackground from "@/components/AppBackground";
 import { LocalStorage } from "@/utils/localStorageManager";
 
@@ -35,14 +39,15 @@ const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
 // Public routes (no auth required)
-const PUBLIC_ROUTES = ['/', '/info', '/about', '/pricing', '/signup', '/login', '/forgot-password', '/reset-password', '/info/contact', '/admin', '/checkout-success', '/privacy-policy', '/delete-account', '/verify-email'];
+const PUBLIC_ROUTES = ['/', '/info', '/about', '/pricing', '/signup', '/login', '/forgot-password', '/reset-password', '/info/contact', '/info/terms-of-service', '/admin', '/checkout-success', '/privacy-policy', '/delete-account', '/verify-email', '/account-deleted'];
 
 function AuthProvider({ children }) {
   const [authState, setAuthState] = useState({
     isLoading: true,
     isAuthenticated: false,
     hasSubscription: false,
-    user: null
+    user: null,
+    error: null
   });
 
   const checkAuth = useCallback(async () => {
@@ -59,12 +64,16 @@ function AuthProvider({ children }) {
         return;
       }
 
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
       const response = await fetch(`${API}/api/auth/check`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${sessionToken}`
-        }
+        },
+        signal: controller.signal
       });
+      clearTimeout(timer);
 
       const result = await response.json();
 
@@ -74,7 +83,8 @@ function AuthProvider({ children }) {
           isLoading: false,
           isAuthenticated: true,
           hasSubscription: result.has_subscription,
-          user: result.user
+          user: result.user,
+          error: null
         });
         localStorage.setItem('user', JSON.stringify(result.user));
       } else {
@@ -88,15 +98,16 @@ function AuthProvider({ children }) {
         });
       }
     } catch (error) {
+      // Network failure/timeout: keep the session and offer a retry instead of a blank or logged-out screen
       console.error('Auth check error:', error);
-      setAuthState({
-        isLoading: false,
-        isAuthenticated: false,
-        hasSubscription: false,
-        user: null
-      });
+      setAuthState(prev => ({ ...prev, isLoading: false, error: 'network' }));
     }
   }, []);
+
+  const retryAuth = useCallback(() => {
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    checkAuth();
+  }, [checkAuth]);
 
   useEffect(() => {
     checkAuth();
@@ -128,7 +139,7 @@ function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ ...authState, checkAuth, logout }}>
+    <AuthContext.Provider value={{ ...authState, checkAuth, retryAuth, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -199,6 +210,21 @@ function AppContent() {
     }
   }, [auth.isAuthenticated, auth.hasSubscription]);
 
+  // Returning from Safari (email verification or checkout): refresh plan status when the app is foregrounded
+  useEffect(() => {
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible' || !auth.isAuthenticated || auth.hasSubscription) return;
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) return;
+      try {
+        await fetch(`${API}/api/subscription/sync`, { method: 'POST', headers: { 'Authorization': `Bearer ${sessionToken}` } });
+      } catch { /* best effort */ }
+      auth.checkAuth();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [auth.isAuthenticated, auth.hasSubscription]);
+
   const handleLocationComplete = () => {
     if (uid) localStorage.setItem(`cyclecoach_state_waiver_complete_${uid}`, 'true');
     forceRender(n => n + 1);
@@ -216,8 +242,21 @@ function AppContent() {
   // Show loading state
   if (auth.isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-900" data-testid="app-loading">
+        <Loader2 className="w-10 h-10 text-cyan-400 animate-spin" />
+        <div className="text-slate-300">Loading Cycle Coach…</div>
+      </div>
+    );
+  }
+
+  if (auth.error && !isPublicRoute) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-900 px-6 text-center" data-testid="app-load-error">
+        <h1 className="text-white text-2xl font-semibold">We couldn&apos;t connect</h1>
+        <p className="text-slate-400 max-w-sm">Check your internet connection and try again. Your data on this device is safe.</p>
+        <button onClick={auth.retryAuth} className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-md px-6 py-3 font-semibold" data-testid="app-retry-btn">
+          Try Again
+        </button>
       </div>
     );
   }
@@ -225,7 +264,7 @@ function AppContent() {
   // ============ ROUTING RULES ============
   
   // Rule 1: ACTIVE USER (logged in + subscription) visiting public routes → redirect to /app (except /admin)
-  if (auth.isAuthenticated && auth.hasSubscription && isPublicRoute && location.pathname !== '/admin' && location.pathname !== '/checkout-success' && location.pathname !== '/privacy-policy' && location.pathname !== '/delete-account' && location.pathname !== '/verify-email' && location.pathname !== '/pricing') {
+  if (auth.isAuthenticated && auth.hasSubscription && isPublicRoute && location.pathname !== '/admin' && location.pathname !== '/checkout-success' && location.pathname !== '/privacy-policy' && location.pathname !== '/info/terms-of-service' && location.pathname !== '/delete-account' && location.pathname !== '/verify-email' && location.pathname !== '/pricing') {
     return <Navigate to="/app" replace />;
   }
 
@@ -253,9 +292,12 @@ function AppContent() {
         <Route path="/reset-password" element={<InfoResetPassword />} />
         <Route path="/info/contact" element={<InfoContact />} />
         <Route path="/privacy-policy" element={<InfoPrivacyPolicy />} />
+        <Route path="/info/terms-of-service" element={<InfoTermsOfService />} />
         <Route path="/delete-account" element={<DeleteAccount />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/checkout-success" element={<CheckoutSuccess />} />
+        <Route path="/account-deleted" element={<AccountDeleted />} />
+        {auth.isAuthenticated && <Route path="/account" element={<AccountSettings />} />}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/pricing" replace />} />
       </Routes>
@@ -277,6 +319,7 @@ function AppContent() {
         <Route path="/app" element={<Dashboard />} />
         <Route path="/privacy" element={<PrivacySettings />} />
         <Route path="/privacy-policy" element={<InfoPrivacyPolicy />} />
+        <Route path="/info/terms-of-service" element={<InfoTermsOfService />} />
         <Route path="/delete-account" element={<DeleteAccount />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/account" element={<AccountSettings />} />
@@ -298,6 +341,7 @@ function App() {
         <AppBackground>
           <AppContent />
         </AppBackground>
+        <ExternalCheckoutDialog />
         <Toaster />
       </AuthProvider>
     </BrowserRouter>

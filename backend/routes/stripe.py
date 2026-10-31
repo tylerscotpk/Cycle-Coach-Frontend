@@ -8,7 +8,6 @@ from database import db
 import os
 import logging
 import asyncio
-import json
 import resend
 import stripe
 
@@ -16,16 +15,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
-STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
-STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
 stripe.api_key = STRIPE_API_KEY
 
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'info@cyclecoach.net')
 
-# Price IDs
-BASIC_PRICE_ID = "price_1Tp7MMISn9QYeFgUNM6enfS2"
-ADVANCED_PRICE_ID = "price_1Tp7R9ISn9QYeFgU6Rxkc8Td"
+# Price IDs from environment
+BASIC_PRICE_ID = os.environ.get('STRIPE_BASIC_PRICE_ID')
+ADVANCED_PRICE_ID = os.environ.get('STRIPE_ADVANCED_PRICE_ID')
+
+if not BASIC_PRICE_ID or not ADVANCED_PRICE_ID:
+    logger.error(
+        "STRIPE_BASIC_PRICE_ID and/or STRIPE_ADVANCED_PRICE_ID not set. "
+        "PRICE_TO_PLAN lookups will fail and tier resolution will rely on fallbacks. "
+        "Add both env vars to prevent incorrect entitlement."
+    )
 
 PRICE_TO_PLAN = {
     BASIC_PRICE_ID: "basic",
@@ -33,6 +39,19 @@ PRICE_TO_PLAN = {
 }
 
 ENTITLED_STATUSES = {"active", "trialing", "cancelling"}
+
+
+def _plan_fields_from_sub(sub, fallback_tier="basic"):
+    """Resolve plan_type/subscription_tier from a Stripe subscription's price."""
+    try:
+        price_id = sub["items"]["data"][0]["price"]["id"]
+    except (KeyError, IndexError, TypeError):
+        price_id = None
+    tier = PRICE_TO_PLAN.get(price_id) or (sub.get("metadata") or {}).get("tier") or fallback_tier
+    fields = {"subscription_tier": tier, "plan_type": "trial" if sub.get("status") == "trialing" else tier}
+    if sub.get("trial_end"):
+        fields["trial_ends_at"] = datetime.fromtimestamp(sub["trial_end"], tz=timezone.utc).isoformat()
+    return fields
 
 
 async def send_purchase_confirmation_email(email: str, tier: str):
@@ -121,9 +140,6 @@ async def _activate_user(user, fields: dict, event_label: str):
     return result.modified_count > 0
 
 
-class CancelSubscriptionRequest(BaseModel):
-    customerId: str
-    subscriptionId: str
 
 
 @router.post("/webhook/stripe")
@@ -132,11 +148,14 @@ async def stripe_webhook(request: Request):
     sig_header = request.headers.get("Stripe-Signature")
 
     try:
-        if STRIPE_WEBHOOK_SECRET and sig_header:
-            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-        else:
-            event = json.loads(payload)
-            logger.warning("Processing webhook without signature verification")
+        if not STRIPE_WEBHOOK_SECRET:
+            logger.error("STRIPE_WEBHOOK_SECRET not configured — rejecting webhook")
+            raise HTTPException(status_code=500, detail="Webhook secret not configured")
+
+        if not sig_header:
+            raise HTTPException(status_code=400, detail="Missing Stripe-Signature header")
+
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
 
         event_type = event.get("type") if isinstance(event, dict) else event.type
         logger.info(f"WEBHOOK RECEIVED: {event_type}")
@@ -289,15 +308,20 @@ async def stripe_webhook(request: Request):
 
                 update = {"stripe_customer_id": customer_id}
 
-                # Resolve plan_type from price ID
+                # Resolve plan_type from price ID, with metadata fallback
                 items = subscription.get("items", {}).get("data", [])
                 price_id = items[0].get("price", {}).get("id", "") if items else ""
-                resolved_tier = PRICE_TO_PLAN.get(price_id, auth_user.get("subscription_tier", "basic"))
+                metadata_tier = subscription.get("metadata", {}).get("tier")
+                resolved_tier = PRICE_TO_PLAN.get(price_id) or metadata_tier or auth_user.get("subscription_tier") or "basic"
 
                 if status == "active":
                     update["subscription_status"] = "active"
                     update["plan_type"] = resolved_tier
                     update["subscription_tier"] = resolved_tier
+                    # Clear any pending downgrade — Stripe has applied it
+                    update["downgrade_at_period_end"] = False
+                    update["downgrade_to"] = None
+                    update["downgrade_date"] = None
                 elif status == "trialing":
                     update["subscription_status"] = "trialing"
                     update["plan_type"] = "trial"
@@ -363,6 +387,11 @@ async def stripe_webhook(request: Request):
             return {"status": "invoice_paid"}
 
         # ---- invoice.payment_failed ----
+        elif event_type in ("refund.updated", "refund.created", "charge.refund.updated"):
+            from routes.deletion_refunds import handle_refund_webhook
+            sent = await handle_refund_webhook(_extract_object(event))
+            return {"status": "refund_processed", "followup_sent": sent}
+
         elif event_type == "invoice.payment_failed":
             invoice = _extract_object(event)
             subscription_id = invoice.get("subscription")
@@ -380,45 +409,12 @@ async def stripe_webhook(request: Request):
     except stripe.SignatureVerificationError as e:
         logger.error(f"Webhook signature verification failed: {str(e)}")
         raise HTTPException(status_code=400, detail="Invalid signature")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"WEBHOOK ERROR: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.post("/cancel-subscription")
-async def cancel_subscription(request: CancelSubscriptionRequest):
-    try:
-        subscription_id = request.subscriptionId
-        customer_id = request.customerId
-
-        license_record = await db.license_keys.find_one(
-            {"stripe_subscription_id": subscription_id, "stripe_customer_id": customer_id, "is_active": True},
-            {"_id": 0}
-        )
-        if not license_record:
-            return JSONResponse(status_code=404, content={"success": False, "message": "Subscription not found or already cancelled"})
-
-        if license_record.get("is_cancelled") and license_record.get("cancels_at"):
-            return JSONResponse(status_code=400, content={"success": False, "message": "Already scheduled for cancellation", "cancels_at": license_record.get("cancels_at")})
-
-        updated_subscription = stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
-        cancel_at = updated_subscription.current_period_end
-        cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
-
-        await db.license_keys.update_one(
-            {"stripe_subscription_id": subscription_id},
-            {"$set": {"cancels_at": cancels_at_date, "is_cancelled": True, "cancelled_at": datetime.now(timezone.utc).isoformat()}}
-        )
-        await db.auth_users.update_one(
-            {"stripe_subscription_id": subscription_id},
-            {"$set": {"subscription_status": "cancelling", "cancels_at": cancels_at_date, "updated_at": datetime.now(timezone.utc).isoformat()}}
-        )
-
-        return {"success": True, "message": "Subscription cancelled successfully", "cancels_at": cancels_at_date}
-    except stripe.StripeError as e:
-        return JSONResponse(status_code=400, content={"success": False, "message": f"Failed: {str(e)}"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"success": False, "message": "An error occurred"})
 
 
 
@@ -469,6 +465,7 @@ async def sync_subscription_from_stripe(
                             "stripe_subscription_id": sub.id,
                             "stripe_customer_id": sess.customer,
                             "updated_at": datetime.now(timezone.utc).isoformat(),
+                            **_plan_fields_from_sub(sub),
                         }
                         await db.auth_users.update_one({"id": user["id"]}, {"$set": update_fields})
                         logger.info(f"SYNC SUCCESS (via session): {email} → status={sub.status}")
@@ -492,8 +489,7 @@ async def sync_subscription_from_stripe(
                         "stripe_customer_id": customer.id,
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                     }
-                    if tier:
-                        update_fields["subscription_tier"] = tier
+                    update_fields.update(_plan_fields_from_sub(sub, tier))
 
                     await db.auth_users.update_one(
                         {"id": user["id"]},
@@ -697,7 +693,12 @@ async def downgrade_subscription(
     session_token: Optional[str] = Cookie(None),
     authorization: Optional[str] = Header(None),
 ):
-    """Downgrade from Advanced to Basic at end of current billing period."""
+    """Downgrade from Advanced to Basic at end of current billing period.
+    
+    Does NOT revoke Advanced features immediately. Instead sets a
+    downgrade_at_period_end flag. The actual tier change happens when
+    Stripe fires customer.subscription.updated at period renewal.
+    """
     user = await _get_user_from_token(session_token, authorization)
     sub_id = user.get("stripe_subscription_id")
     if not sub_id:
@@ -715,7 +716,7 @@ async def downgrade_subscription(
         if current_price == BASIC_PRICE_ID:
             raise HTTPException(status_code=400, detail="Already on Basic plan")
 
-        # Schedule the downgrade at the end of the current period
+        # Schedule the price swap at renewal — user keeps Advanced until then
         updated_sub = stripe.Subscription.modify(
             sub_id,
             items=[{"id": item_id, "price": BASIC_PRICE_ID}],
@@ -723,27 +724,32 @@ async def downgrade_subscription(
             metadata={"tier": "basic", "pending_downgrade": "true"},
         )
 
-        # Calculate when the downgrade takes effect
-        current_period_end = getattr(sub, 'current_period_end', None)
-        downgrade_date = None
-        if current_period_end:
-            downgrade_date = datetime.fromtimestamp(current_period_end, tz=timezone.utc).isoformat()
+        # Compute when the downgrade takes effect.
+        # Stripe API 2025-03-31+ moved current_period_end to SubscriptionItem.
+        try:
+            period_end = sub["items"].data[0].current_period_end
+        except (AttributeError, IndexError, KeyError, TypeError):
+            period_end = None
+        downgrade_date = datetime.fromtimestamp(period_end, tz=timezone.utc).isoformat() if period_end else None
 
-        # Update DB — mark as pending downgrade but keep advanced access until period end
+        # Flag the pending downgrade but KEEP subscription_tier as "advanced"
         await db.auth_users.update_one(
             {"id": user["id"]},
             {"$set": {
-                "plan_type": "basic",
-                "subscription_tier": "basic",
+                "downgrade_at_period_end": True,
+                "downgrade_to": "basic",
+                "downgrade_date": downgrade_date,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }}
         )
 
-        logger.info(f"DOWNGRADE SUCCESS: user={user.get('email')} effective={downgrade_date}")
+        logger.info(f"DOWNGRADE SCHEDULED: user={user.get('email')} keeps advanced until {downgrade_date}")
 
         return {
             "success": True,
-            "plan_type": "basic",
+            "plan_type": "advanced",
+            "downgrade_to": "basic",
+            "downgrade_at_period_end": True,
             "effective_date": downgrade_date,
             "message": "Downgrade scheduled. You'll keep Advanced access until your current billing period ends."
         }

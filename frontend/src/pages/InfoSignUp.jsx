@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import InfoNav from '@/components/InfoNav';
 
@@ -30,6 +31,8 @@ const InfoSignUp = () => {
     confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     const plan = localStorage.getItem('pending_plan');
@@ -60,6 +63,15 @@ const InfoSignUp = () => {
     }
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
+      return;
+    }
+
+    if (!ageConfirmed) {
+      toast.error('Please confirm you are 18 or older');
+      return;
+    }
+    if (!termsAccepted) {
+      toast.error('Please accept the Terms of Service and Privacy Policy');
       return;
     }
 
@@ -203,11 +215,50 @@ const InfoSignUp = () => {
                     data-testid="signup-confirm-password-input"
                   />
                 </div>
+
+                {/* Legal checkboxes */}
+                <div className="space-y-4 pt-2">
+                  {/* Trial feature disclosure */}
+                  <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3" data-testid="trial-disclosure">
+                    <p className="text-cyan-300/90 text-sm">
+                      During your free trial, you get full Advanced features. After your trial ends, you&apos;ll be switched to Basic unless you choose Advanced.
+                    </p>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="age-confirm"
+                      checked={ageConfirmed}
+                      onCheckedChange={setAgeConfirmed}
+                      className="mt-0.5 border-slate-600 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                      data-testid="age-confirm-checkbox"
+                    />
+                    <label htmlFor="age-confirm" className="text-slate-300 text-sm leading-snug cursor-pointer">
+                      I confirm that I am 18 years of age or older.
+                    </label>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="terms-accept"
+                      checked={termsAccepted}
+                      onCheckedChange={setTermsAccepted}
+                      className="mt-0.5 border-slate-600 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                      data-testid="terms-accept-checkbox"
+                    />
+                    <label htmlFor="terms-accept" className="text-slate-300 text-sm leading-snug cursor-pointer">
+                      I agree to the{' '}
+                      <Link to="/info/terms-of-service" target="_blank" className="text-cyan-400 hover:underline">Terms of Service</Link>
+                      {' '}and{' '}
+                      <Link to="/privacy-policy" target="_blank" className="text-cyan-400 hover:underline">Privacy Policy</Link>.
+                    </label>
+                  </div>
+                </div>
                 
                 <Button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-6 text-lg font-semibold"
+                  disabled={isLoading || !ageConfirmed || !termsAccepted}
+                  className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-6 text-lg font-semibold disabled:opacity-50"
                   data-testid="signup-submit-btn"
                 >
                   {isLoading ? 'Creating Account...' : pendingPlan ? 'Create Account & Continue to Checkout' : 'Create Account'}

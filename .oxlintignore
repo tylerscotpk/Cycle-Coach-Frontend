@@ -1,0 +1,4 @@
+frontend/android/
+frontend/ios/
+frontend/build/
+**/main.*.js

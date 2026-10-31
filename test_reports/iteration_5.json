@@ -46,7 +46,7 @@
       "subscription_status": "active",
       "subscription_tier": "monthly"
     },
-    "admin_password": "cyclecoach2024"
+    "admin_password": "<redacted>"
   },
   "seed_data_creation": "Multiple TEST_ prefixed users created during testing (TEST_register_*, TEST_nosub_*, TEST_webhook_*, TEST_dup_*)",
   "retest_needed": false,

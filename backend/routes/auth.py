@@ -440,7 +440,10 @@ async def check_auth(session_token: Optional[str] = Cookie(None), authorization:
                 "trial_ends_at": trial_ends_at,
                 "email_verified": user.get("email_verified", True),
                 "stripe_subscription_id": user.get("stripe_subscription_id"),
-                "cancels_at": user.get("cancels_at")
+                "cancels_at": user.get("cancels_at"),
+                "downgrade_at_period_end": user.get("downgrade_at_period_end", False),
+                "downgrade_to": user.get("downgrade_to"),
+                "downgrade_date": user.get("downgrade_date"),
             }
         }
     except Exception as e:
@@ -474,6 +477,9 @@ async def get_account_subscription(session_token: Optional[str] = Cookie(None), 
         "trial_start_date": user.get("trial_start_date"),
         "stripe_subscription_id": user.get("stripe_subscription_id"),
         "cancels_at": user.get("cancels_at"),
+        "downgrade_at_period_end": user.get("downgrade_at_period_end", False),
+        "downgrade_to": user.get("downgrade_to"),
+        "downgrade_date": user.get("downgrade_date"),
         "created_at": user.get("created_at"),
     }
 
@@ -524,8 +530,18 @@ async def cancel_user_subscription(session_token: Optional[str] = Cookie(None), 
             return {"success": True, "message": "Subscription cleaned up. No active billing to cancel.", "cancels_at": datetime.now(timezone.utc).isoformat()}
 
         updated_subscription = stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
-        cancel_at = updated_subscription.current_period_end
-        cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat()
+
+        # Stripe API 2025-03-31+ moved current_period_end to SubscriptionItem.
+        # After setting cancel_at_period_end=True, Stripe also sets cancel_at
+        # to the same timestamp — use that as the primary source for the date.
+        cancel_at = updated_subscription.cancel_at
+        if not cancel_at:
+            try:
+                cancel_at = updated_subscription["items"].data[0].current_period_end
+            except (AttributeError, IndexError, KeyError, TypeError):
+                cancel_at = None
+
+        cancels_at_date = datetime.fromtimestamp(cancel_at, tz=timezone.utc).isoformat() if cancel_at else datetime.now(timezone.utc).isoformat()
 
         await db.auth_users.update_one(
             {"id": session["user_id"]},
@@ -550,6 +566,9 @@ async def cancel_user_subscription(session_token: Optional[str] = Cookie(None), 
     except stripe.StripeError as e:
         logger.error(f"Stripe error cancelling subscription: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to cancel: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error cancelling subscription {subscription_id} for {user.get('email')}: {str(e)}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while cancelling. Please check your Account Settings to verify the current status.")
 
 
 

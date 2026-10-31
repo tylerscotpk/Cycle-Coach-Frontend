@@ -124,14 +124,21 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Native Capacitor Local Notifications — phase reminders + partner nudges (DONE Aug 27)
 - [x] Notification overhaul — phaseContent.js copy, Day 1 check-in, cold-start disclaimers, extension on native (DONE Aug 30)
 - [x] Dynamic day ranges in Phase Detail Modal (DONE Aug 30)
+- [x] iOS Safari DatePicker-in-Dialog fix (DONE Aug 30)
+- [x] Age confirmation + Terms of Service on signup (DONE Sep 27)
+- [x] Dashboard.jsx split into sub-components (1862→1341 lines) (DONE Sep 27)
+- [x] Server.py modularization — admin, AI, contact routes extracted (2394→1694 lines) (DONE Sep 27)
 - [ ] Connect real Stripe Payment Links for Basic ($5/mo) and Advanced ($8/mo)
-- [ ] Refactor `backend/server.py` remaining routes into modular router files
+- [x] Downgrade retains Advanced until period end (DONE Sep 27)
+- [x] Price IDs moved to environment variables (DONE Sep 27)
+- [x] Legacy cancel endpoint removed (DONE Sep 27)
+- [x] Webhook signature verification enforced (DONE Sep 27)
 
 ### P2 — Medium Priority
 - [x] Unify static vs dynamic day ranges in PhaseDetailModal/PhasePredictor/MoodMap (DONE Aug 30)
 - [ ] Remove `verification_token` from admin users API response
 - [ ] Remove `verification_token` from admin users API response
-- [ ] Refactor `Dashboard.jsx` into smaller components
+- [x] Refactor `Dashboard.jsx` into smaller components (DONE Sep 27)
 - [ ] Refactor `App.js` routing with ProtectedRoute/PublicRoute wrappers
 - [ ] iOS App Store deployment (user needs Mac or CI/CD pipeline)
 
@@ -139,3 +146,47 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - [x] Replace native date inputs with Shadcn Calendar component (DONE Aug 30)
 - [ ] Multi-partner support
 - [ ] Analytics dashboard improvements
+
+## 2026-10-23 — Apple rejection fixes (Build 9 prep) — NOT DEPLOYED (awaiting approval)
+- iOS external checkout sheet (utils/checkout.js, components/ExternalCheckoutDialog.jsx): iOS-native only; tap opens Stripe in Safari; "I've completed payment" + auto re-check on app foreground. Web/Android unchanged redirect.
+- Fixed stuck "Loading..." plan buttons after Safari handoff; stale email_verified re-checked before blocking checkout; Pricing "Upgrade" now upgrades in place (no duplicate sub).
+- /api/subscription/sync now sets plan_type/tier from Stripe price (activation fix when webhook missed).
+- /api/account/delete (password + "DELETE"; refunds unused paid days, cancels Stripe subs, purges server records, keeps anonymized account_deletions audit; billing failure → 409, account kept; idempotent refund keys) + local data wipe + /account-deleted page.
+- /api/account/undo-cancellation (verifies with Stripe before success) + UI section.
+- /account reachable for logged-in users without a plan; nav "Account" link.
+- Startup: inline HTML spinner, 12s auth-check timeout with Retry screen; VerifyEmail "I've Verified — Continue" + iPadOS detection.
+- Tests: backend/tests/test_account_lifecycle.py (Stripe mocked, 11 pass); iteration_31 frontend 100%.
+
+## 2026-10-23 — Deletion refund hardening (approved; NOT deployed)
+- New backend/routes/deletion_refunds.py: line-by-line unused-paid calculation across all paid invoices in period (upgrades, discounts, multiple payments), capped by remaining refundable, dedup via existing account_deletion refunds + per-invoice idempotency key.
+- Order: plan recorded (deletion_refunds, no email) → subscription cancelled → refunds attempted. Refund/calculation failure never blocks deletion: status needs_attention, admin email alert, reference shown to user on /account-deleted.
+- Cancellation failure still returns 409 (temporary; account kept); retry resumes the planned refund without duplicating.
+- Admin: GET /api/admin/deletion-refunds, POST .../{ref}/retry (recomputes as of deletion time), POST .../{ref}/mark-resolved; panel in AdminDashboard.
+- Tests: backend/tests/test_account_lifecycle.py 17/17 (Stripe fully mocked; real Stripe calls raise).
+
+## 2026-10-23 — Account deletion confirmation email (NOT deployed)
+- backend/routes/deletion_email.py (existing Resend). Sent fire-and-forget after purge, only to verified addresses; address not stored.
+- Refund state: issued only when Stripe refund status == succeeded; pending otherwise; needs_attention with reference + support email.
+- Billing line per plan kind (trial / lifetime / paid / none). No cycle/partner data.
+- AccountDeleted screen shows email note + issued/pending/needs-attention states.
+- Tests: test_account_lifecycle.py 26/26 (Stripe + Resend mocked).
+
+## 2026-10-23 — Refund follow-up email (NOT deployed)
+- refund_contacts collection: Fernet-encrypted email (REFUND_CONTACT_KEY in backend/.env), only for refunds not confirmed at deletion; TTL 180 days; deleted after follow-up sent or mark-resolved.
+- Follow-up sent only when Stripe refund status == succeeded (re-read from Stripe); atomic claim + followup_email_sent_at prevents duplicates; email failure releases claim, never touches refund.
+- Triggers: admin Retry, admin "Check Pending with Stripe" (POST /api/admin/deletion-refunds/check-pending), webhook refund.updated/refund.created/charge.refund.updated (only if enabled in Stripe — not changed).
+- Tests: test_account_lifecycle.py 33/33 (Stripe + Resend mocked).
+
+## 2026-10-23 — Daily Refund Check (NOT deployed)
+- .emergent/crons.yml: daily-refund-check "0 15 * * *" UTC → POST /api/cron/refund-check (Bearer WEBHOOK_CRON_SECRET, constant-time; 202 ack; run_id idempotency in cron_runs; background task; cron_locks single-runner).
+- Job = process_open_refunds(): Stripe status re-read + follow-up email only; never creates/retries refunds; failed → needs_attention + admin alert.
+- Admin panel shows last automatic check summary (GET /api/admin/deletion-refunds/last-check).
+- Tests: test_account_lifecycle.py 36/36 (Stripe + Resend mocked). Preview endpoint verified (401 no-auth, 202 + completed run).
+- Secrets REFUND_CONTACT_KEY + WEBHOOK_CRON_SECRET registered (live+test slots). Do not rotate REFUND_CONTACT_KEY (stored contacts would become unreadable).
+- GitHub: push via "Save to GitHub" to NEW branch apple-fixes-build9; never Real. When merging, exclude frontend/ios (workspace iOS project predates crash fix).
+
+## 2026-10-23 — Admin auth hardening (NOT deployed)
+- Exposed admin password removed from 4 test files (now os.environ["ADMIN_PASSWORD"]), test_credentials.md, 6 test reports. History not rewritten.
+- routes/admin.py: password read from env at call time; hmac.compare_digest; rate limit 5 fails/IP/15min + 30 global/15min → 429 (admin_login_failures, TTL); sessions store salted PBKDF2 fingerprint of password → changing ADMIN_PASSWORD revokes all prior sessions (legacy sessions without fingerprint rejected).
+- tests/test_admin_security.py (10) + test_account_lifecycle.py (36) = 46 pass; pytest loop_scope=session.
+- Pending: user sets new ADMIN_PASSWORD (separate preview/production) via secrets card, then deploy.

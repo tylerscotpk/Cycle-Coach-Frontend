@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
 import MoodMap from '@/components/MoodMap';
 import FeedbackModal from '@/components/FeedbackModal';
 import PartnerProfile from '@/components/PartnerProfile';
 import CoachingManual from '@/components/CoachingManual';
 import PhaseDetailModal from '@/components/PhaseDetailModal';
+import PartnerSetupForm from '@/components/dashboard/PartnerSetupForm';
+import AIWingmanTab from '@/components/dashboard/AIWingmanTab';
+import CycleHistoryDialog from '@/components/dashboard/CycleHistoryDialog';
+import UpgradeModal from '@/components/dashboard/UpgradeModal';
 import { PHASE_CONTENT, dateSeedPick } from '@/utils/phaseContent';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -21,6 +22,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 const API = BACKEND_URL;
 
 import { LocalStorage } from '../utils/localStorageManager';
+import { redirectToCheckout, checkoutSuccessUrl } from '../utils/checkout';
 import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod, getDisplayCycleDay, getCycleExtensionStatus, getCappedCycleMessages, calculateEWMA } from '../utils/cycleCalculations';
 import { RESOURCES, getRelevantResources, getNextPhase, getPhasePrioritizedResources, getUnarchivedResources, archiveResource, getPhaseEmoji, getPhaseColor, getPhaseLabel, getPhaseDays, PHASE_LABELS } from '../utils/resourcesData';
 import { getUnseenFact } from '../utils/cycleFacts';
@@ -45,7 +47,6 @@ const Dashboard = () => {
   const [cycleHistory, setCycleHistory] = useState(null);
   const [logPeriodDate, setLogPeriodDate] = useState('');
   const [cycleSettings] = useState(() => LocalStorage.getCycleSettings());
-  const [historyDialogEl, setHistoryDialogEl] = useState(null);
   
   // Subscription tier state (for feedback prompts)
   const [subscriptionTier, setSubscriptionTier] = useState(null);
@@ -797,13 +798,13 @@ const Dashboard = () => {
           },
           body: JSON.stringify({
             plan: 'advanced',
-            success_url: `${origin}/checkout-success?plan=advanced`,
+            success_url: checkoutSuccessUrl('advanced'),
             cancel_url: `${origin}/app`,
           }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed to create checkout');
-        window.location.href = data.checkout_url;
+        if (redirectToCheckout(data.checkout_url)) { setUpgrading(false); setShowUpgradeModal(false); }
       }
     } catch (err) {
       toast.error(err.message || 'Something went wrong');
@@ -894,73 +895,13 @@ const Dashboard = () => {
   // If no partner profile, show setup
   if (!partner) {
     return (
-      <div className="min-h-screen">
-        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          {/* Header */}
-          <div className="flex flex-wrap justify-between items-center gap-3 mb-12">
-            <div className="flex items-center gap-3">
-              <img src="https://customer-assets.emergentagent.com/job_partner-cycle/artifacts/mdtjfodq_Cycle%20Coach%20Circle%20Icon.png" alt="Cycle Coach" className="w-10 h-10 flex-shrink-0 object-contain" />
-              <h1 className="text-2xl sm:text-3xl font-bold"><span className="text-white">Cycle</span><span className="text-cyan-400">Coach</span></h1>
-            </div>
-            <Button
-              onClick={() => window.location.href = '/privacy'}
-              variant="outline"
-              size="sm"
-              className="border-slate-600 text-slate-300 hover:bg-slate-700 text-xs sm:text-sm"
-            >
-              🔒 Privacy
-            </Button>
-          </div>
-
-          {/* Setup Form */}
-          <div className="max-w-2xl mx-auto">
-            <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700" data-testid="setup-partner-card">
-              <CardHeader>
-                <CardTitle className="text-2xl text-white">Alright, Let&apos;s Set This Up</CardTitle>
-                <CardDescription className="text-slate-400">Tell us about your girl so we can help you not screw this up</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreatePartner} className="space-y-6">
-                  <div>
-                    <Label htmlFor="partner-name" className="text-white">Her Name</Label>
-                    <Input
-                      id="partner-name"
-                      data-testid="partner-name-input"
-                      value={partnerName}
-                      onChange={(e) => setPartnerName(e.target.value)}
-                      placeholder="What do you call her?"
-                      required
-                      className="bg-slate-700/50 border-slate-600 text-white mt-2"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="cycle-date" className="text-white">First Day of Her Last Period</Label>
-                    <div className="mt-2">
-                      <DatePicker
-                        value={cycleStartDate}
-                        onChange={(val) => setCycleStartDate(val)}
-                        max={new Date().toISOString().split('T')[0]}
-                        placeholder="Select start date"
-                        className="w-full"
-                        testId="cycle-start-date-input"
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    data-testid="create-partner-button"
-                    className="w-full bg-cyan-500 hover:bg-cyan-600 text-white"
-                  >
-                    Create Profile
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+      <PartnerSetupForm
+        partnerName={partnerName}
+        setPartnerName={setPartnerName}
+        cycleStartDate={cycleStartDate}
+        setCycleStartDate={setCycleStartDate}
+        onSubmit={handleCreatePartner}
+      />
     );
   }
 
@@ -1276,125 +1217,15 @@ const Dashboard = () => {
         )}
 
         {/* Cycle History Dialog */}
-        <Dialog open={showCycleHistory} onOpenChange={setShowCycleHistory}>
-          <DialogContent ref={setHistoryDialogEl} className="bg-slate-800 border-slate-700 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-2xl">Cycle History & Statistics</DialogTitle>
-              <DialogDescription className="sr-only">View and manage your cycle history</DialogDescription>
-            </DialogHeader>
-            
-            {cycleHistory && (
-              <div className="space-y-6">
-                <div className="grid md:grid-cols-3 gap-4">
-                  <Card className="bg-white/10 border-white/20">
-                    <CardContent className="p-4">
-                      <div className="text-xs text-slate-300 mb-1">Average Cycle (EWMA)</div>
-                      <div className="text-2xl font-bold text-white">{cycleHistory.statistics.ewma_length || cycleHistory.statistics.average_length} days</div>
-                      {cycleHistory.statistics.simple_average && cycleHistory.statistics.simple_average !== cycleHistory.statistics.ewma_length && (
-                        <div className="text-xs text-slate-400 mt-1">Simple avg: {cycleHistory.statistics.simple_average} days</div>
-                      )}
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-white/10 border-white/20">
-                    <CardContent className="p-4">
-                      <div className="text-xs text-slate-300 mb-1">Range</div>
-                      <div className="text-2xl font-bold text-white">{cycleHistory.statistics.min_length}-{cycleHistory.statistics.max_length} days</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-white/10 border-white/20">
-                    <CardContent className="p-4">
-                      <div className="text-xs text-slate-300 mb-1">Next Period</div>
-                      <div className="text-2xl font-bold text-white">~{cycleHistory.prediction.days_until_next} days</div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {cycleHistory.statistics.is_irregular && (
-                  <div className="bg-orange-500/20 border border-orange-500/30 p-3 rounded-lg">
-                    <p className="text-orange-200 text-sm">
-                      ⚠️ <strong>Irregular Cycle Detected:</strong> {cycleHistory.statistics.variability} day variation. Keep logging periods for better predictions!
-                    </p>
-                  </div>
-                )}
-
-                <div className="bg-white/10 p-4 rounded-lg">
-                  <h4 className="text-white font-semibold mb-3">Log New Period</h4>
-                  <form onSubmit={handleLogPeriod} className="flex gap-2">
-                    <DatePicker
-                      value={logPeriodDate}
-                      onChange={(val) => setLogPeriodDate(val)}
-                      max={new Date().toISOString().split('T')[0]}
-                      placeholder="Select period start"
-                      className="flex-1"
-                      testId="log-period-date-input"
-                      portalContainer={historyDialogEl}
-                    />
-                    <Button
-                      type="submit"
-                      className="bg-white text-slate-900 hover:bg-white/90"
-                      data-testid="log-period-button"
-                    >
-                      Log Period
-                    </Button>
-                  </form>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-white font-semibold mb-2">Recent Cycles</h4>
-                  {cycleHistory.history.slice(0, 8).map((cycle, idx) => {
-                    const isCurrent = cycle.status === 'current' && idx === 0; // Only first entry can be current
-                    
-                    // Format date without timezone conversion
-                    const formatDate = (dateStr) => {
-                      try {
-                        const parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})|(\d{2})\/(\d{2})\/(\d{4})|(\d{2})-(\d{2})-(\d{4})/);
-                        if (!parts) return dateStr;
-                        
-                        let year, month, day;
-                        if (parts[1]) { // YYYY-MM-DD
-                          [, year, month, day] = parts;
-                        } else if (parts[4]) { // MM/DD/YYYY
-                          [, , , , month, day, year] = parts;
-                        } else { // MM-DD-YYYY
-                          [, , , , , , , month, day, year] = parts;
-                        }
-                        
-                        return new Date(year, month - 1, day).toLocaleDateString();
-                      } catch {
-                        return dateStr;
-                      }
-                    };
-                    
-                    return (
-                      <div key={idx} className="flex justify-between items-center bg-white/10 p-3 rounded" data-testid={`cycle-history-${idx}`}>
-                        <span className="text-slate-200">{formatDate(cycle.cycle_start_date)}</span>
-                        <div className="flex items-center gap-3">
-                          {isCurrent ? (
-                            <span className="text-cyan-400 font-medium">Current</span>
-                          ) : cycle.cycle_length && cycle.cycle_length > 0 ? (
-                            <span className="text-slate-300">{cycle.cycle_length} days</span>
-                          ) : (
-                            <span className="text-slate-400 italic">Calculating...</span>
-                          )}
-                          <Button
-                            onClick={() => handleDeleteCycle(cycle.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/20 h-8 w-8 p-0 flex-shrink-0"
-                            data-testid={`delete-cycle-${idx}`}
-                            title={isCurrent ? "Delete current cycle" : "Delete cycle"}
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        <CycleHistoryDialog
+          open={showCycleHistory}
+          onOpenChange={setShowCycleHistory}
+          cycleHistory={cycleHistory}
+          logPeriodDate={logPeriodDate}
+          setLogPeriodDate={setLogPeriodDate}
+          onLogPeriod={handleLogPeriod}
+          onDeleteCycle={handleDeleteCycle}
+        />
 
         {/* Research-Backed Fact Card */}
         {funFact && (
@@ -1459,80 +1290,15 @@ const Dashboard = () => {
 
           {/* AI Wingman Tab */}
           <TabsContent value="chat" data-testid="ai-coach-content">
-            {hasAIAccess ? (
-            <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-white">Your AI Wingman</CardTitle>
-                  <CardDescription className="text-slate-400">Ask questions, get real advice, learn what actually works</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-96 mb-4 p-4 bg-slate-900/50 rounded-lg" data-testid="chat-history">
-                    {chatHistory.length === 0 ? (
-                      <div className="text-slate-400 text-center py-8" data-testid="empty-chat-message">
-                        What&apos;s up? Ask me anything about your girl. &quot;What should I do when she&apos;s mad?&quot; &quot;How does she like her coffee?&quot; I got you.
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {chatHistory.map((conv, idx) => {
-                          // Split response into main content and question
-                          const parts = conv.response.split(/Question:/i);
-                          const mainResponse = parts[0].trim();
-                          const question = parts[1]?.trim();
-                          
-                          return (
-                            <div key={idx} className="space-y-2">
-                              <div className="bg-cyan-500/20 p-3 rounded-lg ml-8" data-testid={`user-message-${idx}`}>
-                                <div className="text-xs text-cyan-400 mb-1">You</div>
-                                <div className="text-white">{conv.message}</div>
-                              </div>
-                              <div className="bg-slate-700/50 p-3 rounded-lg mr-8" data-testid={`ai-response-${idx}`}>
-                                <div className="text-xs text-cyan-400 mb-1">AI Wingman</div>
-                                <div className="text-slate-200 whitespace-pre-line">{mainResponse}</div>
-                              </div>
-                              {question && (
-                                <div className="bg-cyan-500/10 border border-cyan-500/30 p-3 rounded-lg mr-8" data-testid={`ai-question-${idx}`}>
-                                  <div className="text-xs text-cyan-400 mb-1">💬 Follow-up Question</div>
-                                  <div className="text-cyan-300 font-medium">{question}</div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </ScrollArea>
-
-                  <form onSubmit={handleSendMessage} className="flex gap-2">
-                    <Input
-                      data-testid="chat-input"
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      placeholder="e.g., 'She's been quiet all day, what do I do?'"
-                      className="bg-slate-700/50 border-slate-600 text-white"
-                    />
-                    <Button type="submit" data-testid="send-message-button" className="bg-cyan-500 hover:bg-cyan-600">
-                      Send
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-                <CardContent className="p-8 text-center">
-                  <div className="text-5xl mb-4">🔒</div>
-                  <h3 className="text-white text-xl font-bold mb-2">AI Wingman — Advanced Plan</h3>
-                  <p className="text-slate-400 mb-6">Get personalized, AI-powered relationship advice 24/7. Upgrade to Advanced to unlock your AI Wingman.</p>
-                  <Button
-                    onClick={handleUpgradeToAdvanced}
-                    disabled={upgrading}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-6"
-                    data-testid="upgrade-to-advanced-btn"
-                  >
-                    {upgrading ? 'Upgrading...' : 'Upgrade to Advanced — $8/mo'}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            <AIWingmanTab
+              hasAIAccess={hasAIAccess}
+              chatHistory={chatHistory}
+              chatMessage={chatMessage}
+              setChatMessage={setChatMessage}
+              onSendMessage={handleSendMessage}
+              onUpgrade={handleUpgradeToAdvanced}
+              upgrading={upgrading}
+            />
           </TabsContent>
 
           {/* Partner Profile Tab */}
@@ -1549,266 +1315,7 @@ const Dashboard = () => {
             <CoachingManual />
           </TabsContent>
 
-          {/* === ARCHIVED: Resources Tab — will revisit with manual library === */}
-          {false && (
-          <TabsContent value="resources" data-testid="resources-content">
-            {/* External Links Disclaimer */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 mb-4 text-center">
-              <p className="text-slate-400 text-xs">
-                External links are provided for informational purposes only. Cycle Coach does not endorse or partner with these sources.
-              </p>
-            </div>
-            
-            <div className="flex justify-between items-center mb-4">
-              {/* Recommended for Current Phase Header */}
-              {cycleInfo && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{getPhaseEmoji(cycleInfo.phase)}</span>
-                  <div>
-                    <h3 className="text-white font-semibold">Recommended for Her Current Phase</h3>
-                    <p className="text-slate-400 text-sm">{getPhaseLabel(cycleInfo.phase)} • {getPhaseDays(cycleInfo.phase)}</p>
-                  </div>
-                </div>
-              )}
-              <Button
-                onClick={() => setShowBookmarks(!showBookmarks)}
-                variant="outline"
-                className="border-slate-600 text-slate-300"
-                data-testid="toggle-bookmarks-button"
-              >
-                {showBookmarks ? 'Show All' : `Saved (${bookmarkedResources.length})`}
-              </Button>
-            </div>
-
-            {!showBookmarks && currentResources.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {currentResources.map((resource, idx) => (
-                  <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-cyan-500/50 transition-all flex flex-col" data-testid={`current-resource-${idx}`}>
-                    <CardHeader className="flex-1">
-                      <div className="flex items-center gap-2 mb-3 flex-wrap">
-                        {/* Phase badge with emoji */}
-                        <div className={`text-xs px-3 py-1 rounded-full border ${getPhaseColor(resource.phase)}`}>
-                          {getPhaseEmoji(resource.phase)} {getPhaseLabel(resource.phase)}
-                        </div>
-                        {resource.is_recommended && (
-                          <div className="text-xs text-white px-3 py-1 bg-cyan-500 rounded-full">
-                            🎯 Recommended
-                          </div>
-                        )}
-                        {resource.is_upcoming && (
-                          <div className="text-xs text-white px-3 py-1 bg-purple-500 rounded-full border border-purple-500">
-                            ⏭️ Coming Up
-                          </div>
-                        )}
-                      </div>
-                      <CardTitle className="text-white text-lg leading-tight">{resource.title}</CardTitle>
-                      <CardDescription className="text-slate-400 mt-2">{resource.summary}</CardDescription>
-                      {resource.source && (
-                        <p className="text-xs text-cyan-400/70 mt-2">📰 {resource.source}</p>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <Button
-                        asChild
-                        className="w-full bg-cyan-500 hover:bg-cyan-600 text-white"
-                        data-testid={`view-resource-${idx}`}
-                      >
-                        <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                          Read Article
-                        </a>
-                      </Button>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleBookmarkResource(resource.id)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 border-slate-600 text-slate-300 hover:bg-cyan-500/20 hover:border-cyan-500"
-                          data-testid={`bookmark-${idx}`}
-                        >
-                          📌 Save
-                        </Button>
-                        <Button
-                          onClick={() => handleArchiveResource(resource.id)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                          data-testid={`archive-${idx}`}
-                        >
-                          ✓ Done
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : !showBookmarks ? (
-              <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-                <CardContent className="p-12 text-center">
-                  <div className="text-6xl mb-4">🎉</div>
-                  <h3 className="text-2xl font-bold text-white mb-3">All Caught Up!</h3>
-                  <p className="text-slate-400">You&apos;ve viewed all available resources. Check back later for more!</p>
-                </CardContent>
-              </Card>
-            ) : null}
-
-            {/* Upcoming Phase Section */}
-            {!showBookmarks && upcomingResources.length > 0 && cycleInfo && (
-              <div className="mt-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xl">{getPhaseEmoji(getNextPhase(cycleInfo.phase))}</span>
-                  <div>
-                    <h3 className="text-white font-semibold">Upcoming Phase: {getPhaseLabel(getNextPhase(cycleInfo.phase))}</h3>
-                    <p className="text-slate-400 text-sm">{getPhaseDays(getNextPhase(cycleInfo.phase))} • Prepare for what&apos;s next</p>
-                  </div>
-                </div>
-                
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {upcomingResources.map((resource, idx) => (
-                    <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-purple-500/50 transition-all flex flex-col" data-testid={`upcoming-resource-${idx}`}>
-                      <CardHeader className="flex-1">
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          {/* Phase badge with emoji */}
-                          <div className={`text-xs px-3 py-1 rounded-full border ${getPhaseColor(resource.phase)}`}>
-                            {getPhaseEmoji(resource.phase)} {getPhaseLabel(resource.phase)}
-                          </div>
-                          <div className="text-xs text-white px-3 py-1 bg-purple-500 rounded-full border border-purple-500">
-                            ⏭️ Coming Up
-                          </div>
-                        </div>
-                        <CardTitle className="text-white text-lg leading-tight">{resource.title}</CardTitle>
-                        <CardDescription className="text-slate-400 mt-2">{resource.summary}</CardDescription>
-                        {resource.source && (
-                          <p className="text-xs text-cyan-400/70 mt-2">📰 {resource.source}</p>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <Button
-                          asChild
-                          className="w-full bg-purple-500 hover:bg-purple-600 text-white"
-                          data-testid={`view-upcoming-resource-${idx}`}
-                        >
-                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                            Read Article
-                          </a>
-                        </Button>
-                        <Button
-                          onClick={() => handleBookmarkResource(resource.id)}
-                          variant="outline"
-                          size="sm"
-                          className="w-full border-slate-600 text-slate-300 hover:bg-purple-500/20 hover:border-purple-500"
-                          data-testid={`bookmark-upcoming-${idx}`}
-                        >
-                          📌 Save for Later
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* General Resources Section */}
-            {!showBookmarks && generalResources.length > 0 && (
-              <div className="mt-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xl">📚</span>
-                  <div>
-                    <h3 className="text-white font-semibold">General Resources</h3>
-                    <p className="text-slate-400 text-sm">Helpful for any phase of her cycle</p>
-                  </div>
-                </div>
-                
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {generalResources.map((resource, idx) => (
-                    <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-amber-500/50 transition-all flex flex-col" data-testid={`general-resource-${idx}`}>
-                      <CardHeader className="flex-1">
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          {/* Phase badge */}
-                          <div className="text-xs px-3 py-1 rounded-full border bg-amber-500/20 text-amber-400 border-amber-500/30">
-                            📚 Full-Cycle
-                          </div>
-                        </div>
-                        <CardTitle className="text-white text-lg leading-tight">{resource.title}</CardTitle>
-                        <CardDescription className="text-slate-400 mt-2">{resource.summary}</CardDescription>
-                        {resource.source && (
-                          <p className="text-xs text-cyan-400/70 mt-2">📰 {resource.source}</p>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <Button
-                          asChild
-                          className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-                          data-testid={`view-general-resource-${idx}`}
-                        >
-                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                            Read Article
-                          </a>
-                        </Button>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => handleBookmarkResource(resource.id)}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 border-slate-600 text-slate-300 hover:bg-amber-500/20 hover:border-amber-500"
-                            data-testid={`bookmark-general-${idx}`}
-                          >
-                            📌 Save
-                          </Button>
-                          <Button
-                            onClick={() => handleArchiveResource(resource.id)}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                            data-testid={`archive-general-${idx}`}
-                          >
-                            ✓ Done
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {showBookmarks && (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {bookmarkedResources.length === 0 ? (
-                  <div className="col-span-full text-center text-slate-400 py-12" data-testid="no-bookmarks-message">
-                    No bookmarked resources yet. Bookmark resources you want to come back to!
-                  </div>
-                ) : (
-                  bookmarkedResources.map((resource, idx) => (
-                    <Card key={resource.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700 hover:border-cyan-500/50 transition-all" data-testid={`bookmarked-resource-${idx}`}>
-                      {resource.thumbnail && (
-                        <div className="h-48 overflow-hidden rounded-t-lg">
-                          <img src={resource.thumbnail} alt={resource.title} className="w-full h-full object-cover" />
-                        </div>
-                      )}
-                      <CardHeader>
-                        <div className="text-xs text-cyan-400 uppercase mb-2">{resource.type}</div>
-                        <CardTitle className="text-white text-lg">{resource.title}</CardTitle>
-                        <CardDescription className="text-slate-400">{resource.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Button
-                          data-testid={`bookmarked-resource-link-${idx}`}
-                          asChild
-                          variant="outline"
-                          className="w-full border-slate-600 text-slate-300 hover:bg-cyan-500/20 hover:border-cyan-500"
-                        >
-                          <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                            View Resource
-                          </a>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            )}
-          </TabsContent>
-          )}
+          {/* === ARCHIVED: Resources Tab — code preserved in git history === */}
         </Tabs>
       </div>
       
@@ -1822,38 +1329,12 @@ const Dashboard = () => {
       />
 
       {/* Upgrade to Advanced Modal */}
-      <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
-        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-lg" data-testid="upgrade-modal">
-          <DialogHeader>
-            <DialogTitle className="text-xl text-white">Upgrade to Advanced</DialogTitle>
-            <DialogDescription className="text-slate-400">Unlock AI-powered relationship coaching</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 mt-2">
-            <p className="text-slate-400 text-sm">Advanced adds:</p>
-            {['AI Wingman — personalized advice 24/7', 'Real-time relationship guidance', 'AI-driven phase recommendations', 'Personalized tips based on your data'].map((f, i) => (
-              <div key={i} className="flex items-center gap-2 text-emerald-300 text-sm">
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                {f}
-              </div>
-            ))}
-            <div className="bg-slate-700/50 rounded-lg p-4 mt-4">
-              <p className="text-white font-semibold">Advanced — $8/month</p>
-              <p className="text-slate-400 text-xs mt-1">You&apos;ll be redirected to Stripe to complete payment.</p>
-            </div>
-          </div>
-          <div className="flex gap-3 mt-4">
-            <Button onClick={handleUpgradeCheckout} disabled={upgrading}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white" data-testid="confirm-upgrade-btn">
-              {upgrading ? 'Redirecting to Stripe...' : 'Upgrade Now — $8/mo'}
-            </Button>
-            <Button variant="outline" className="border-slate-600 text-slate-300" onClick={() => setShowUpgradeModal(false)}>
-              Cancel
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        onUpgrade={handleUpgradeCheckout}
+        upgrading={upgrading}
+      />
     </div>
   );
 };

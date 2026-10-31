@@ -59,6 +59,11 @@ const DeleteAccount = () => {
             </div>
           ) : (
             <>
+              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4 mb-6" data-testid="in-app-delete-hint">
+                <p className="text-cyan-200 text-sm">
+                  Fastest option: log in and go to <strong>Account Settings &rarr; Delete Account</strong> to permanently delete your account immediately, including cancelling any subscription.
+                </p>
+              </div>
               <p className="text-slate-400 text-sm mb-6">
                 Enter the email address associated with your Cycle Coach account. We&apos;ll delete your account and all server-side data within 7 business days.
               </p>

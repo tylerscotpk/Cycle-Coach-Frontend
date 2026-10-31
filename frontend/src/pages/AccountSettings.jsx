@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { LocalStorage } from '../utils/localStorageManager';
+import { redirectToCheckout, checkoutSuccessUrl } from '../utils/checkout';
+import { UndoCancellationSection } from '@/components/account/UndoCancellationSection';
+import { DeleteAccountSection } from '@/components/account/DeleteAccountSection';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -64,29 +67,56 @@ const AccountSettings = () => {
     setCancelling(true);
     try {
       const sessionToken = localStorage.getItem('session_token');
-      const response = await fetch(`${API}/api/account/cancel-subscription`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      });
 
-      let result;
+      // 1. Attempt the cancellation
+      let cancelOk = false;
       try {
-        result = await response.json();
+        const response = await fetch(`${API}/api/account/cancel-subscription`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
+        });
+        let result;
+        try { result = await response.json(); } catch { result = {}; }
+        cancelOk = response.ok && result.success;
+        if (!cancelOk && !response.ok) {
+          // Definitive server error — don't bother re-fetching
+          setShowCancelModal(false);
+          toast.error(result.detail || result.message || 'Failed to cancel subscription');
+          setCancelling(false);
+          return;
+        }
       } catch {
-        result = {};
+        // Network error / timeout — cancellation may or may not have succeeded
+        // Fall through to verification step
       }
 
-      if (response.ok && result.success) {
-        setSubscription(prev => ({
-          ...prev,
-          subscription_status: 'cancelling',
-          cancels_at: result.cancels_at
-        }));
+      // 2. Verify authoritative state regardless of cancel response
+      try {
+        const subResp = await fetch(`${API}/api/account/subscription`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
+        });
+        if (subResp.ok) {
+          const subData = await subResp.json();
+          if (subData.subscription_status === 'cancelling' && subData.cancels_at) {
+            // Cancellation confirmed
+            setSubscription(prev => ({ ...prev, ...subData }));
+            setShowCancelModal(false);
+            toast.success('Subscription cancelled. You have access until ' + formatDate(subData.cancels_at));
+            setCancelling(false);
+            return;
+          }
+        }
+      } catch { /* verification fetch failed */ }
+
+      // 3. If we reach here: cancel request said OK but verification couldn't confirm
+      if (cancelOk) {
+        // Cancel API returned success but re-fetch didn't confirm yet (propagation delay)
+        setSubscription(prev => ({ ...prev, subscription_status: 'cancelling' }));
         setShowCancelModal(false);
-        toast.success('Subscription cancelled. You have access until ' + formatDate(result.cancels_at));
+        toast.success('Cancellation processing. Refresh in a moment to see the updated status.');
       } else {
         setShowCancelModal(false);
-        toast.error(result.detail || result.message || 'Failed to cancel subscription');
+        toast.error('Could not confirm cancellation. Please refresh and check your subscription status.');
       }
     } catch (error) {
       console.error('Error cancelling subscription:', error);
@@ -112,21 +142,24 @@ const AccountSettings = () => {
         result = {};
       }
       if (response.ok && result.success) {
+        // Keep advanced locally — user retains access until period end
         setSubscription(prev => ({
           ...prev,
-          subscription_tier: 'basic',
-          plan_type: 'basic',
+          downgrade_at_period_end: true,
+          downgrade_to: 'basic',
+          downgrade_date: result.effective_date,
         }));
         setShowDowngradeModal(false);
         const effectiveDate = result.effective_date
           ? formatDate(result.effective_date)
           : 'the end of your current billing period';
         toast.success(`Downgrade scheduled. You'll keep Advanced access until ${effectiveDate}.`);
-        // Update localStorage
+        // Update localStorage — keep tier as advanced
         try {
           const user = JSON.parse(localStorage.getItem('user') || '{}');
-          user.plan_type = 'basic';
-          user.subscription_tier = 'basic';
+          user.downgrade_at_period_end = true;
+          user.downgrade_to = 'basic';
+          user.downgrade_date = result.effective_date;
           localStorage.setItem('user', JSON.stringify(user));
         } catch { /* ignore localStorage error */ }
       } else {
@@ -175,13 +208,13 @@ const AccountSettings = () => {
           },
           body: JSON.stringify({
             plan: 'advanced',
-            success_url: `${origin}/checkout-success?plan=advanced`,
+            success_url: checkoutSuccessUrl('advanced'),
             cancel_url: `${origin}/account`,
           }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed to create checkout');
-        window.location.href = data.checkout_url;
+        redirectToCheckout(data.checkout_url);
       }
     } catch (err) {
       toast.error(err.message || 'Something went wrong');
@@ -212,6 +245,14 @@ const AccountSettings = () => {
     };
     return names[tier] || tier || 'Unknown';
   };
+
+  // Effective tier: plan_type takes priority over subscription_tier because
+  // during a trial, subscription_tier = "basic" (the underlying Stripe price)
+  // while plan_type = "trial" (the actual account state).
+  const rawTier = subscription?.plan_type || subscription?.subscription_tier;
+  const hasPlan = !!rawTier && !['none', 'expired'].includes(rawTier) &&
+    !['cancelled', 'expired'].includes(subscription?.subscription_status);
+  const effectiveTier = hasPlan ? rawTier : null;
 
   const getTierBadgeColor = (tier) => {
     const colors = {
@@ -257,10 +298,10 @@ const AccountSettings = () => {
   const isCancelling = subscription?.subscription_status === 'cancelling';
 
   const canCancel = () => {
-    const tier = subscription?.subscription_tier || subscription?.plan_type;
+    const tier = effectiveTier;
     return (
       subscription?.stripe_subscription_id &&
-      subscription?.subscription_status === 'active' &&
+      ['active', 'trialing'].includes(subscription?.subscription_status) &&
       !['lifetime', 'grandfathered'].includes(tier)
     );
   };
@@ -286,10 +327,10 @@ const AccountSettings = () => {
             variant="outline"
             size="sm"
             className="border-slate-600 text-slate-300 text-xs sm:text-sm"
-            onClick={() => navigate('/app')}
+            onClick={() => navigate(hasPlan ? '/app' : '/pricing')}
             data-testid="back-to-dashboard-btn"
           >
-            Back to Dashboard
+            {hasPlan ? 'Back to Dashboard' : 'Choose a Plan'}
           </Button>
         </div>
 
@@ -298,9 +339,9 @@ const AccountSettings = () => {
           <CardHeader>
             <CardTitle className="text-white flex flex-wrap items-center gap-2" data-testid="subscription-status-title">
               Subscription Status
-              {(subscription?.subscription_tier || subscription?.plan_type) && (
-                <span className={`px-3 py-1 rounded-full text-xs sm:text-sm border ${getTierBadgeColor(subscription.subscription_tier || subscription.plan_type)}`}>
-                  {getTierDisplayName(subscription.subscription_tier || subscription.plan_type)}
+              {effectiveTier && (
+                <span className={`px-3 py-1 rounded-full text-xs sm:text-sm border ${getTierBadgeColor(effectiveTier)}`}>
+                  {getTierDisplayName(effectiveTier)}
                 </span>
               )}
             </CardTitle>
@@ -322,7 +363,7 @@ const AccountSettings = () => {
                       Free Trial{subscription?.trial_ends_at ? ` — ends ${formatDate(subscription.trial_ends_at)}` : ''}
                     </span>
                   ) : (
-                    <span className="text-slate-400">{subscription?.subscription_status || 'None'}</span>
+                    <span className="text-slate-400">{hasPlan ? subscription?.subscription_status : 'No active plan'}</span>
                   )}
                 </p>
               </div>
@@ -341,7 +382,7 @@ const AccountSettings = () => {
                 </div>
               )}
 
-              {(subscription?.subscription_tier || subscription?.plan_type) && !['lifetime', 'grandfathered'].includes(subscription?.subscription_tier || subscription?.plan_type) && (
+              {effectiveTier && !['lifetime', 'grandfathered', 'trial'].includes(effectiveTier) && (
                 <>
                   <div className="bg-slate-900/50 rounded-lg p-4">
                     <p className="text-slate-400 text-sm">
@@ -375,8 +416,37 @@ const AccountSettings = () => {
               </div>
             )}
 
-            {/* Upgrade Button — Basic users only */}
-            {(subscription?.subscription_tier === 'basic' || subscription?.plan_type === 'basic') &&
+            <UndoCancellationSection
+              subscription={subscription}
+              tierName={getTierDisplayName(effectiveTier)}
+              formatDate={formatDate}
+              onRestored={loadSubscriptionData}
+            />
+
+            {/* Downgrade Scheduled Notice */}
+            {subscription?.downgrade_at_period_end && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4" data-testid="downgrade-scheduled-notice">
+                <p className="text-amber-400 font-medium">Downgrade Scheduled</p>
+                <p className="text-amber-300/80 text-sm mt-1">
+                  You&apos;ll switch to Basic on {subscription.downgrade_date ? formatDate(subscription.downgrade_date) : 'the end of your current billing period'}.
+                  You keep full Advanced access — including AI Wingman — until then.
+                </p>
+              </div>
+            )}
+
+            {/* Trial → Advanced confirmation notice */}
+            {effectiveTier === 'advanced' && subscription?.subscription_status === 'trialing' && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4" data-testid="trial-advanced-notice">
+                <p className="text-emerald-400 font-medium">Advanced Selected</p>
+                <p className="text-emerald-300/80 text-sm mt-1">
+                  Your free trial ends {subscription?.trial_ends_at ? formatDate(subscription.trial_ends_at) : 'soon'}.
+                  Advanced ($8/month) begins after that. You can cancel anytime before then.
+                </p>
+              </div>
+            )}
+
+            {/* Upgrade Button — Basic users */}
+            {effectiveTier === 'basic' &&
              subscription?.subscription_status === 'active' && (
               <div className="pt-4 border-t border-slate-700">
                 <Button
@@ -393,9 +463,27 @@ const AccountSettings = () => {
               </div>
             )}
 
-            {/* Downgrade Button — Advanced users only */}
-            {(subscription?.subscription_tier === 'advanced' || subscription?.plan_type === 'advanced') &&
-             subscription?.subscription_status === 'active' && (
+            {/* Upgrade Button — Trial users */}
+            {effectiveTier === 'trial' &&
+             subscription?.subscription_status === 'trialing' && (
+              <div className="pt-4 border-t border-slate-700" data-testid="trial-upgrade-section">
+                <Button
+                  onClick={handleUpgradeToAdvanced}
+                  disabled={upgrading}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                  data-testid="trial-upgrade-to-advanced-btn"
+                >
+                  {upgrading ? 'Processing...' : 'Upgrade to Advanced — $8/mo'}
+                </Button>
+                <p className="text-slate-400 text-xs mt-2">
+                  Keep all your Advanced features after your free trial. You won&apos;t be charged until your trial ends.
+                </p>
+              </div>
+            )}
+
+            {/* Downgrade Button — Advanced users only, hidden if downgrade already scheduled */}
+            {effectiveTier === 'advanced' &&
+             subscription?.subscription_status === 'active' && !subscription?.downgrade_at_period_end && (
               <div className="pt-4 border-t border-slate-700">
                 <Button
                   onClick={() => setShowDowngradeModal(true)}
@@ -430,7 +518,7 @@ const AccountSettings = () => {
             )}
 
             {/* No subscription */}
-            {!subscription?.subscription_status && (
+            {!hasPlan && (
               <div className="bg-slate-700/30 border border-slate-600 rounded-lg p-4">
                 <p className="text-slate-400 text-sm">
                   No active subscription. <a href="/pricing" className="text-cyan-400 hover:text-cyan-300">Choose a plan</a> to get started.
@@ -441,7 +529,7 @@ const AccountSettings = () => {
         </Card>
 
         {/* Features Card */}
-        <Card className="bg-slate-800/50 border-slate-700">
+        {hasPlan && <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
             <CardTitle className="text-white">Your Features</CardTitle>
             <CardDescription className="text-slate-400">
@@ -450,8 +538,7 @@ const AccountSettings = () => {
           </CardHeader>
           <CardContent>
             {(() => {
-              const tier = subscription?.subscription_tier || subscription?.plan_type;
-              const hasAI = tier === 'advanced' || tier === 'grandfathered' || tier === 'trial';
+              const hasAI = ['advanced', 'grandfathered', 'trial'].includes(effectiveTier);
               const baseFeatures = [
                 'Cycle Tracking & Phase Detection',
                 'MoodMap Visualizer',
@@ -480,7 +567,7 @@ const AccountSettings = () => {
               );
             })()}
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Quick Links */}
         <Card className="bg-slate-800/50 border-slate-700">
@@ -507,10 +594,10 @@ const AccountSettings = () => {
             <Button
               variant="outline"
               className="w-full justify-start border-slate-600 text-slate-300 hover:bg-slate-700"
-              onClick={() => navigate('/app')}
+              onClick={() => navigate(hasPlan ? '/app' : '/pricing')}
               data-testid="dashboard-link"
             >
-              Back to Dashboard
+              {hasPlan ? 'Back to Dashboard' : 'Choose a Plan'}
             </Button>
             <Button
               variant="outline"
@@ -532,6 +619,8 @@ const AccountSettings = () => {
             </Button>
           </CardContent>
         </Card>
+
+        <DeleteAccountSection subscription={subscription} />
       </div>
 
       {/* Cancel Subscription Modal */}
@@ -543,7 +632,7 @@ const AccountSettings = () => {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300 space-y-3">
               <p>
-                Are you sure you want to cancel your <span className="text-cyan-400 font-medium">{getTierDisplayName(subscription?.subscription_tier)}</span> subscription?
+                Are you sure you want to cancel your <span className="text-cyan-400 font-medium">{getTierDisplayName(effectiveTier)}</span> subscription?
               </p>
               <div className="bg-slate-900/50 rounded-lg p-4 mt-4">
                 <p className="text-slate-400 text-sm mb-2">What happens when you cancel:</p>

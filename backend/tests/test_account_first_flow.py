@@ -13,7 +13,7 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://partner-guide-4.prev
 # Test credentials from requirements
 TEST_USER_WITH_SUB = {"email": "flowtest@example.com", "password": "test1234"}
 TEST_USER_NO_SUB = {"email": "testuser123@example.com", "password": "test1234"}
-ADMIN_PASSWORD = "cyclecoach2024"
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]  # supplied securely via env, never hardcoded
 
 class TestAuthRegister:
     """Test user registration endpoint"""
@@ -295,7 +295,7 @@ class TestStripeWebhook:
 
 def _admin_headers():
     """Admin endpoints require a bearer admin token (POST /api/admin/login)."""
-    r = requests.post(f"{BASE_URL}/api/admin/login", json={"password": "cyclecoach2024"})
+    r = requests.post(f"{BASE_URL}/api/admin/login", json={"password": ADMIN_PASSWORD})
     assert r.status_code == 200, f"admin login failed: {r.status_code} {r.text[:200]}"
     token = r.json().get("token")
     assert token, "no admin token returned"

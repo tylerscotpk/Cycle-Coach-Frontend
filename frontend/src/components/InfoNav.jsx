@@ -77,6 +77,7 @@ const InfoNav = () => {
                     Choose a Plan
                   </Button>
                 </Link>
+                <Link to="/account" className="text-slate-300 hover:text-white" data-testid="nav-account-link">Account</Link>
                 <Button 
                   variant="ghost" 
                   className="text-slate-400 hover:text-white"
@@ -157,6 +158,9 @@ const InfoNav = () => {
                     <Button variant="outline" className="w-full border-cyan-500 text-cyan-400 hover:bg-cyan-500/10">
                       Choose a Plan
                     </Button>
+                  </Link>
+                  <Link to="/account" onClick={() => setIsMenuOpen(false)} className="block text-slate-300 hover:text-white" data-testid="nav-mobile-account-link">
+                    Account Settings
                   </Link>
                   <Button 
                     variant="ghost" 

@@ -11,7 +11,7 @@ if not BASE_URL:
     raise RuntimeError("REACT_APP_BACKEND_URL missing")
 BASE_URL = BASE_URL.rstrip("/")
 API = f"{BASE_URL}/api"
-ADMIN_PASSWORD = "cyclecoach2024"
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]  # supplied securely via env, never hardcoded
 
 
 @pytest.fixture(scope="module")
