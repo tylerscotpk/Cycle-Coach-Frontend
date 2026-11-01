@@ -1682,6 +1682,12 @@ app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(stripe_router)
 app.include_router(health_router)
+
+
+@app.get("/health")
+async def root_health_check():
+    # Deployment liveness/readiness probe (hits the pod directly, without the /api prefix)
+    return {"status": "ok"}
 app.include_router(admin_router)
 app.include_router(ai_router)
 app.include_router(contact_router)
