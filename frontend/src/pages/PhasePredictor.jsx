@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { LocalStorage } from '../utils/localStorageManager';
@@ -40,8 +39,7 @@ const PhasePredictor = () => {
   const navigate = useNavigate();
   const [predictionDate, setPredictionDate] = useState('');
   const [selectedPhaseModal, setSelectedPhaseModal] = useState(null);
-  const [cycleSettings, setCycleSettings] = useState(() => LocalStorage.getCycleSettings());
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [cycleSettings] = useState(() => LocalStorage.getCycleSettings());
 
   // Compute dynamic phase boundaries for reference cards
   const history = LocalStorage.getCycleHistory();
@@ -250,62 +248,6 @@ const PhasePredictor = () => {
               </div>
             )}
           </CardContent>
-        </Card>
-
-        {/* Advanced Cycle Settings */}
-        <Card className="bg-slate-800/30 border-slate-700/50">
-          <CardHeader className="cursor-pointer" onClick={() => setShowAdvanced(!showAdvanced)}>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-white text-lg">Advanced Settings</CardTitle>
-              <svg className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${showAdvanced ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-            <CardDescription className="text-slate-500 text-xs">
-              Avg cycle: {avgCycleLength}d &middot; Period: {cycleSettings.menstrualLength}d &middot; Luteal: {cycleSettings.lutealConstant}d
-            </CardDescription>
-          </CardHeader>
-          {showAdvanced && (
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-slate-300 text-sm">Period Length (days)</Label>
-                <p className="text-slate-500 text-xs mb-2">Average number of days your partner bleeds</p>
-                <Input
-                  type="number"
-                  min={3}
-                  max={7}
-                  value={cycleSettings.menstrualLength}
-                  onChange={(e) => {
-                    const v = Math.max(3, Math.min(7, parseInt(e.target.value) || 5));
-                    const updated = { ...cycleSettings, menstrualLength: v };
-                    setCycleSettings(updated);
-                    LocalStorage.saveCycleSettings(updated);
-                  }}
-                  className="bg-slate-700 border-slate-600 text-white w-24"
-                  data-testid="setting-menstrual-length"
-                />
-              </div>
-              <div>
-                <Label className="text-slate-300 text-sm">Luteal Phase Length (days)</Label>
-                <p className="text-slate-500 text-xs mb-2">Post-ovulation to next period. Default 14. Only change if confirmed via BBT or OPK tracking.</p>
-                <Input
-                  type="number"
-                  min={11}
-                  max={16}
-                  value={cycleSettings.lutealConstant}
-                  onChange={(e) => {
-                    const v = Math.max(11, Math.min(16, parseInt(e.target.value) || 14));
-                    const updated = { ...cycleSettings, lutealConstant: v };
-                    setCycleSettings(updated);
-                    LocalStorage.saveCycleSettings(updated);
-                  }}
-                  className="bg-slate-700 border-slate-600 text-white w-24"
-                  data-testid="setting-luteal-constant"
-                />
-              </div>
-              <p className="text-slate-600 text-xs">Changes apply immediately to all phase calculations.</p>
-            </CardContent>
-          )}
         </Card>
 
         {/* Phase Reference Cards */}

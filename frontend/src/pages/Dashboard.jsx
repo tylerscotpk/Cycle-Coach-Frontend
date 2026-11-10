@@ -46,7 +46,6 @@ const Dashboard = () => {
   const [showPhaseDetail, setShowPhaseDetail] = useState(false);
   const [cycleHistory, setCycleHistory] = useState(null);
   const [logPeriodDate, setLogPeriodDate] = useState('');
-  const [cycleSettings] = useState(() => LocalStorage.getCycleSettings());
   
   // Subscription tier state (for feedback prompts)
   const [subscriptionTier, setSubscriptionTier] = useState(null);
@@ -231,7 +230,7 @@ const Dashboard = () => {
       const avgLength = stats.ewma_length || 28;
 
       const cycleDay = calculateCycleDay(profile.cycleStartDate);
-      const phaseInfo = getPhaseInfo(cycleDay, avgLength, cycleSettings.menstrualLength, cycleSettings.lutealConstant);
+      const phaseInfo = getPhaseInfo(cycleDay, avgLength, LocalStorage.getCycleSettings().menstrualLength, LocalStorage.getCycleSettings().lutealConstant);
       const nextPhase = getNextPhase(phaseInfo.phase);
       
       // Get unarchived resources prioritized by current phase
@@ -276,7 +275,7 @@ const Dashboard = () => {
       const cycleDay = calculateCycleDay(profile.cycleStartDate);
       setActualCycleDay(cycleDay);
 
-      const phaseInfo = getPhaseInfo(cycleDay, avgLength, cycleSettings.menstrualLength, cycleSettings.lutealConstant);
+      const phaseInfo = getPhaseInfo(cycleDay, avgLength, LocalStorage.getCycleSettings().menstrualLength, LocalStorage.getCycleSettings().lutealConstant);
       const { displayDay, isCapped } = getDisplayCycleDay(cycleDay, avgLength);
       const status = getCycleExtensionStatus(cycleDay, avgLength);
       setExtensionStatus(status);
@@ -1225,6 +1224,7 @@ const Dashboard = () => {
           setLogPeriodDate={setLogPeriodDate}
           onLogPeriod={handleLogPeriod}
           onDeleteCycle={handleDeleteCycle}
+          onBleedingDurationChange={() => { if (partner) loadCycleInfoLocal(partner); rescheduleNotifications(); }}
         />
 
         {/* Research-Backed Fact Card */}

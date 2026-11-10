@@ -87,6 +87,27 @@ const MANUAL_DATA = [
   }
 ];
 
+const OVULATION_TRACKING = {
+  category: "Understanding Ovulation Tracking",
+  note: "These tracking methods are optional. You don\u2019t need them to use Cycle Coach \u2014 it works from period start dates alone.",
+  terms: [
+    {
+      term: "Ovulation Predictor Kits (OPKs)",
+      definition: "OPKs are at-home urine tests that detect a rise in luteinizing hormone (LH), which often happens shortly before ovulation. They can show that ovulation may be approaching, but they don\u2019t confirm the exact day ovulation actually happened."
+    },
+    {
+      term: "Basal Body Temperature (BBT)",
+      definition: "BBT is the body\u2019s resting temperature, usually measured right after waking up, before getting out of bed. A rise in temperature that lasts several days may help show that ovulation has already happened \u2014 but it can\u2019t reliably predict ovulation ahead of time."
+    },
+    {
+      term: "Luteal Phase",
+      definition: "The luteal phase starts after ovulation and ends when the next period begins. Its exact length can\u2019t be worked out from period start dates alone, so Cycle Coach uses a typical estimate \u2014 which is why phase predictions are always estimates."
+    },
+  ]
+};
+
+MANUAL_DATA.push(OVULATION_TRACKING);
+
 const CoachingManual = () => {
   const [openTerm, setOpenTerm] = useState(null);
   const [heights, setHeights] = useState({});
@@ -126,6 +147,7 @@ const CoachingManual = () => {
     "Hormones": "text-pink-400",
     "Cycle Phases": "text-cyan-400",
     "General Terms": "text-amber-400",
+    "Understanding Ovulation Tracking": "text-emerald-400",
   };
 
   return (
@@ -142,6 +164,9 @@ const CoachingManual = () => {
             <h3 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${categoryIcons[section.category]}`}>
               {section.category}
             </h3>
+            {section.note && (
+              <p className="text-slate-400 text-xs mb-3" data-testid="manual-ovulation-optional-note">{section.note}</p>
+            )}
             <div className="space-y-1">
               {section.terms.map((item) => {
                 const key = `${section.category}-${item.term}`;

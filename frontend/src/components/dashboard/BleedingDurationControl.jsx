@@ -1,0 +1,45 @@
+import { useState } from 'react';
+import { Minus, Plus } from 'lucide-react';
+import { LocalStorage } from '@/utils/localStorageManager';
+
+// Same supported range enforced by computePhaseBoundaries (cycleCalculations.js)
+const MIN_DAYS = 3;
+const MAX_DAYS = 7;
+
+export const BleedingDurationControl = ({ onChange }) => {
+  const [days, setDays] = useState(() => {
+    const v = parseInt(LocalStorage.getCycleSettings().menstrualLength, 10);
+    return Number.isFinite(v) ? Math.max(MIN_DAYS, Math.min(MAX_DAYS, v)) : 5;
+  });
+
+  const update = (next) => {
+    const clamped = Math.max(MIN_DAYS, Math.min(MAX_DAYS, next));
+    if (clamped === days) return;
+    setDays(clamped);
+    // Merge so other saved settings (e.g. luteal estimate) are preserved
+    LocalStorage.saveCycleSettings({ ...LocalStorage.getCycleSettings(), menstrualLength: clamped });
+    onChange?.(clamped);
+  };
+
+  const btn = "w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+
+  return (
+    <div className="bg-slate-800 p-4 rounded-lg" data-testid="bleeding-duration-section">
+      <h4 className="text-white font-semibold">Typical Bleeding Duration</h4>
+      <p className="text-slate-400 text-sm mb-4">How many days does her period usually last?</p>
+      <div className="flex items-center justify-center gap-6">
+        <button type="button" className={btn} onClick={() => update(days - 1)} disabled={days <= MIN_DAYS}
+          aria-label="Decrease bleeding duration" data-testid="bleeding-duration-minus">
+          <Minus className="w-6 h-6" />
+        </button>
+        <span className="text-white text-2xl font-bold min-w-[96px] text-center" aria-live="polite" data-testid="bleeding-duration-value">
+          {days} {days === 1 ? 'day' : 'days'}
+        </span>
+        <button type="button" className={btn} onClick={() => update(days + 1)} disabled={days >= MAX_DAYS}
+          aria-label="Increase bleeding duration" data-testid="bleeding-duration-plus">
+          <Plus className="w-6 h-6" />
+        </button>
+      </div>
+    </div>
+  );
+};
