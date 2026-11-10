@@ -720,10 +720,10 @@ const Dashboard = () => {
       
       toast.success('Cycle entry deleted');
       
-      // Reload
+      // Reload from storage so the phase card uses the updated (post-deletion) profile, not stale state
       rescheduleNotifications();
       loadCycleHistory();
-      loadCycleInfoLocal(partner);
+      loadCycleInfoLocal(LocalStorage.getPartnerProfile() || partner);
     } catch (error) {
       console.error('Error deleting cycle:', error);
       toast.error('Failed to delete');

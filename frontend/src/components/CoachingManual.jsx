@@ -97,7 +97,7 @@ const OVULATION_TRACKING = {
     },
     {
       term: "Luteal Phase",
-      definition: "The luteal phase starts after ovulation and ends when the next period begins. Its exact length can\u2019t be worked out from period start dates alone, so Cycle Coach uses a typical estimate \u2014 which is why phase predictions are always estimates."
+      definition: "The luteal phase begins after ovulation and ends before the next period. It commonly lasts around 12\u201314 days, although lengths of 11\u201317 days can occur. Cycle Coach uses an estimate to explain cycle phases, but actual ovulation timing varies \u2014 its exact length can\u2019t be worked out from period start dates alone, which is why phase predictions are always estimates."
     },
   ]
 };
