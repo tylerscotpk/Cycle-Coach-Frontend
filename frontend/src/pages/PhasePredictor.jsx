@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { LocalStorage } from '../utils/localStorageManager';
-import { parseDateLocal, recalculateCycleLengths, calculateStatistics, computePhaseBoundaries } from '../utils/cycleCalculations';
+import { parseDateLocal, recalculateCycleLengths, calculateStatistics, computePhaseBoundaries, STANDARD_LUTEAL_DAYS } from '../utils/cycleCalculations';
 import { PHASE_CONTENT } from '../utils/phaseContent';
 import PhaseDetailModal from '../components/PhaseDetailModal';
 
@@ -46,7 +46,7 @@ const PhasePredictor = () => {
   const recalculated = recalculateCycleLengths(history);
   const stats = calculateStatistics(recalculated);
   const avgCycleLength = stats.ewma_length || 28;
-  const dynamicBoundaries = computePhaseBoundaries(avgCycleLength, cycleSettings.menstrualLength, cycleSettings.lutealConstant);
+  const dynamicBoundaries = computePhaseBoundaries(avgCycleLength, cycleSettings.menstrualLength, STANDARD_LUTEAL_DAYS);
 
   // Dynamic reference cards with computed day ranges
   const dynamicPhaseCards = [
@@ -78,7 +78,7 @@ const PhasePredictor = () => {
     }
 
     // Dynamic phase boundaries using clinical model
-    const b = computePhaseBoundaries(avgCycleLength, cycleSettings.menstrualLength, cycleSettings.lutealConstant);
+    const b = computePhaseBoundaries(avgCycleLength, cycleSettings.menstrualLength, STANDARD_LUTEAL_DAYS);
 
     let phaseName;
     if (cycleDay >= 1 && cycleDay <= b.menstrualEnd) {

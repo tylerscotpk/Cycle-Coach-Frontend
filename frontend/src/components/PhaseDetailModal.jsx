@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LocalStorage } from '../utils/localStorageManager';
-import { recalculateCycleLengths, calculateStatistics, computePhaseBoundaries } from '../utils/cycleCalculations';
+import { recalculateCycleLengths, calculateStatistics, computePhaseBoundaries, STANDARD_LUTEAL_DAYS } from '../utils/cycleCalculations';
 
 // Map display name → boundaries.ranges key
 const NAME_TO_RANGE_KEY = {
@@ -21,7 +21,7 @@ const getDynamicDays = (displayName) => {
     const stats   = calculateStatistics(recalc);
     const cs      = LocalStorage.getCycleSettings();
     const avgLen  = stats.ewma_length || stats.average_length || 28;
-    const b       = computePhaseBoundaries(avgLen, cs.menstrualLength || 5, cs.lutealConstant || 14);
+    const b       = computePhaseBoundaries(avgLen, cs.menstrualLength || 5, STANDARD_LUTEAL_DAYS);
     return b.ranges[NAME_TO_RANGE_KEY[displayName]] || null;
   } catch {
     return null;

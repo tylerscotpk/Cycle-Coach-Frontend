@@ -23,7 +23,7 @@ const API = BACKEND_URL;
 
 import { LocalStorage } from '../utils/localStorageManager';
 import { redirectToCheckout, checkoutSuccessUrl } from '../utils/checkout';
-import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod, getDisplayCycleDay, getCycleExtensionStatus, getCappedCycleMessages, calculateEWMA } from '../utils/cycleCalculations';
+import { calculateCycleDay, getPhaseInfo, recalculateCycleLengths, calculateStatistics, predictNextPeriod, getDisplayCycleDay, getCycleExtensionStatus, getCappedCycleMessages, calculateEWMA, STANDARD_LUTEAL_DAYS, parseDateLocal, toLocalDateString, hasCycleStartDate } from '../utils/cycleCalculations';
 import { RESOURCES, getRelevantResources, getNextPhase, getPhasePrioritizedResources, getUnarchivedResources, archiveResource, getPhaseEmoji, getPhaseColor, getPhaseLabel, getPhaseDays, PHASE_LABELS } from '../utils/resourcesData';
 import { getUnseenFact } from '../utils/cycleFacts';
 import { initializeNotifications, runNotificationChecks, rescheduleNotifications, getDay1DismissedMessage } from '../utils/notificationService';
@@ -230,7 +230,7 @@ const Dashboard = () => {
       const avgLength = stats.ewma_length || 28;
 
       const cycleDay = calculateCycleDay(profile.cycleStartDate);
-      const phaseInfo = getPhaseInfo(cycleDay, avgLength, LocalStorage.getCycleSettings().menstrualLength, LocalStorage.getCycleSettings().lutealConstant);
+      const phaseInfo = getPhaseInfo(cycleDay, avgLength, LocalStorage.getCycleSettings().menstrualLength, STANDARD_LUTEAL_DAYS);
       const nextPhase = getNextPhase(phaseInfo.phase);
       
       // Get unarchived resources prioritized by current phase
@@ -275,7 +275,7 @@ const Dashboard = () => {
       const cycleDay = calculateCycleDay(profile.cycleStartDate);
       setActualCycleDay(cycleDay);
 
-      const phaseInfo = getPhaseInfo(cycleDay, avgLength, LocalStorage.getCycleSettings().menstrualLength, LocalStorage.getCycleSettings().lutealConstant);
+      const phaseInfo = getPhaseInfo(cycleDay, avgLength, LocalStorage.getCycleSettings().menstrualLength, STANDARD_LUTEAL_DAYS);
       const { displayDay, isCapped } = getDisplayCycleDay(cycleDay, avgLength);
       const status = getCycleExtensionStatus(cycleDay, avgLength);
       setExtensionStatus(status);
@@ -611,13 +611,18 @@ const Dashboard = () => {
     e.preventDefault();
     if (!logPeriodDate || !partner) return;
     
-    // Validate: don't allow future dates
-    const selectedDate = new Date(logPeriodDate);
+    // Validate: don't allow future dates (compare LOCAL calendar dates; 'YYYY-MM-DD' must not be parsed as UTC)
+    const selectedDate = parseDateLocal(logPeriodDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     if (selectedDate > today) {
       toast.error('Cannot log a future date');
+      return;
+    }
+
+    if (hasCycleStartDate(LocalStorage.getCycleHistory(), logPeriodDate)) {
+      toast.info(`${selectedDate.toLocaleDateString()} is already recorded in her cycle history.`);
       return;
     }
     
@@ -1015,7 +1020,7 @@ const Dashboard = () => {
                   <DatePicker
                     value={denyDate}
                     onChange={(val) => setDenyDate(val)}
-                    max={new Date().toISOString().split('T')[0]}
+                    max={toLocalDateString()}
                     placeholder="Select date"
                     testId="deny-date-input"
                   />

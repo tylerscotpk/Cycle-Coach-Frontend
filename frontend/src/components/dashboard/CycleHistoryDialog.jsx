@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
 import { BleedingDurationControl } from '@/components/dashboard/BleedingDurationControl';
+import { toLocalDateString } from '@/utils/cycleCalculations';
 
 const formatCycleDate = (dateStr) => {
   try {
@@ -73,7 +74,7 @@ const CycleHistoryDialog = ({
                 <DatePicker
                   value={logPeriodDate}
                   onChange={(val) => setLogPeriodDate(val)}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={toLocalDateString()}
                   placeholder="Select period start"
                   className="flex-1"
                   testId="log-period-date-input"
