@@ -836,7 +836,7 @@ const Dashboard = () => {
     e.preventDefault();
     if (!denyDate || !partner) return;
 
-    const selectedDate = new Date(denyDate);
+    const selectedDate = parseDateLocal(denyDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (selectedDate > today) {
@@ -844,12 +844,14 @@ const Dashboard = () => {
       return;
     }
 
-    // Add a new cycle entry with the corrected Day 1
-    LocalStorage.addCycleEntry({
-      cycle_start_date: denyDate,
-      cycle_length: null,
-      status: 'current'
-    });
+    // Add a new cycle entry with the corrected Day 1 (skip if that date is already recorded)
+    if (!hasCycleStartDate(LocalStorage.getCycleHistory(), denyDate)) {
+      LocalStorage.addCycleEntry({
+        cycle_start_date: denyDate,
+        cycle_length: null,
+        status: 'current'
+      });
+    }
 
     // Update partner profile
     const updatedPartner = { ...partner, cycleStartDate: denyDate };

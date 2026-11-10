@@ -20,6 +20,12 @@ describe(`local calendar dates (TZ=${process.env.TZ})`, () => {
     expect(predictNextPeriod('2024-02-01', 29).next_period_date).toBe('2024-03-01');
   });
 
+  test('days until next period counts whole calendar days', () => {
+    const start = new Date(); start.setDate(start.getDate() - 21);
+    expect(predictNextPeriod(toLocalDateString(start), 28).days_until_next).toBe(7);
+    expect(predictNextPeriod(toLocalDateString(), 28).days_until_next).toBe(28);
+  });
+
   test('today string is the local date, not UTC', () => {
     const now = new Date();
     expect(toLocalDateString()).toBe(

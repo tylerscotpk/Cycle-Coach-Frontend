@@ -312,7 +312,8 @@ export const predictNextPeriod = (mostRecentDate, averageLength) => {
   nextStart.setDate(nextStart.getDate() + averageLength);
   
   const today = new Date();
-  const daysUntil = Math.floor((nextStart - today) / (1000 * 60 * 60 * 24));
+  today.setHours(0, 0, 0, 0);
+  const daysUntil = Math.round((nextStart - today) / (1000 * 60 * 60 * 24));
   
   return {
     next_period_date: toLocalDateString(nextStart),
