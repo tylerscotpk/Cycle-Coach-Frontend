@@ -21,7 +21,7 @@ export const BleedingDurationControl = ({ onChange }) => {
     onChange?.(clamped);
   };
 
-  const btn = "w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+  const btn = "w-10 h-10 shrink-0 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <div className="bg-slate-900/60 border border-slate-700 p-4 rounded-lg" data-testid="bleeding-duration-section">
@@ -30,14 +30,14 @@ export const BleedingDurationControl = ({ onChange }) => {
       <div className="flex items-center justify-center gap-6">
         <button type="button" className={btn} onClick={() => update(days - 1)} disabled={days <= MIN_DAYS}
           aria-label="Decrease bleeding duration" data-testid="bleeding-duration-minus">
-          <Minus className="w-6 h-6" />
+          <Minus className="w-5 h-5" />
         </button>
-        <span className="text-white text-2xl font-bold min-w-[96px] text-center" aria-live="polite" data-testid="bleeding-duration-value">
+        <span className="text-white text-lg font-semibold min-w-[80px] text-center" aria-live="polite" data-testid="bleeding-duration-value">
           {days} {days === 1 ? 'day' : 'days'}
         </span>
         <button type="button" className={btn} onClick={() => update(days + 1)} disabled={days >= MAX_DAYS}
           aria-label="Increase bleeding duration" data-testid="bleeding-duration-plus">
-          <Plus className="w-6 h-6" />
+          <Plus className="w-5 h-5" />
         </button>
       </div>
     </div>

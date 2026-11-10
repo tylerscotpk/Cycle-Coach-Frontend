@@ -95,10 +95,6 @@ const OVULATION_TRACKING = {
       term: "Basal Body Temperature (BBT)",
       definition: "BBT is the body\u2019s resting temperature, usually measured right after waking up, before getting out of bed. A rise in temperature that lasts several days may help show that ovulation has already happened \u2014 but it can\u2019t reliably predict ovulation ahead of time."
     },
-    {
-      term: "Luteal Phase",
-      definition: "The luteal phase begins after ovulation and ends before the next period. It commonly lasts around 12\u201314 days, although lengths of 11\u201317 days can occur. Cycle Coach uses an estimate to explain cycle phases, but actual ovulation timing varies \u2014 its exact length can\u2019t be worked out from period start dates alone, which is why phase predictions are always estimates."
-    },
   ]
 };
 
