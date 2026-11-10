@@ -60,10 +60,6 @@ const MANUAL_DATA = [
     category: "General Terms",
     terms: [
       {
-        term: "Basal Body Temperature (BBT)",
-        definition: "Body temperature at rest, taken first thing in the morning. Rises slightly after ovulation due to the increase in progesterone \u2014 some people track it to help identify their fertile window."
-      },
-      {
         term: "Cycle Syncing",
         definition: "The general idea of adjusting plans, expectations, or activities based on which phase of the cycle someone is in \u2014 the core concept behind this app."
       },

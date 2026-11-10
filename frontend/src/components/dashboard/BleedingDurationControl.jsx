@@ -24,7 +24,7 @@ export const BleedingDurationControl = ({ onChange }) => {
   const btn = "w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
-    <div className="bg-slate-800 p-4 rounded-lg" data-testid="bleeding-duration-section">
+    <div className="bg-slate-900/60 border border-slate-700 p-4 rounded-lg" data-testid="bleeding-duration-section">
       <h4 className="text-white font-semibold">Typical Bleeding Duration</h4>
       <p className="text-slate-400 text-sm mb-4">How many days does her period usually last?</p>
       <div className="flex items-center justify-center gap-6">
