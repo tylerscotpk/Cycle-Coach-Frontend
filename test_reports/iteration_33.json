@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only retest of the Cycle Coach Phase Predictor fixes (adv_active@test.com; 1920x1080, 390x844, 1920x800). All requested items PASS. (1) Delete-refresh bug FIXED: logged Oct 11 and Nov 8 (today is Nov 10, 2026). The phase card showed Day 3 / Phase 1: Day 3 (Menstrual). After deleting the Nov 8 entry, the card updated without a reload to Day 31 / Phase 5: Day 7 (Late Luteal/PMS) and the Cycle Extended banner appeared. After a reload the values were the same. (2) Coaching Manual: 'Basal Body Temperature (BBT)' and 'Ovulation Predictor Kits (OPKs)' each appear exactly once, and each data-testid appears once. The Luteal Phase term contains 'after ovulation', 'before the next period', '12–14 days', '11–17 days' and 'estimate'. The optional note is shown. (3) Bleeding duration: the section is between Log New Period (y=440) and Recent Cycles (y=726). Its container (rgba(15,23,42,0.6) with a 1px slate-700 border) stands out against the dialog (rgb(30,41,59)). Each step changes the value by 1; minus is disabled at 3 and plus at 7. The value stays at 6 after a reload. A pre-set lutealConstant:13 is kept after a + click. The phase card updates live. (4) /predictor: no Advanced Settings and no setting-menstrual-length / setting-luteal-constant; the menstrual range is 'Days 1–6' at 6. (5) No horizontal overflow at 390x844 or 1920x800 in the dashboard/manual or the dialog. No billing actions were taken.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Dashboard handleLogPeriod", "issue": "The same start date can be logged twice. Logging 10/11/2026 when it was already in the history (created by partner setup) added a second 10/11/2026 row stuck on 'Calculating...'. There is no duplicate-date check in handleLogPeriod or LocalStorage.addCycleEntry.", "selector": "[data-testid='log-period-button']", "priority": "LOW"},
+      {"component": "Dashboard handleLogPeriod (code review, not reproduced in UTC browser)", "issue": "new Date(logPeriodDate) parses 'YYYY-MM-DD' as UTC midnight, but 'today' is local midnight. For users east of UTC (UTC+1 and later), logging today's date gives a false 'Cannot log a future date' error. Parse the date as local (as date-picker parseLocal does).", "selector": "[data-testid='log-period-button']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Coaching Manual", "issues": ["Cycle Phases still lists 'Luteal Phase (Days 17–23, roughly)' and 'Menstrual Phase (Days 1–5, roughly)'. This is a minor mismatch with the new Luteal definition (12–14 days, ending before the period) and with the user's saved bleeding duration. Consider a note that PMS is the late part of the luteal phase."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: block or merge duplicate period start dates in handleLogPeriod",
+    "Optional: parse logPeriodDate as local time in the future-date check (timezone bug for UTC+ users)"
+  ],
+  "critical_code_review_comments": [
+    "handleDeleteCycle: if the last remaining cycle is deleted, the partner profile cycleStartDate is not cleared, so the phase card keeps using it (edge case, not tested)",
+    "handleLogPeriod leaves console.log debug statements in"
+  ],
+  "updated_files": ["/app/tests/helpers_cc.py (reference JS for picking dates only)"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested checks"},
+  "seed_data_creation": "Only browser localStorage (cleared on each run): partner TEST_Partner and cycle entries. No server data changed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Each browser_automation run starts with fresh localStorage. Onboarding: state-privacy-waiver combobox -> 'Outside the United States' -> privacy-continue-btn -> both consent checkboxes -> consent-continue-btn -> partner-name-input + cycle-start-date-input (button[name=day]; nav button[name=previous-month]) -> create-partner-button. Partner setup creates a cycle-history entry itself. Cycle settings key: cyclecoach_cycle_settings_<uid> (plain JSON). Delete uses window.confirm. Browser date = Nov 10, 2026."
+}

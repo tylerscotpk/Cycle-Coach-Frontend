@@ -27,6 +27,9 @@ import {
   calculateStatistics,
   getCycleExtensionStatus,
   parseDateLocal,
+  STANDARD_LUTEAL_DAYS,
+  toLocalDateString,
+  hasCycleStartDate,
 } from './cycleCalculations';
 
 // ── ID ranges (32-bit safe) ────────────────────────────────────────
@@ -115,7 +118,7 @@ const getCycleData = () => {
     cycleStartDate: profile.cycleStartDate,
     avgLen:   stats.ewma_length || stats.average_length || profile.cycleLength || 28,
     mLen:     cs.menstrualLength || 5,
-    lConst:   cs.lutealConstant  || 14,
+    lConst:   STANDARD_LUTEAL_DAYS,
     isEstimate: stats.total_cycles_tracked === 0,
     partnerName: profile.partnerName,
   };
@@ -155,15 +158,11 @@ const getTransitionDates = (cycleStartDate, avgLen, mLen, lConst) => {
 // ── Day 1 logging (reuses the same path as Dashboard handleLogPeriod) ──
 
 export const logDay1FromNotification = (dateStr) => {
-  const dateToLog = dateStr || new Date().toISOString().split('T')[0];
+  const dateToLog = dateStr || toLocalDateString();
 
-  // De-duplicate: skip if this date is already the most recent cycle entry
+  // De-duplicate: skip if this calendar date is already recorded
   const existing = LocalStorage.getCycleHistory();
-  if (existing.length > 0) {
-    const sorted = recalculateCycleLengths(existing);
-    const latest = sorted[sorted.length - 1];
-    if (latest && latest.cycle_start_date === dateToLog) return; // already logged
-  }
+  if (hasCycleStartDate(existing, dateToLog)) return; // already logged
 
   LocalStorage.addCycleEntry({
     cycle_start_date: dateToLog,
@@ -306,7 +305,7 @@ export const scheduleNativeNotifications = async () => {
     day1Date.setHours(NOTIFICATION_HOUR, 0, 0, 0);
 
     if (day1Date > now) {
-      const predictedDateStr = day1Date.toISOString().split('T')[0];
+      const predictedDateStr = toLocalDateString(day1Date);
       const name = data.partnerName || 'her';
       let body = `Is today Day 1 for ${name}? Tap Yes to log it and keep predictions accurate.`;
       if (data.isEstimate) body += ' (Estimated \u2014 no history yet)';

@@ -35,23 +35,23 @@ const MANUAL_DATA = [
         definition: "The full length of one cycle, counted from the first day of one period to the first day of the next. \u2018Average\u2019 is often cited as 28 days, but anywhere from about 21\u201335 days is considered normal \u2014 cycle length varies person to person. When a cycle runs longer than average, that extra time usually shows up in the follicular phase \u2014 it takes longer for an egg to grow and leave the ovary."
       },
       {
-        term: "Menstrual Phase (Days 1\u20135, roughly)",
-        definition: "The period itself \u2014 when the uterine lining sheds. Estrogen and progesterone are at their lowest point of the cycle, which is why energy often dips here."
+        term: "Menstrual Phase (first 3\u20137 days)",
+        definition: "The period itself \u2014 when the uterine lining sheds. It usually lasts 3\u20137 days (you can set her typical length in Cycle History). Estrogen and progesterone are at their lowest point of the cycle, which is why energy often dips here."
       },
       {
-        term: "Follicular Phase (Days 6\u201313, roughly)",
+        term: "Follicular Phase (period end until ovulation)",
         definition: "Starts the day after the period ends and runs until ovulation. Estrogen climbs steadily, energy comes back online, and this is generally the highest-energy stretch of the cycle. This is also the phase most likely to stretch out in a longer-than-average cycle, since it takes longer for an egg to grow and leave the ovary."
       },
       {
-        term: "Ovulation (Days 14\u201316, roughly)",
-        definition: "The release of an egg from the ovary, triggered by the LH surge. Estrogen and testosterone both peak around this time."
+        term: "Ovulation (around Day 14 in a 28-day cycle)",
+        definition: "The release of an egg from the ovary, triggered by the LH surge. Estrogen and testosterone both peak around this time. The timing shifts with cycle length and varies from cycle to cycle, so Cycle Coach shows an estimated window \u2014 not an exact day."
       },
       {
-        term: "Luteal Phase (Days 17\u201323, roughly)",
-        definition: "The stretch after ovulation and before the period. Progesterone rises first, then everything drops toward the end of the phase \u2014 that drop is the PMS window."
+        term: "Luteal Phase (after ovulation, until the period)",
+        definition: "The stretch after ovulation and before the next period. It commonly lasts around 12\u201314 days, though 11\u201317 days can occur; Cycle Coach uses a standard 14-day estimate. Progesterone rises first, then everything drops toward the end of the phase \u2014 that drop is the PMS window."
       },
       {
-        term: "PMS (Days 24\u201328, roughly)",
+        term: "PMS (last ~5 days before the period)",
         definition: "Short for Premenstrual Syndrome. The final few days of the luteal phase, right before the period starts. Caused by the sharp drop in estrogen and progesterone \u2014 not a mood choice or a personality shift."
       },
     ]
@@ -59,10 +59,6 @@ const MANUAL_DATA = [
   {
     category: "General Terms",
     terms: [
-      {
-        term: "Basal Body Temperature (BBT)",
-        definition: "Body temperature at rest, taken first thing in the morning. Rises slightly after ovulation due to the increase in progesterone \u2014 some people track it to help identify their fertile window."
-      },
       {
         term: "Cycle Syncing",
         definition: "The general idea of adjusting plans, expectations, or activities based on which phase of the cycle someone is in \u2014 the core concept behind this app."
@@ -86,6 +82,23 @@ const MANUAL_DATA = [
     ]
   }
 ];
+
+const OVULATION_TRACKING = {
+  category: "Understanding Ovulation Tracking",
+  note: "These tracking methods are optional. You don\u2019t need them to use Cycle Coach \u2014 it works from period start dates alone.",
+  terms: [
+    {
+      term: "Ovulation Predictor Kits (OPKs)",
+      definition: "OPKs are at-home urine tests that detect a rise in luteinizing hormone (LH), which often happens shortly before ovulation. They can show that ovulation may be approaching, but they don\u2019t confirm the exact day ovulation actually happened."
+    },
+    {
+      term: "Basal Body Temperature (BBT)",
+      definition: "BBT is the body\u2019s resting temperature, usually measured right after waking up, before getting out of bed. A rise in temperature that lasts several days may help show that ovulation has already happened \u2014 but it can\u2019t reliably predict ovulation ahead of time."
+    },
+  ]
+};
+
+MANUAL_DATA.push(OVULATION_TRACKING);
 
 const CoachingManual = () => {
   const [openTerm, setOpenTerm] = useState(null);
@@ -126,6 +139,7 @@ const CoachingManual = () => {
     "Hormones": "text-pink-400",
     "Cycle Phases": "text-cyan-400",
     "General Terms": "text-amber-400",
+    "Understanding Ovulation Tracking": "text-emerald-400",
   };
 
   return (
@@ -142,6 +156,9 @@ const CoachingManual = () => {
             <h3 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${categoryIcons[section.category]}`}>
               {section.category}
             </h3>
+            {section.note && (
+              <p className="text-slate-400 text-xs mb-3" data-testid="manual-ovulation-optional-note">{section.note}</p>
+            )}
             <div className="space-y-1">
               {section.terms.map((item) => {
                 const key = `${section.category}-${item.term}`;

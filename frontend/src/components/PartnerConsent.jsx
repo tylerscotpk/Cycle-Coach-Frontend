@@ -60,9 +60,10 @@ const PartnerConsent = ({ onConsentGranted }) => {
                 type="checkbox"
                 checked={understood}
                 onChange={(e) => setUnderstood(e.target.checked)}
-                className="mt-1 w-5 h-5 cursor-pointer"
+                className="mt-1 w-5 h-5 shrink-0 cursor-pointer"
+                data-testid="consent-local-storage-checkbox"
               />
-              <span className="text-slate-300 group-hover:text-white transition-colors">
+              <span className="min-w-0 break-words text-slate-300 group-hover:text-white transition-colors">
                 I understand that all data will be stored locally on my device and that I am responsible for backing it up if needed.
               </span>
             </label>
@@ -72,10 +73,11 @@ const PartnerConsent = ({ onConsentGranted }) => {
                 type="checkbox"
                 checked={hasConsent}
                 onChange={(e) => setHasConsent(e.target.checked)}
-                className="mt-1 w-5 h-5 cursor-pointer"
+                className="mt-1 w-5 h-5 shrink-0 cursor-pointer"
+                data-testid="consent-partner-checkbox"
               />
-              <span className="text-slate-300 group-hover:text-white transition-colors">
-                <strong className="text-orange-300">I confirm that I have discussed this app with my partner and have their explicit consent to track their cycle data.</strong>
+              <span className="min-w-0 break-words text-slate-300 group-hover:text-white transition-colors">
+                <strong className="text-orange-300">I understand and confirm that I have my partner&apos;s consent.</strong>
               </span>
             </label>
           </div>
@@ -84,9 +86,10 @@ const PartnerConsent = ({ onConsentGranted }) => {
             <Button
               onClick={handleSubmit}
               disabled={!understood || !hasConsent}
-              className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-6 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto sm:min-w-[240px] min-h-[48px] bg-cyan-500 hover:bg-cyan-600 text-white px-8 py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="consent-continue-btn"
             >
-              I Understand and Have Consent - Continue
+              Continue
             </Button>
           </div>
 

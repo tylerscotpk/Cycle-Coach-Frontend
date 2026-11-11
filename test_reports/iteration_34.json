@@ -1,0 +1,31 @@
+{
+  "summary": "Frontend-only test of the Cycle Coach accuracy fixes (adv_active@test.com). The browser clock was Nov 10, 2026, 22:11 UTC, so it was already Nov 11 in Kiritimati (UTC+14) and still Nov 10 in Honolulu (UTC-10). Results: (1) Standard luteal value: with lutealConstant 11 and with 14 (28-day average, menstrual 5), /predictor shows identical ranges (Menstrual 1–5, Follicular 6–12, Ovulation 13–15, Luteal 16–24, PMS 25–28) and the Dashboard shows Day 17 / Early Luteal / Phase 4: Day 2 in both cases. lutealConstant:11 is still stored after a reload. PASS. (2) Duplicate guard: logging 10/31 again, and logging an older history date, shows the info toast '<date> is already recorded in her cycle history.' and the row count stays at 5. A new unique date still logs. PASS. (3) Time zones, tested in separate Kiritimati and Honolulu contexts: logging today works with no future-date error (Nov 11 in Kiritimati, Nov 10 in Honolulu). Recent Cycles shows the date that was picked, tomorrow is disabled in the picker, and stored values are plain local YYYY-MM-DD. PASS. (4) Oct 31, 2026 shows as 10/31/2026 in both zones. PASS. (5) Regressions: deleting the most recent cycle updates the phase card without a reload (Day 3 Menstrual -> Day 31 Late Luteal/PMS). Bleeding duration stops at 3 and 7 and keeps 6 after a reload. /predictor has no Advanced Settings or luteal setting. PASS. (6) Coaching Manual: all 5 new term titles appear once, BBT and OPKs once each, the Luteal texts mention the estimate, and no text claims an exact ovulation date. PASS. (7) No horizontal overflow at 390x844 or 1920x800 on /app, /predictor, the manual or the History dialog. PASS. Two new bugs found: the deny-extension flow still has the UTC+ time-zone bug, and the 'Next Period ~N days' count is one day short.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Dashboard handleSubmitDenyDate (Cycle Extended banner -> 'No, it already started — enter date')", "issue": "REPRODUCED in Pacific/Kiritimati: picking today (Nov 11) and clicking 'Set as Day 1' gives 'Cannot set a future date', and the card stays on Day 34. Cause: line ~839 still uses `new Date(denyDate)`, which reads 'YYYY-MM-DD' as UTC midnight. This is the same bug that was fixed in handleLogPeriod. Fix: use parseDateLocal(denyDate). This flow also has no hasCycleStartDate duplicate guard.", "selector": "[data-testid='deny-date-submit']", "priority": "MEDIUM"},
+      {"component": "predictNextPeriod / CycleHistoryDialog 'Next Period' card", "issue": "days_until_next is one day short in every time zone. Logging today with a 28-day average showed '~27 days' (next period Dec 9 in Kiritimati, Dec 8 in Honolulu, both 28 days away). A Day 22 cycle showed '~6 days' instead of 7. Cause: `today = new Date()` is not set to midnight before Math.floor((nextStart - today)/day). Fix: today.setHours(0,0,0,0) (or Math.round). The next_period_date string itself is correct (start + average, local date), but it is not shown anywhere in the UI.", "selector": "Cycle History dialog > Next Period card", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard MoodMap", "issues": ["The 'Heads up, bro — shorter cycles can shift phases earlier' banner appears even with a regular 28-day average. Check what triggers it (not in scope)."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/cc_tz_flow_reference.py"],
+  "action_items": [
+    "Dashboard.jsx handleSubmitDenyDate: replace new Date(denyDate) with parseDateLocal(denyDate), and add the hasCycleStartDate duplicate guard",
+    "cycleCalculations.predictNextPeriod: set today to local midnight before working out days_until_next (currently 1 day short)"
+  ],
+  "critical_code_review_comments": [
+    "Dashboard.jsx is about 1350 lines and should be split further",
+    "handleLogPeriod still has console.log debug statements",
+    "notificationService getTransitionDates uses parseDateLocal and local setDate, so it is TZ-safe",
+    "Doc comment on computePhaseBoundaries still says 'adjustable 11-16'; that is out of date now that the luteal value is fixed at 14"
+  ],
+  "updated_files": ["/app/tests/cc_tz_flow_reference.py (reference snippet only)"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "All 7 requested checks pass; 2 new bugs found outside the requested flows"},
+  "seed_data_creation": "Only browser localStorage in fresh contexts (partner TEST_Partner, cycle entries with id TESTid*). No server data changed. No billing actions.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Each browser_automation run starts with fresh localStorage. Time-zone contexts: page.context.browser.new_context(timezone_id=...). Browser clock is Nov 10, 2026, about 22:11 UTC (Nov 11 in Kiritimati). Onboarding: state-privacy-waiver -> 'Outside the United States' -> privacy-continue-btn -> consent-local-storage-checkbox + consent-partner-checkbox -> consent-continue-btn -> partner-name-input + cycle-start-date-input -> create-partner-button. History key cyclecoach_cycle_history_<uid> (base64 JSON). Partner key cyclecoach_partner_profile_<uid> (base64). Settings key cyclecoach_cycle_settings_<uid> (plain JSON). Extension banner appears when the cycle day is more than average + 2. Toasts: [data-sonner-toast]."
+}

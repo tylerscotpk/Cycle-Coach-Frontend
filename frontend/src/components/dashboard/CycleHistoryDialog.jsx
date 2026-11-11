@@ -3,6 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
+import { BleedingDurationControl } from '@/components/dashboard/BleedingDurationControl';
+import { toLocalDateString } from '@/utils/cycleCalculations';
 
 const formatCycleDate = (dateStr) => {
   try {
@@ -20,7 +22,7 @@ const CycleHistoryDialog = ({
   open, onOpenChange,
   cycleHistory,
   logPeriodDate, setLogPeriodDate,
-  onLogPeriod, onDeleteCycle,
+  onLogPeriod, onDeleteCycle, onBleedingDurationChange,
 }) => {
   const [dialogEl, setDialogEl] = useState(null);
 
@@ -72,7 +74,7 @@ const CycleHistoryDialog = ({
                 <DatePicker
                   value={logPeriodDate}
                   onChange={(val) => setLogPeriodDate(val)}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={toLocalDateString()}
                   placeholder="Select period start"
                   className="flex-1"
                   testId="log-period-date-input"
@@ -87,6 +89,8 @@ const CycleHistoryDialog = ({
                 </Button>
               </form>
             </div>
+
+            <BleedingDurationControl onChange={onBleedingDurationChange} />
 
             <div className="space-y-2">
               <h4 className="text-white font-semibold mb-2">Recent Cycles</h4>

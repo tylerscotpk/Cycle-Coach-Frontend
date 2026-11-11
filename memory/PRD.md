@@ -190,3 +190,11 @@ Create a mobile-friendly web app called "Cycle Coach" to help men understand the
 - routes/admin.py: password read from env at call time; hmac.compare_digest; rate limit 5 fails/IP/15min + 30 global/15min → 429 (admin_login_failures, TTL); sessions store salted PBKDF2 fingerprint of password → changing ADMIN_PASSWORD revokes all prior sessions (legacy sessions without fingerprint rejected).
 - tests/test_admin_security.py (10) + test_account_lifecycle.py (36) = 46 pass; pytest loop_scope=session.
 - Pending: user sets new ADMIN_PASSWORD (separate preview/production) via secrets card, then deploy.
+
+## 2026-11-10 — Accuracy fixes (NOT deployed)
+- STANDARD_LUTEAL_DAYS=14 used everywhere (Dashboard, PhasePredictor, MoodMap, PhaseDetailModal, notifications); saved lutealConstant kept but ignored.
+- Duplicate start-date guard (hasCycleStartDate) in handleLogPeriod, deny-extension flow, notification Day-1 logging.
+- Local calendar dates: parseDateLocal for validation, toLocalDateString for picker max / predictions / notification dates; days_until_next uses local midnight.
+- Coaching Manual Cycle Phases titles/defs aligned with 14-day estimate.
+- Tests: src/utils/cycleCalculations.tz.test.js (12) passing in 6 TZs; iteration_34 UI 7/7.
+- Known out-of-scope: resourcesData.js static "Days 6–13" phase labels; MoodMap "shorter cycles" banner shows on 28-day avg.

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PHASE_CONTENT } from '@/utils/phaseContent';
 import PhaseDetailModal from '@/components/PhaseDetailModal';
 import { LocalStorage } from '../utils/localStorageManager';
-import { recalculateCycleLengths, calculateStatistics, computePhaseBoundaries } from '../utils/cycleCalculations';
+import { recalculateCycleLengths, calculateStatistics, computePhaseBoundaries, STANDARD_LUTEAL_DAYS } from '../utils/cycleCalculations';
 
 const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const [selectedPhase, setSelectedPhase] = useState(null);
@@ -16,7 +16,7 @@ const MoodMap = ({ currentCycleDay, cycleInfo }) => {
   const stats = calculateStatistics(recalculated);
   const cs = LocalStorage.getCycleSettings();
   const avgLen = stats.ewma_length || stats.average_length || 28;
-  const db = computePhaseBoundaries(avgLen, cs.menstrualLength || 5, cs.lutealConstant || 14);
+  const db = computePhaseBoundaries(avgLen, cs.menstrualLength || 5, STANDARD_LUTEAL_DAYS);
 
   const phases = [
     { name: "Menstrual", num: 1, days: db.ranges.menstrual, dayRange: [1, db.menstrualEnd], color: "#dc2626", colorLight: "#ef4444", iconType: "drop", ...PHASE_CONTENT["Menstrual"] },

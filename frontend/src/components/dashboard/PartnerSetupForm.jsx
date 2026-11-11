@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toLocalDateString } from '@/utils/cycleCalculations';
 import { DatePicker } from '@/components/ui/date-picker';
 
 const PartnerSetupForm = ({ partnerName, setPartnerName, cycleStartDate, setCycleStartDate, onSubmit }) => {
@@ -50,7 +51,7 @@ const PartnerSetupForm = ({ partnerName, setPartnerName, cycleStartDate, setCycl
                     <DatePicker
                       value={cycleStartDate}
                       onChange={(val) => setCycleStartDate(val)}
-                      max={new Date().toISOString().split('T')[0]}
+                      max={toLocalDateString()}
                       placeholder="Select start date"
                       className="w-full"
                       testId="cycle-start-date-input"

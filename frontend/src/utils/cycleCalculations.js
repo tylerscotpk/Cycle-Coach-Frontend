@@ -4,6 +4,23 @@
  * Supports EWMA-based dynamic averages, extended cycle detection, and capped UI
  */
 
+// Standard internal luteal-phase estimate (days). Saved custom values are kept in storage but no longer used.
+export const STANDARD_LUTEAL_DAYS = 14;
+
+// Format a Date as its LOCAL calendar date (YYYY-MM-DD) — never via UTC
+export const toLocalDateString = (date = new Date()) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+// True if the history already contains this calendar start date (any stored format)
+export const hasCycleStartDate = (history, dateStr) => {
+  const target = parseDateLocal(dateStr).getTime();
+  return (history || []).some((e) => e?.cycle_start_date && parseDateLocal(e.cycle_start_date).getTime() === target);
+};
+
 // Parse a date string into a local Date object (no timezone issues)
 export const parseDateLocal = (dateStr) => {
   let year, month, day;
@@ -290,15 +307,16 @@ export const calculateStatistics = (history) => {
 };
 
 export const predictNextPeriod = (mostRecentDate, averageLength) => {
-  const lastStart = new Date(mostRecentDate);
+  const lastStart = parseDateLocal(mostRecentDate);
   const nextStart = new Date(lastStart);
   nextStart.setDate(nextStart.getDate() + averageLength);
   
   const today = new Date();
-  const daysUntil = Math.floor((nextStart - today) / (1000 * 60 * 60 * 24));
+  today.setHours(0, 0, 0, 0);
+  const daysUntil = Math.round((nextStart - today) / (1000 * 60 * 60 * 24));
   
   return {
-    next_period_date: nextStart.toISOString().split('T')[0],
+    next_period_date: toLocalDateString(nextStart),
     days_until_next: daysUntil
   };
 };
